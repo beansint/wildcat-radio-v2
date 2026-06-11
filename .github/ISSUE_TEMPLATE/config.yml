@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Conventions (canonical, in the backend repo)
+    url: https://github.com/beansint/wildcat-radio-v2-backend/tree/main/docs/conventions
+    about: Branch/PR/issue + feature-doc + AI-QA conventions live in the backend repo.

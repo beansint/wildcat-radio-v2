@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+/* CIT-U Wildcat brand — maroon/gold. Exact palette: planning-docs/design-references/brand-color-palette.jpg */
+:root {
+  --background: #faf7f5;
+  --foreground: #1a1416;
+  --maroon: #7a1d2e;
+  --maroon-dark: #571320;
+  --gold: #f3b922;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-maroon: var(--maroon);
+  --color-maroon-dark: var(--maroon-dark);
+  --color-gold: var(--gold);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}

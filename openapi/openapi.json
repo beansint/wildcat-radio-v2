@@ -52,12 +52,97 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Current stream manifest (barebones)"
+            "description": ""
           }
         },
-        "summary": "",
+        "summary": "Get live stream manifest",
         "tags": [
           "stream"
+        ]
+      }
+    },
+    "/api/stream/heartbeat": {
+      "post": {
+        "operationId": "postStreamHeartbeat",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Studio source heartbeat",
+        "tags": [
+          "stream"
+        ]
+      }
+    },
+    "/api/studio/today": {
+      "get": {
+        "operationId": "getStudioToday",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get studio today view",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/time-in": {
+      "post": {
+        "operationId": "timeInStudio",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "DJ time-in (tap in)",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/time-out": {
+      "post": {
+        "operationId": "timeOutStudio",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "DJ time-out (tap out)",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/episodes/{id}": {
+      "get": {
+        "operationId": "getEpisode",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Episode id (cuid)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get episode by id",
+        "tags": [
+          "episodes"
         ]
       }
     }

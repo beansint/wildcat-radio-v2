@@ -27,18 +27,6 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 
-export type listSettingsResponse200 = {
-  data: void
-  status: 200
-}
-
-export type listSettingsResponseSuccess = (listSettingsResponse200) & {
-  headers: Headers;
-};
-;
-
-export type listSettingsResponse = (listSettingsResponseSuccess)
-
 export const getListSettingsUrl = () => {
 
 
@@ -47,9 +35,9 @@ export const getListSettingsUrl = () => {
   return `/api/settings`
 }
 
-export const listSettings = async ( options?: RequestInit): Promise<listSettingsResponse> => {
+export const listSettings = async ( options?: RequestInit): Promise<void> => {
 
-  return customFetch<listSettingsResponse>(getListSettingsUrl(),
+  return customFetch<void>(getListSettingsUrl(),
   {
     ...options,
     method: 'GET'

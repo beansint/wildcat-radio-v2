@@ -27,18 +27,6 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 
-export type getStreamManifestResponse200 = {
-  data: void
-  status: 200
-}
-
-export type getStreamManifestResponseSuccess = (getStreamManifestResponse200) & {
-  headers: Headers;
-};
-;
-
-export type getStreamManifestResponse = (getStreamManifestResponseSuccess)
-
 export const getGetStreamManifestUrl = () => {
 
 
@@ -47,9 +35,9 @@ export const getGetStreamManifestUrl = () => {
   return `/api/stream/manifest`
 }
 
-export const getStreamManifest = async ( options?: RequestInit): Promise<getStreamManifestResponse> => {
+export const getStreamManifest = async ( options?: RequestInit): Promise<void> => {
 
-  return customFetch<getStreamManifestResponse>(getGetStreamManifestUrl(),
+  return customFetch<void>(getGetStreamManifestUrl(),
   {
     ...options,
     method: 'GET'

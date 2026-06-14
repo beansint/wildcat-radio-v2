@@ -16,4 +16,41 @@ export const GetHealthDbResponse = zod.unknown()
 export const ListSettingsResponse = zod.unknown()
 
 
+/**
+ * @summary Get live stream manifest
+ */
 export const GetStreamManifestResponse = zod.unknown()
+
+
+/**
+ * @summary Studio source heartbeat
+ */
+export const PostStreamHeartbeatResponse = zod.unknown()
+
+
+/**
+ * @summary Get studio today view
+ */
+export const GetStudioTodayResponse = zod.unknown()
+
+
+/**
+ * @summary DJ time-in (tap in)
+ */
+export const TimeInStudioResponse = zod.unknown()
+
+
+/**
+ * @summary DJ time-out (tap out)
+ */
+export const TimeOutStudioResponse = zod.unknown()
+
+
+/**
+ * @summary Get episode by id
+ */
+export const GetEpisodeParams = zod.object({
+  "id": zod.string().describe('Episode id (cuid)')
+})
+
+export const GetEpisodeResponse = zod.unknown()

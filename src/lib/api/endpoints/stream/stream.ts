@@ -35,6 +35,9 @@ export const getGetStreamManifestUrl = () => {
   return `/api/stream/manifest`
 }
 
+/**
+ * @summary Get live stream manifest
+ */
 export const getStreamManifest = async ( options?: RequestInit): Promise<void> => {
 
   return customFetch<void>(getGetStreamManifestUrl(),
@@ -103,6 +106,9 @@ export function useGetStreamManifest<TData = Awaited<ReturnType<typeof getStream
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStreamManifest>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get live stream manifest
+ */
 
 export function useGetStreamManifest<TData = Awaited<ReturnType<typeof getStreamManifest>>, TError = unknown>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStreamManifest>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
@@ -110,6 +116,106 @@ export function useGetStreamManifest<TData = Awaited<ReturnType<typeof getStream
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetStreamManifestQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getPostStreamHeartbeatUrl = () => {
+
+
+
+
+  return `/api/stream/heartbeat`
+}
+
+/**
+ * @summary Studio source heartbeat
+ */
+export const postStreamHeartbeat = async ( options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getPostStreamHeartbeatUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPostStreamHeartbeatQueryKey = () => {
+    return [
+    'POST', `/api/stream/heartbeat`
+    ] as const;
+    }
+
+
+export const getPostStreamHeartbeatQueryOptions = <TData = Awaited<ReturnType<typeof postStreamHeartbeat>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postStreamHeartbeat>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPostStreamHeartbeatQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof postStreamHeartbeat>>> = ({ signal }) => postStreamHeartbeat({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof postStreamHeartbeat>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PostStreamHeartbeatQueryResult = NonNullable<Awaited<ReturnType<typeof postStreamHeartbeat>>>
+export type PostStreamHeartbeatQueryError = unknown
+
+
+export function usePostStreamHeartbeat<TData = Awaited<ReturnType<typeof postStreamHeartbeat>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof postStreamHeartbeat>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postStreamHeartbeat>>,
+          TError,
+          Awaited<ReturnType<typeof postStreamHeartbeat>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostStreamHeartbeat<TData = Awaited<ReturnType<typeof postStreamHeartbeat>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postStreamHeartbeat>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postStreamHeartbeat>>,
+          TError,
+          Awaited<ReturnType<typeof postStreamHeartbeat>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostStreamHeartbeat<TData = Awaited<ReturnType<typeof postStreamHeartbeat>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postStreamHeartbeat>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Studio source heartbeat
+ */
+
+export function usePostStreamHeartbeat<TData = Awaited<ReturnType<typeof postStreamHeartbeat>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postStreamHeartbeat>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPostStreamHeartbeatQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

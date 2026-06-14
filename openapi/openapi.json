@@ -1,0 +1,76 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Liveness probe"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/health/db": {
+      "get": {
+        "operationId": "getHealthDb",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Database readiness probe"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "operationId": "listSettings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Public settings (branding/copy) read from the DB"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/stream/manifest": {
+      "get": {
+        "operationId": "getStreamManifest",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current stream manifest (barebones)"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "stream"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Wildcat Radio v2 API",
+    "description": "Control plane — see docs/final-build-plan/03-API-CONTRACT.md",
+    "version": "0.0.1",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {}
+  }
+}

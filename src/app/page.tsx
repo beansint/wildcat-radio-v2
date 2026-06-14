@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { useGetHealth } from "@/lib/api/endpoints/health/health";
 
 export default function Home() {
-  const [health, setHealth] = useState("checking…");
+  const { data, isPending, isError } = useGetHealth();
 
-  useEffect(() => {
-    fetch(`${API}/api/health`)
-      .then((r) => r.json())
-      .then((d) => setHealth(d?.status === "ok" ? "API: ok" : "API: ?"))
-      .catch(() => setHealth("API: offline (start the backend)"));
-  }, []);
+  const health = isPending
+    ? "checking…"
+    : isError
+      ? "API: offline (start the backend)"
+      : (data as unknown as { status?: string } | undefined)?.status === "ok"
+        ? "API: ok"
+        : "API: ?";
 
   return (
     <main className="flex flex-1 items-center justify-center p-8 pb-28">

@@ -1,18 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Hls from "hls.js";
+import { useGetStreamManifest } from "@/lib/api/endpoints/stream/stream";
 
 type StreamStatus = "LIVE" | "STATION_ROTATION" | "OFF_AIR";
-
-interface ManifestResponse {
-  status: StreamStatus;
-  type: "hls";
-  url: string | null;
-  dj: string[];
-}
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 /**
  * Global persistent player — lives in the root layout so it never re-mounts on
@@ -20,46 +12,23 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
  * HLS on Safari). Polls /api/stream/manifest every 15s for live status.
  */
 export function GlobalPlayer() {
-  const [status, setStatus] = useState<StreamStatus>("OFF_AIR");
-  const [manifestUrl, setManifestUrl] = useState<string | null>(null);
+  const { data } = useGetStreamManifest({
+    query: { refetchInterval: 15_000 },
+  });
+
+  const status: StreamStatus =
+    (data as unknown as { status?: "LIVE" | "STATION_ROTATION" | "OFF_AIR" } | undefined)
+      ?.status ?? "OFF_AIR";
+  const manifestUrl: string | null =
+    (data as unknown as { url?: string | null } | undefined)?.url ?? null;
+
   const [isPlaying, setIsPlaying] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
 
-  // --- Poll manifest ---
-  useEffect(() => {
-    let alive = true;
-
-    const poll = () =>
-      fetch(`${API}/api/stream/manifest`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d: ManifestResponse | null) => {
-          if (!alive || !d) return;
-          if (d.status) setStatus(d.status);
-          if (d.url !== undefined) setManifestUrl(d.url);
-        })
-        .catch(() => {
-          /* manifest endpoint not yet live — stay OFF_AIR */
-        });
-
-    poll();
-    const id = setInterval(poll, 15_000);
-    return () => {
-      alive = false;
-      clearInterval(id);
-    };
-  }, []);
-
   // --- Cleanup Hls instance on unmount ---
-  useEffect(() => {
-    return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-    };
-  }, []);
+  // (handled inline via destroyHls on pause / error)
 
   // --- Destroy existing Hls instance helper ---
   function destroyHls() {

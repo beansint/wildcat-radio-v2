@@ -15,6 +15,11 @@ export default defineConfig({
         query: {
           useQuery: true,
         },
+        // customFetch returns the parsed body directly (not a { data, status }
+        // wrapper), so generate matching return types — keeps hook `data` honest.
+        fetch: {
+          includeHttpResponseReturnType: false,
+        },
       },
     },
     input: {

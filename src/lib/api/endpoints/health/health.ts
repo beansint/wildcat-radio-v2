@@ -27,18 +27,6 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 
-export type getHealthResponse200 = {
-  data: void
-  status: 200
-}
-
-export type getHealthResponseSuccess = (getHealthResponse200) & {
-  headers: Headers;
-};
-;
-
-export type getHealthResponse = (getHealthResponseSuccess)
-
 export const getGetHealthUrl = () => {
 
 
@@ -47,9 +35,9 @@ export const getGetHealthUrl = () => {
   return `/api/health`
 }
 
-export const getHealth = async ( options?: RequestInit): Promise<getHealthResponse> => {
+export const getHealth = async ( options?: RequestInit): Promise<void> => {
 
-  return customFetch<getHealthResponse>(getGetHealthUrl(),
+  return customFetch<void>(getGetHealthUrl(),
   {
     ...options,
     method: 'GET'
@@ -133,18 +121,6 @@ export function useGetHealth<TData = Awaited<ReturnType<typeof getHealth>>, TErr
 
 
 
-export type getHealthDbResponse200 = {
-  data: void
-  status: 200
-}
-
-export type getHealthDbResponseSuccess = (getHealthDbResponse200) & {
-  headers: Headers;
-};
-;
-
-export type getHealthDbResponse = (getHealthDbResponseSuccess)
-
 export const getGetHealthDbUrl = () => {
 
 
@@ -153,9 +129,9 @@ export const getGetHealthDbUrl = () => {
   return `/api/health/db`
 }
 
-export const getHealthDb = async ( options?: RequestInit): Promise<getHealthDbResponse> => {
+export const getHealthDb = async ( options?: RequestInit): Promise<void> => {
 
-  return customFetch<getHealthDbResponse>(getGetHealthDbUrl(),
+  return customFetch<void>(getGetHealthDbUrl(),
   {
     ...options,
     method: 'GET'

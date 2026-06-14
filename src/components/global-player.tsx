@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Hls from "hls.js";
 import { useGetStreamManifest } from "@/lib/api/endpoints/stream/stream";
 
@@ -28,7 +28,14 @@ export function GlobalPlayer() {
   const hlsRef = useRef<Hls | null>(null);
 
   // --- Cleanup Hls instance on unmount ---
-  // (handled inline via destroyHls on pause / error)
+  useEffect(() => {
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, []);
 
   // --- Destroy existing Hls instance helper ---
   function destroyHls() {

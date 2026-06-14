@@ -272,6 +272,9 @@ a { color: inherit; }
 }
 .wc-bottomnav a.active { color: var(--foreground); }
 .wc-bottomnav a.active svg { color: var(--maroon); }
+/* mobile only — these `.wc-*` rules are unlayered and would otherwise beat the
+   `md:hidden` utility (Tailwind 4 puts utilities in a lower-priority layer). */
+@media (min-width: 768px) { .wc-bottomnav { display: none; } }
 
 /* --------------------------------------------------------------- top nav */
 .wc-topnav {

@@ -1,132 +1,97 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Hls from "hls.js";
-import { useGetStreamManifest } from "@/lib/api/endpoints/stream/stream";
-
-type StreamStatus = "LIVE" | "STATION_ROTATION" | "OFF_AIR";
+import { useStream } from "@/lib/stream/stream-context";
+import { Pause, Play } from "lucide-react";
 
 /**
- * Global persistent player — lives in the root layout so it never re-mounts on
- * navigation (v2-build/00 §5.5). Plays an HLS audio stream via hls.js (or native
- * HLS on Safari). Polls /api/stream/manifest every 15s for live status.
+ * Global persistent player — lives in the root layout so it never remounts on
+ * navigation (v2-build/00 §5.5). Plays an HLS audio stream via hls.js (or
+ * native HLS on Safari). Reads status from StreamContext (manifest + socket).
  */
 export function GlobalPlayer() {
-  const { data } = useGetStreamManifest({
-    query: { refetchInterval: 15_000 },
-  });
+  const { status, djs, isPlaying, play, pause, audioRef } = useStream();
 
-  const status: StreamStatus =
-    (data as unknown as { status?: "LIVE" | "STATION_ROTATION" | "OFF_AIR" } | undefined)
-      ?.status ?? "OFF_AIR";
-  const manifestUrl: string | null =
-    (data as unknown as { url?: string | null } | undefined)?.url ?? null;
+  const canPlay = status !== "OFF_AIR";
 
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const hlsRef = useRef<Hls | null>(null);
-
-  // --- Cleanup Hls instance on unmount ---
-  useEffect(() => {
-    return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-    };
-  }, []);
-
-  // --- Destroy existing Hls instance helper ---
-  function destroyHls() {
-    if (hlsRef.current) {
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
-  }
-
-  // --- Play / Pause toggle ---
-  function handlePlayPause() {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isPlaying) {
-      audio.pause();
-      destroyHls();
-      setIsPlaying(false);
-      return;
-    }
-
-    if (!manifestUrl) return;
-
-    if (Hls.isSupported()) {
-      // Modern browsers — use hls.js
-      destroyHls();
-      const hls = new Hls();
-      hlsRef.current = hls;
-
-      hls.loadSource(manifestUrl);
-      hls.attachMedia(audio);
-
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        audio.play().catch(() => {
-          /* autoplay blocked — user has already clicked so this shouldn't happen */
-        });
-        setIsPlaying(true);
-      });
-
-      hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) {
-          destroyHls();
-          setIsPlaying(false);
-        }
-      });
-    } else if (audio.canPlayType("application/vnd.apple.mpegurl")) {
-      // Safari — native HLS support
-      destroyHls();
-      audio.src = manifestUrl;
-      audio.play().then(() => {
-        setIsPlaying(true);
-      }).catch(() => {
-        setIsPlaying(false);
-      });
-    }
-  }
-
-  const statusLabel =
+  const showTitle =
     status === "LIVE"
-      ? "On air"
+      ? djs.length > 0
+        ? djs[0]
+        : "Wildcat Radio"
+      : status === "STATION_ROTATION"
+        ? "Wildcat Radio"
+        : "Wildcat Radio";
+
+  const showSub =
+    status === "LIVE"
+      ? djs.length > 1
+        ? djs.slice(1).join(", ")
+        : "Live on air"
       : status === "STATION_ROTATION"
         ? "Station rotation"
         : "Off air";
 
+  function handlePlayPause() {
+    if (isPlaying) {
+      pause();
+    } else if (canPlay) {
+      play();
+    }
+  }
+
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-maroon-dark/30 bg-maroon text-white">
-      {/* Hidden audio element — controlled via ref */}
+    <div className="wc-player" role="region" aria-label="Now playing">
+      {/* Hidden audio element — controlled via ref from StreamContext */}
       <audio ref={audioRef} data-testid="player-audio" />
 
-      <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-        <button
-          type="button"
-          aria-label={isPlaying ? "Pause" : "Play"}
-          data-testid="player-play"
-          onClick={handlePlayPause}
-          className="grid h-10 w-10 place-items-center rounded-full bg-gold font-bold text-maroon"
-        >
-          {isPlaying ? "⏸" : "▶"}
-        </button>
+      <div className="wc-player-inner">
+        {/* Cover art */}
+        <div className="wc-art cover rounded-[10px] w-11 h-11 flex-none" />
 
-        <div className="flex-1">
-          <p className="text-sm font-semibold">Wildcat Radio</p>
-          <p className="text-xs opacity-80">{statusLabel}</p>
+        {/* Meta */}
+        <div className="meta">
+          <div className="title flex items-center gap-2">
+            <span data-testid="now-playing">{showTitle}</span>
+            {status === "LIVE" && (
+              <span className="wc-badge-live" style={{ fontSize: ".6rem", padding: ".2rem .5rem" }}>
+                <span className="dot" />
+                Live
+              </span>
+            )}
+          </div>
+          <div className="sub">{showSub}</div>
         </div>
 
+        {/* EQ bars — animate while playing */}
+        {isPlaying && (
+          <div className="eq text-gold mr-1" aria-hidden="true">
+            <i /><i /><i /><i />
+          </div>
+        )}
+
+        {/* Status badge (for test targeting) */}
         <span
           data-testid="player-status"
-          className="rounded-full bg-black/25 px-2 py-1 text-[10px] uppercase tracking-wide"
+          className="sr-only"
         >
           {status}
         </span>
+
+        {/* Play / Pause button */}
+        <button
+          type="button"
+          aria-label={isPlaying ? "Pause" : "Play live stream"}
+          data-testid="player-play"
+          onClick={handlePlayPause}
+          disabled={!canPlay && !isPlaying}
+          className="wc-play"
+        >
+          {isPlaying ? (
+            <Pause className="w-6 h-6" aria-hidden="true" />
+          ) : (
+            <Play className="w-6 h-6" aria-hidden="true" />
+          )}
+        </button>
       </div>
     </div>
   );

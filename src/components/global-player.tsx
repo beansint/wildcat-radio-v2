@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useStream } from "@/lib/stream/stream-context";
 import { Pause, Play } from "lucide-react";
 
@@ -10,8 +12,10 @@ import { Pause, Play } from "lucide-react";
  */
 export function GlobalPlayer() {
   const { status, djs, isPlaying, play, pause, audioRef } = useStream();
+  const pathname = usePathname();
 
   const canPlay = status !== "OFF_AIR";
+  const isListenPage = pathname === "/listen";
 
   const showTitle =
     status === "LIVE"
@@ -39,28 +43,54 @@ export function GlobalPlayer() {
     }
   }
 
+  // Cover + meta: link to /listen when not already on that page
+  const CoverAndMeta = isListenPage ? (
+    <div className="flex items-center gap-[.8rem] flex-1 min-w-0">
+      <div className="wc-art cover rounded-[10px] w-11 h-11 flex-none" />
+      <div className="meta">
+        <div className="title flex items-center gap-2">
+          <span data-testid="now-playing">{showTitle}</span>
+          {status === "LIVE" && (
+            <span className="wc-badge-live" style={{ fontSize: ".6rem", padding: ".2rem .5rem" }}>
+              <span className="dot" />
+              Live
+            </span>
+          )}
+        </div>
+        <div className="sub">{showSub}</div>
+      </div>
+    </div>
+  ) : (
+    <Link
+      href="/listen"
+      role="link"
+      aria-label="Open the live listening room"
+      className="flex items-center gap-[.8rem] flex-1 min-w-0 cursor-pointer"
+      style={{ textDecoration: "none", color: "inherit" }}
+    >
+      <div className="wc-art cover rounded-[10px] w-11 h-11 flex-none" />
+      <div className="meta">
+        <div className="title flex items-center gap-2">
+          <span data-testid="now-playing">{showTitle}</span>
+          {status === "LIVE" && (
+            <span className="wc-badge-live" style={{ fontSize: ".6rem", padding: ".2rem .5rem" }}>
+              <span className="dot" />
+              Live
+            </span>
+          )}
+        </div>
+        <div className="sub">{showSub}</div>
+      </div>
+    </Link>
+  );
+
   return (
     <div className="wc-player" role="region" aria-label="Now playing">
       {/* Hidden audio element — controlled via ref from StreamContext */}
       <audio ref={audioRef} data-testid="player-audio" />
 
       <div className="wc-player-inner">
-        {/* Cover art */}
-        <div className="wc-art cover rounded-[10px] w-11 h-11 flex-none" />
-
-        {/* Meta */}
-        <div className="meta">
-          <div className="title flex items-center gap-2">
-            <span data-testid="now-playing">{showTitle}</span>
-            {status === "LIVE" && (
-              <span className="wc-badge-live" style={{ fontSize: ".6rem", padding: ".2rem .5rem" }}>
-                <span className="dot" />
-                Live
-              </span>
-            )}
-          </div>
-          <div className="sub">{showSub}</div>
-        </div>
+        {CoverAndMeta}
 
         {/* EQ bars — animate while playing */}
         {isPlaying && (
@@ -77,7 +107,7 @@ export function GlobalPlayer() {
           {status}
         </span>
 
-        {/* Play / Pause button */}
+        {/* Play / Pause button — separate sibling, not inside the link */}
         <button
           type="button"
           aria-label={isPlaying ? "Pause" : "Play live stream"}

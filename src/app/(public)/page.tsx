@@ -1,14 +1,14 @@
 import Image from "next/image";
-import { TopNav } from "@/components/layout/top-nav";
-import { BottomNav } from "@/components/layout/bottom-nav";
 import { Footer } from "@/components/layout/footer";
 import { LiveStatusCard } from "@/components/stream/live-status-card";
+import { FeaturedAnnouncement } from "@/components/landing/featured-announcement";
+import { NowNext } from "@/components/landing/now-next";
+import { MostRequested } from "@/components/landing/most-requested";
+import { ShowsGrid } from "@/components/landing/shows-grid";
 
 export default function LandingPage() {
   return (
     <>
-      <TopNav />
-
       <main className="pb-28">
         {/* ====== HERO ====== */}
         <section className="wc-grad-maroon text-white relative overflow-hidden">
@@ -38,10 +38,21 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* ====== FEATURED ANNOUNCEMENT ====== */}
+        <FeaturedAnnouncement />
+
+        {/* ====== NOW & NEXT ====== */}
+        <NowNext />
+
+        {/* ====== MOST REQUESTED ====== */}
+        <MostRequested />
+
+        {/* ====== SHOWS GRID ====== */}
+        <ShowsGrid />
       </main>
 
       <Footer />
-      <BottomNav />
     </>
   );
 }

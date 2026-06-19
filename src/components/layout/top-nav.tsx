@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Menu } from "lucide-react";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -13,7 +14,11 @@ const NAV_LINKS = [
   { href: "#", label: "News" },
 ] as const;
 
-export function TopNav() {
+interface TopNavProps {
+  onMenu?: () => void;
+}
+
+export function TopNav({ onMenu }: TopNavProps) {
   const pathname = usePathname();
 
   function isActive(href: string) {
@@ -24,6 +29,16 @@ export function TopNav() {
   return (
     <header className="wc-topnav">
       <div className="wc-topnav-inner">
+        {/* Hamburger — visible on mobile, hidden ≥1024px via .wc-navtoggle CSS */}
+        <button
+          className="wc-navtoggle"
+          aria-label="Open menu"
+          onClick={onMenu}
+          type="button"
+        >
+          <Menu className="w-5 h-5" aria-hidden="true" />
+        </button>
+
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 mr-2">
           <Image
@@ -34,7 +49,7 @@ export function TopNav() {
             className="h-9 w-9"
             priority
           />
-          <span className="font-extrabold tracking-tight hidden sm:block">
+          <span className="font-extrabold tracking-tight">
             Wildcat <span className="text-maroon">Radio</span>
           </span>
         </Link>

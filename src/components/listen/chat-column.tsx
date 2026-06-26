@@ -4,6 +4,7 @@ import { MessagesSquare, Send, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ChatMessage, type ChatMessageProps } from "./chat-message";
 import { InlinePoll } from "./inline-poll";
+import { useEngagementGate, EngagementGateNotice } from "./engagement-gate";
 
 export interface ChatMsg extends ChatMessageProps {
   id: number;
@@ -18,6 +19,7 @@ interface ChatColumnProps {
 export function ChatColumn({ messages, onSend, listenerCount }: ChatColumnProps) {
   const feedRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
+  const gate = useEngagementGate();
 
   // Scroll to bottom whenever messages array grows
   useEffect(() => {
@@ -79,28 +81,38 @@ export function ChatColumn({ messages, onSend, listenerCount }: ChatColumnProps)
         <InlinePoll />
       </div>
 
-      {/* Desktop-only input */}
-      <form
-        className="hidden lg:flex items-center gap-2 p-2.5 border-t"
-        style={{ borderColor: "var(--border)" }}
-        onSubmit={handleSubmit}
-        aria-label="Desktop chat input"
-      >
-        <input
-          className="wc-input flex-1"
-          placeholder="Say something to the booth…"
-          aria-label="Chat message"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="wc-btn wc-btn-maroon wc-btn-icon"
-          aria-label="Send"
+      {/* Desktop-only input — gated */}
+      {gate !== 'ok' ? (
+        <div
+          className="hidden lg:flex border-t"
+          style={{ borderColor: "var(--border)" }}
         >
-          <Send className="w-5 h-5" aria-hidden="true" />
-        </button>
-      </form>
+          <EngagementGateNotice gate={gate} next="/listen" />
+        </div>
+      ) : (
+        <form
+          className="hidden lg:flex items-center gap-2 p-2.5 border-t"
+          style={{ borderColor: "var(--border)" }}
+          onSubmit={handleSubmit}
+          aria-label="Desktop chat input"
+        >
+          <input
+            className="wc-input flex-1"
+            placeholder="Say something to the booth…"
+            aria-label="Chat message"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            data-testid="listen-chat-input"
+          />
+          <button
+            type="submit"
+            className="wc-btn wc-btn-maroon wc-btn-icon"
+            aria-label="Send"
+          >
+            <Send className="w-5 h-5" aria-hidden="true" />
+          </button>
+        </form>
+      )}
     </section>
   );
 }

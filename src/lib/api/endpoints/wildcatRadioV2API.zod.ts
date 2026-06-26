@@ -54,3 +54,39 @@ export const GetEpisodeParams = zod.object({
 })
 
 export const GetEpisodeResponse = zod.unknown()
+
+
+/**
+ * @summary Get current user profile
+ */
+export const UsersControllerGetMeResponse = zod.unknown()
+
+
+/**
+ * @summary Update current user profile
+ */
+export const UsersControllerUpdateMeResponse = zod.unknown()
+
+
+/**
+ * @summary Get current user moderation standing
+ */
+export const UsersControllerGetMeStandingResponse = zod.unknown()
+
+
+/**
+ * @summary Grant or withdraw consent for a scope (e.g. DEMOGRAPHICS)
+ */
+export const UsersControllerRecordConsentResponse = zod.unknown()
+
+
+/**
+ * @summary Get current consent records for the authenticated user
+ */
+export const UsersControllerGetMyConsentResponse = zod.unknown()
+
+
+/**
+ * @summary Record anonymous age-bucket contribution (L33/L27; PII-safe aggregate counter)
+ */
+export const AnalyticsControllerRecordAgeBucketResponse = zod.unknown()

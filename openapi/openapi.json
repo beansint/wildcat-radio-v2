@@ -145,6 +145,92 @@
           "episodes"
         ]
       }
+    },
+    "/api/users/me": {
+      "get": {
+        "operationId": "UsersController_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current user domain projection"
+          }
+        },
+        "summary": "Get current user profile",
+        "tags": [
+          "users"
+        ]
+      },
+      "patch": {
+        "operationId": "UsersController_updateMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Updated user profile"
+          }
+        },
+        "summary": "Update current user profile",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/me/standing": {
+      "get": {
+        "operationId": "UsersController_getMeStanding",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Mute/ban state and strike history"
+          }
+        },
+        "summary": "Get current user moderation standing",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/me/consent": {
+      "post": {
+        "operationId": "UsersController_recordConsent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Consent record"
+          }
+        },
+        "summary": "Grant or withdraw consent for a scope (e.g. DEMOGRAPHICS)",
+        "tags": [
+          "users"
+        ]
+      },
+      "get": {
+        "operationId": "UsersController_getMyConsent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Array of consent records"
+          }
+        },
+        "summary": "Get current consent records for the authenticated user",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/analytics/age-bucket": {
+      "post": {
+        "operationId": "AnalyticsController_recordAgeBucket",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "{ ok: true, alreadyContributed: boolean }"
+          }
+        },
+        "summary": "Record anonymous age-bucket contribution (L33/L27; PII-safe aggregate counter)",
+        "tags": [
+          "analytics"
+        ]
+      }
     }
   },
   "info": {

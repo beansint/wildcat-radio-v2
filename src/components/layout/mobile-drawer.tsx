@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
   Home,
@@ -12,7 +12,10 @@ import {
   Mic2,
   BarChart3,
   Megaphone,
+  User,
+  LogOut,
 } from "lucide-react";
+import { useSession, signOut, type SessionUser } from "@/lib/auth/client";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", Icon: Home },
@@ -31,6 +34,9 @@ interface MobileDrawerProps {
 
 export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
   const pathname = usePathname();
+  const router   = useRouter();
+  const { data, isPending } = useSession();
+  const user = data?.user as SessionUser | undefined;
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -47,6 +53,12 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
+  async function handleSignOut() {
+    onClose();
+    await signOut();
+    router.replace("/");
+  }
+
   return (
     <>
       {/* Overlay */}
@@ -60,13 +72,13 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
       <aside
         className={`wc-sidenav${open ? " open" : ""}`}
         aria-label="Site navigation"
-        role="navigation"
       >
         {/* Brand */}
         <Link href="/" className="sn-brand" onClick={onClose}>
+          {/* alt="" — adjacent wordmark text already labels this link */}
           <Image
             src="/brand/logo-mascot-mark.png"
-            alt="Wildcat Radio"
+            alt=""
             width={36}
             height={36}
             className="h-9 w-9"
@@ -92,23 +104,50 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
           ))}
         </nav>
 
-        {/* Footer CTAs */}
+        {/* Footer — session-aware */}
         <div className="sn-foot">
-          <Link
-            href="#"
-            className="wc-btn wc-btn-outline wc-btn-sm"
-            onClick={onClose}
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/listen"
-            className="wc-btn wc-btn-primary wc-btn-sm"
-            onClick={onClose}
-          >
-            <Radio className="w-4 h-4" aria-hidden="true" />
-            Listen live
-          </Link>
+          {!isPending && (
+            user ? (
+              /* Logged-in: profile link + sign out */
+              <>
+                <Link
+                  href="/profile"
+                  className="sn-item"
+                  onClick={onClose}
+                >
+                  <User aria-hidden="true" />
+                  Your profile
+                </Link>
+                <button
+                  type="button"
+                  className="wc-btn wc-btn-outline wc-btn-sm"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="w-4 h-4" aria-hidden="true" />
+                  Sign out
+                </button>
+              </>
+            ) : (
+              /* Logged-out: Sign in + Listen live */
+              <>
+                <Link
+                  href="/login"
+                  className="wc-btn wc-btn-outline wc-btn-sm"
+                  onClick={onClose}
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/listen"
+                  className="wc-btn wc-btn-primary wc-btn-sm"
+                  onClick={onClose}
+                >
+                  <Radio className="w-4 h-4" aria-hidden="true" />
+                  Listen live
+                </Link>
+              </>
+            )
+          )}
         </div>
       </aside>
     </>

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
+import { useSession, type SessionUser } from "@/lib/auth/client";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -20,6 +21,8 @@ interface TopNavProps {
 
 export function TopNav({ onMenu }: TopNavProps) {
   const pathname = usePathname();
+  const { data, isPending } = useSession();
+  const user = data?.user as SessionUser | undefined;
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -41,9 +44,10 @@ export function TopNav({ onMenu }: TopNavProps) {
 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 mr-2">
+          {/* alt="" — adjacent wordmark text already labels this link */}
           <Image
             src="/brand/logo-mascot-mark.png"
-            alt="Wildcat Radio"
+            alt=""
             width={36}
             height={36}
             className="h-9 w-9"
@@ -68,14 +72,30 @@ export function TopNav({ onMenu }: TopNavProps) {
           ))}
         </nav>
 
-        {/* CTA buttons */}
+        {/* CTA area — session-aware */}
         <div className="ml-auto flex items-center gap-2">
-          <Link href="#" className="wc-btn wc-btn-outline wc-btn-sm">
-            Sign in
-          </Link>
-          <Link href="/listen" className="wc-btn wc-btn-primary wc-btn-sm">
-            Listen live
-          </Link>
+          {/* Never show any UI while session is pending (avoids layout shift / flash) */}
+          {!isPending && (
+            user ? (
+              /* Logged-in: avatar → /profile */
+              <Link
+                href="/profile"
+                className="wc-avatar h-9 w-9 block flex-none"
+                aria-label={`Your profile${user.handle ? ` (@${user.handle})` : ''}`}
+                style={user.image ? { backgroundImage: `url(${user.image})`, backgroundSize: 'cover' } : undefined}
+              />
+            ) : (
+              /* Logged-out: Sign in + Listen live */
+              <>
+                <Link href="/login" className="wc-btn wc-btn-outline wc-btn-sm">
+                  Sign in
+                </Link>
+                <Link href="/listen" className="wc-btn wc-btn-primary wc-btn-sm">
+                  Listen live
+                </Link>
+              </>
+            )
+          )}
         </div>
       </div>
     </header>

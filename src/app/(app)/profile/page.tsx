@@ -30,10 +30,7 @@ import { customFetch } from '@/lib/api/fetcher';
 import {
   useUsersControllerGetMe,
   getUsersControllerGetMeQueryKey,
-  usersControllerUpdateMe,
-  usersControllerRecordConsent,
 } from '@/lib/api/endpoints/users/users';
-import { analyticsControllerRecordAgeBucket } from '@/lib/api/endpoints/analytics/analytics';
 
 /* ------------------------------------------------------------------ types */
 
@@ -110,6 +107,7 @@ export default function ProfilePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- valid form hydration from server state
     if (profile.yearLevel) setYearLevel(String(profile.yearLevel));
     if (profile.college)   setCollege(profile.college);
+    if (profile.gender)    setGender(profile.gender as Gender);
     setNotifyEmail(profile.notifyEmail ?? true);
     setNotifyInApp(profile.notifyInApp ?? true);
   }, [profile]);
@@ -476,8 +474,3 @@ export default function ProfilePage() {
     </main>
   );
 }
-
-/* suppress unused-import TS errors for the generated fns we reference for type docs */
-void usersControllerUpdateMe;
-void usersControllerRecordConsent;
-void analyticsControllerRecordAgeBucket;

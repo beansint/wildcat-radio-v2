@@ -52,8 +52,9 @@ export default function ListenPage() {
   const listenerCount = listeners ?? 142;
 
   return (
-    <>
-      <main className="flex-1 wc-container w-full py-4 grid gap-4 lg:grid-cols-[1.04fr_.96fr] lg:items-start">
+    /* muted background matches prototype `body{background:var(--muted)}` for listen page */
+    <div className="flex-1 flex flex-col" style={{ background: "var(--muted)" }}>
+      <main className="wc-container w-full py-4 grid gap-4 lg:grid-cols-[1.04fr_.96fr] lg:items-start">
         {/* Stage — left column (sticky on desktop) */}
         <Stage onOpenSheet={openSheet} />
 
@@ -79,6 +80,6 @@ export default function ListenPage() {
 
       {/* Toast portal */}
       <ToastHost />
-    </>
+    </div>
   );
 }

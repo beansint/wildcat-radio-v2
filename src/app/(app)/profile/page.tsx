@@ -24,6 +24,7 @@ import {
   ChevronRight,
   AlertTriangle,
   RefreshCw,
+  Check,
 } from 'lucide-react';
 import { useSession, signOut, type SessionUser } from '@/lib/auth/client';
 import { customFetch } from '@/lib/api/fetcher';
@@ -264,7 +265,7 @@ export default function ProfilePage() {
           </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className="wc-chip-ghost">{userClass}</span>
-            <span className="wc-pill wc-pill-ok">Active</span>
+            <span className="wc-pill wc-pill-ok"><Check className="w-3.5 h-3.5" aria-hidden="true" />Active</span>
           </div>
         </div>
       </div>

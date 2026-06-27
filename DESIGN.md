@@ -341,4 +341,16 @@ Originals renamed from opaque CDN hashes to descriptive slugs. Folders:
 `template-social-word-of-the-day.jpg` · `template-social-congratulations.jpg` · `template-quote-card.jpg`
 
 **Merch:** `merch-polo-front.webp` · `merch-polo-front-angle.webp` · `merch-polo-back.webp`
+
+## Implementation notes / gotchas
+
+- **`.wc-container` uses `padding-inline`, not the `padding` shorthand.** Under Tailwind v4,
+  a `padding: 0 1rem` shorthand on `.wc-container` overrides the `py-*` utilities on the same
+  element at equal specificity (source order), silently collapsing every section's vertical
+  rhythm to 0. Keep it `padding-inline` so `py-8`/`md:py-14` on `.wc-container` sections apply.
+- **Brand "wildcat" pattern is the `<BrandPattern>` component**
+  (`src/components/brand/brand-pattern.tsx`), not the raster `brand-pattern-maroon.jpg`. It's an
+  inline-SVG `<pattern>` with a true brick offset (renders in Poppins; swap to Hurme via one
+  `@font-face`), kept low-opacity so the maroon gradient bleeds through for organic tone. Use it
+  on maroon surfaces (landing hero, auth brand panes).
 </content>

@@ -420,7 +420,8 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
 /* ---- status pills ---- */
 .wc-pill { display: inline-flex; align-items: center; gap: .4rem; font-size: .76rem; font-weight: 700; padding: .22rem .6rem; border-radius: 999px; }
 .wc-pill::before { content: ""; width: .45rem; height: .45rem; border-radius: 999px; background: currentColor; flex: none; }
-.wc-pill-ok   { background: color-mix(in srgb,var(--success) 15%,transparent); color: var(--success); }
+/* darker than --success (#15803d) to meet WCAG 4.5:1 on the tinted pill background */
+.wc-pill-ok   { background: color-mix(in srgb,var(--success) 15%,transparent); color: #166534; }
 .wc-pill-warn { background: color-mix(in srgb,var(--amber) 20%,transparent); color: #8a5d00; }
 .wc-pill-bad  { background: color-mix(in srgb,var(--destructive) 15%,transparent); color: var(--destructive); }
 .wc-pill-neutral { background: var(--muted); color: var(--muted-foreground); }

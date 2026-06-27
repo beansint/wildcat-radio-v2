@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { BrandPattern } from "@/components/brand/brand-pattern";
 import { Footer } from "@/components/layout/footer";
 import { LiveStatusCard } from "@/components/stream/live-status-card";
 import { FeaturedAnnouncement } from "@/components/landing/featured-announcement";
@@ -12,13 +13,15 @@ export default function LandingPage() {
       <main className="pb-28">
         {/* ====== HERO ====== */}
         <section className="wc-grad-maroon text-white relative overflow-hidden">
-          {/* Dot-grid texture overlay */}
-          <div className="absolute inset-0 wc-pattern-maroon opacity-25" aria-hidden="true" />
+          {/* Brand texture overlay — repeating wildcat wordmark (inline SVG brick) */}
+          <BrandPattern className="absolute inset-0" />
 
           <div className="wc-container relative py-8 md:py-14">
             <div className="grid md:grid-cols-2 gap-8 items-center">
               {/* Left: wordmark + copy */}
               <div>
+                {/* Visually-hidden page heading — the wordmark below is an image */}
+                <h1 className="sr-only">Wildcat Radio — CIT-U Campus Radio</h1>
                 <Image
                   src="/brand/logo-wordmark-lockup.png"
                   alt="Wildcat Radio"

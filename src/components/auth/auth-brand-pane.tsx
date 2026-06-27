@@ -9,6 +9,7 @@ import type React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Users, Music, MessageCircle, Heart, Bookmark, Sparkles } from 'lucide-react';
+import { BrandPattern } from '@/components/brand/brand-pattern';
 
 interface AuthBrandPaneProps {
   variant: 'login' | 'register';
@@ -17,6 +18,9 @@ interface AuthBrandPaneProps {
 export function AuthBrandPane({ variant }: AuthBrandPaneProps) {
   return (
     <aside className="wc-auth-brand" aria-label="Why join Wildcat Radio">
+      {/* Brand texture overlay — repeating wildcat wordmark (inline SVG brick) */}
+      <BrandPattern className="absolute inset-0" fontSize={90} opacity={0.22} />
+
       {/* Logo link — alt="" because the adjacent wordmark text already labels the link */}
       <Link href="/" className="flex items-center gap-2.5 w-max">
         <Image

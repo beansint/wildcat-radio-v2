@@ -116,6 +116,8 @@ a { color: inherit; }
   background-image: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1px);
   background-size: 20px 20px;
 }
+/* The repeating "wildcat" wordmark brand texture is rendered by the
+   <BrandPattern> inline-SVG component (true brick offset, Poppins, theme-able). */
 .wc-grad-maroon {
   background:
     radial-gradient(120% 95% at 86% 8%, rgba(255,223,1,.16), transparent 52%),
@@ -181,6 +183,7 @@ a { color: inherit; }
 .wc-card-pad { padding: 1.05rem 1.15rem; }
 .wc-card-i { transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease; cursor: pointer; }
 .wc-card-i:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maroon) 30%, var(--border)); }
 
 /* ----------------------------------------------- cover system */
 .wc-cover {
@@ -373,7 +376,11 @@ a { color: inherit; }
 }
 
 /* utility */
-.wc-container { max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+/* NOTE: use padding-inline (not the `padding` shorthand) so Tailwind's vertical
+   `py-*` utilities on `.wc-container` sections are not reset to 0. The shorthand
+   `padding: 0 1rem` was overriding `py-8`/`md:py-14` at equal specificity (source
+   order), collapsing every section's vertical rhythm. */
+.wc-container { max-width: 1180px; margin: 0 auto; padding-inline: 1rem; }
 .wc-stack > * + * { margin-top: 1rem; }
 .wc-muted { color: var(--muted-foreground); }
 
@@ -413,7 +420,7 @@ a { color: inherit; }
 /* ---- status pills ---- */
 .wc-pill { display: inline-flex; align-items: center; gap: .4rem; font-size: .76rem; font-weight: 700; padding: .22rem .6rem; border-radius: 999px; }
 .wc-pill::before { content: ""; width: .45rem; height: .45rem; border-radius: 999px; background: currentColor; flex: none; }
-.wc-pill-ok   { background: color-mix(in srgb,var(--success) 15%,transparent); color: #166534; }
+.wc-pill-ok   { background: color-mix(in srgb,var(--success) 15%,transparent); color: var(--success); }
 .wc-pill-warn { background: color-mix(in srgb,var(--amber) 20%,transparent); color: #8a5d00; }
 .wc-pill-bad  { background: color-mix(in srgb,var(--destructive) 15%,transparent); color: var(--destructive); }
 .wc-pill-neutral { background: var(--muted); color: var(--muted-foreground); }
@@ -442,12 +449,7 @@ a { color: inherit; }
   padding: 1.6rem 1.4rem;
 }
 @media (min-width: 1024px) { .wc-auth-brand { padding: 2.5rem 2.75rem; gap: 2rem; } }
-.wc-auth-brand::before {
-  content: ""; position: absolute; inset: 0; z-index: 0;
-  background: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1px);
-  background-size: 20px 20px;
-  opacity: .4;
-}
+/* brand texture: rendered by <BrandPattern> (inline SVG), behind the ::after tints */
 .wc-auth-brand::after {
   content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background:

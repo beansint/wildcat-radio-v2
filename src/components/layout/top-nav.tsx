@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: "/listen", label: "Listen" },
   { href: "#", label: "Schedule" },
   { href: "#", label: "Shows" },
+  { href: "#", label: "DJs" },
   { href: "#", label: "Charts" },
   { href: "#", label: "News" },
 ] as const;

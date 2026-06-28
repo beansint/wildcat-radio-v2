@@ -16,6 +16,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useSession, signOut, type SessionUser } from "@/lib/auth/client";
+import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", Icon: Home },
@@ -118,33 +119,23 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
                   <User aria-hidden="true" />
                   Your profile
                 </Link>
-                <button
-                  type="button"
-                  className="wc-btn wc-btn-outline wc-btn-sm"
-                  onClick={handleSignOut}
-                >
+                <Button variant="outline" size="sm" onClick={handleSignOut}>
                   <LogOut className="w-4 h-4" aria-hidden="true" />
                   Sign out
-                </button>
+                </Button>
               </>
             ) : (
               /* Logged-out: Sign in + Listen live */
               <>
-                <Link
-                  href="/login"
-                  className="wc-btn wc-btn-outline wc-btn-sm"
-                  onClick={onClose}
-                >
-                  Sign in
-                </Link>
-                <Link
-                  href="/listen"
-                  className="wc-btn wc-btn-primary wc-btn-sm"
-                  onClick={onClose}
-                >
-                  <Radio className="w-4 h-4" aria-hidden="true" />
-                  Listen live
-                </Link>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/login" onClick={onClose}>Sign in</Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href="/listen" onClick={onClose}>
+                    <Radio className="w-4 h-4" aria-hidden="true" />
+                    Listen live
+                  </Link>
+                </Button>
               </>
             )
           )}

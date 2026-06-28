@@ -7,37 +7,46 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, MailCheck } from 'lucide-react';
 import { z } from 'zod/v4';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { authClient } from '@/lib/auth/client';
 import { AuthBrandPane } from '@/components/auth/auth-brand-pane';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const schema = z.object({
   email: z.email('Please enter a valid email'),
 });
 
-export default function ForgotPasswordPage() {
-  const [email,   setEmail]   = useState('');
-  const [error,   setError]   = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [sent,    setSent]    = useState(false);
+type FPValues = z.infer<typeof schema>;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    const parsed = schema.safeParse({ email });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0].message);
-      return;
-    }
-    setLoading(true);
-    try {
-      await authClient.requestPasswordReset({ email, redirectTo: '/reset-password' });
-      setSent(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
-    } finally {
-      setLoading(false);
-    }
-  }
+export default function ForgotPasswordPage() {
+  const [formError, setFormError] = useState<string | null>(null);
+  const [sent,      setSent]      = useState(false);
+
+  const { register, handleSubmit, formState: { isSubmitting } } = useForm<FPValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: '' },
+  });
+
+  const onSubmit = handleSubmit(
+    async (values) => {
+      setFormError(null);
+      try {
+        await authClient.requestPasswordReset({ email: values.email, redirectTo: '/reset-password' });
+        setSent(true);
+      } catch (err) {
+        setFormError(err instanceof Error ? err.message : 'Something went wrong.');
+      }
+    },
+    (errors) => {
+      setFormError(
+        (Object.values(errors)[0] as { message?: string } | undefined)?.message
+          ?? 'Please check the form',
+      );
+    },
+  );
 
   return (
     <div className="wc-auth-grid">
@@ -70,36 +79,34 @@ export default function ForgotPasswordPage() {
                 Enter your email and we&apos;ll send you a reset link.
               </p>
 
-              <form onSubmit={handleSubmit} noValidate>
-                {error && (
+              <form onSubmit={onSubmit} noValidate>
+                {formError && (
                   <div
                     role="alert"
                     className="mb-4 p-3 rounded-xl text-sm font-semibold"
                     style={{ background: 'color-mix(in srgb,var(--destructive) 10%,transparent)', color: 'var(--destructive)' }}
                   >
-                    {error}
+                    {formError}
                   </div>
                 )}
 
-                <label className="wc-label" htmlFor="fp-email">Email</label>
-                <input
+                <Label htmlFor="fp-email">Email</Label>
+                <Input
                   id="fp-email"
                   type="email"
                   autoComplete="email"
-                  className="wc-input mb-4"
+                  className="mb-4"
                   placeholder="you@cit.edu"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
+                  {...register('email')}
                 />
 
-                <button
+                <Button
                   type="submit"
-                  className="wc-btn wc-btn-primary wc-btn-block"
-                  disabled={loading}
+                  className="wc-btn-block"
+                  disabled={isSubmitting}
                 >
-                  {loading ? 'Sending…' : 'Send reset link'}
-                </button>
+                  {isSubmitting ? 'Sending…' : 'Send reset link'}
+                </Button>
               </form>
             </>
           )}

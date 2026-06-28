@@ -6,14 +6,19 @@
  * - Email + handle + password + confirm + terms checkbox
  * - CIT account button rendered DISABLED with "coming soon" (Gate B/M9)
  * - On success: show "check your inbox" banner (user is already logged in)
- * - Client-side zod validation
+ * - react-hook-form + zod validation
  */
 import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, Building2, CheckCheck } from 'lucide-react';
 import { z } from 'zod/v4';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { signUp } from '@/lib/auth/client';
 import { AuthBrandPane } from '@/components/auth/auth-brand-pane';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const registerSchema = z
   .object({
@@ -28,49 +33,47 @@ const registerSchema = z
     message: "Passwords don't match",
   });
 
+type RegisterValues = z.infer<typeof registerSchema>;
+
 export default function RegisterPage() {
-  const [email,    setEmail]    = useState('');
-  const [handle,   setHandle]   = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm,  setConfirm]  = useState('');
-  const [terms,    setTerms]    = useState(false);
-  const [error,    setError]    = useState<string | null>(null);
-  const [loading,  setLoading]  = useState(false);
-  const [done,     setDone]     = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [done,      setDone]      = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  const { register, handleSubmit, formState: { isSubmitting } } = useForm<RegisterValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { email: '', handle: '', password: '', confirm: '', terms: false },
+  });
 
-    const parsed = registerSchema.safeParse({ email, handle, password, confirm, terms });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0].message);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await signUp.email({
-        email,
-        password,
-        name: handle,
-        // additional fields expected by inferAdditionalFields config
-        handle,
-        class: 'GUEST' as const,
-        role: 'LISTENER' as const,
-        callbackURL: '/',
-      } as Parameters<typeof signUp.email>[0]);
-      if (result.error) {
-        setError(result.error.message ?? 'Registration failed. Please try again.');
-      } else {
-        setDone(true);
+  const onSubmit = handleSubmit(
+    async (values) => {
+      setFormError(null);
+      try {
+        const result = await signUp.email({
+          email:       values.email,
+          password:    values.password,
+          name:        values.handle,
+          // additional fields expected by inferAdditionalFields config
+          handle:      values.handle,
+          class:       'GUEST' as const,
+          role:        'LISTENER' as const,
+          callbackURL: '/',
+        } as Parameters<typeof signUp.email>[0]);
+        if (result.error) {
+          setFormError(result.error.message ?? 'Registration failed. Please try again.');
+        } else {
+          setDone(true);
+        }
+      } catch {
+        setFormError('Something went wrong. Please try again.');
       }
-    } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }
+    },
+    (errors) => {
+      setFormError(
+        (Object.values(errors)[0] as { message?: string } | undefined)?.message
+          ?? 'Please check the form',
+      );
+    },
+  );
 
   return (
     <div className="wc-auth-grid">
@@ -109,9 +112,10 @@ export default function RegisterPage() {
               </p>
 
               {/* CIT account — coming soon */}
-              <button
+              <Button
                 type="button"
-                className="wc-btn wc-btn-maroon wc-btn-block opacity-50 cursor-not-allowed"
+                variant="maroon"
+                className="wc-btn-block opacity-50 cursor-not-allowed"
                 disabled
                 aria-disabled="true"
                 title="Campus sign-up coming soon (Gate B / M9)"
@@ -119,87 +123,77 @@ export default function RegisterPage() {
               >
                 <Building2 className="w-5 h-5" aria-hidden="true" />
                 Sign up with your CIT account
-              </button>
+              </Button>
               <p className="wc-help text-center">
                 Recommended for verified CIT-U students — coming soon.
               </p>
 
               <div className="wc-divider my-5">or guest sign up</div>
 
-              <form onSubmit={handleSubmit} noValidate>
-                {error && (
+              <form onSubmit={onSubmit} noValidate>
+                {formError && (
                   <div
                     role="alert"
                     className="mb-4 p-3 rounded-xl text-sm font-semibold"
                     style={{ background: 'color-mix(in srgb,var(--destructive) 10%,transparent)', color: 'var(--destructive)' }}
                   >
-                    {error}
+                    {formError}
                   </div>
                 )}
 
-                <label className="wc-label" htmlFor="reg-email">Email</label>
-                <input
+                <Label htmlFor="reg-email">Email</Label>
+                <Input
                   id="reg-email"
                   type="email"
                   autoComplete="email"
-                  className="wc-input mb-3"
+                  className="mb-3"
                   placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
                   data-testid="auth-email"
+                  {...register('email')}
                 />
 
-                <label className="wc-label" htmlFor="reg-handle">Public handle</label>
-                <input
+                <Label htmlFor="reg-handle">Public handle</Label>
+                <Input
                   id="reg-handle"
                   type="text"
                   autoComplete="username"
-                  className="wc-input mb-1"
+                  className="mb-1"
                   placeholder="wildcat_juan"
-                  value={handle}
-                  onChange={(e) => setHandle(e.target.value)}
-                  required
                   data-testid="auth-handle"
+                  {...register('handle')}
                 />
                 <p className="wc-help mb-3">
                   This is what shows in the chat — keep it clean, mga &apos;dong.
                 </p>
 
-                <label className="wc-label" htmlFor="reg-pass">Password</label>
-                <input
+                <Label htmlFor="reg-pass">Password</Label>
+                <Input
                   id="reg-pass"
                   type="password"
                   autoComplete="new-password"
-                  className="wc-input mb-3"
+                  className="mb-3"
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
                   data-testid="auth-password"
+                  {...register('password')}
                 />
 
-                <label className="wc-label" htmlFor="reg-confirm">Confirm password</label>
-                <input
+                <Label htmlFor="reg-confirm">Confirm password</Label>
+                <Input
                   id="reg-confirm"
                   type="password"
                   autoComplete="new-password"
-                  className="wc-input mb-3"
+                  className="mb-3"
                   placeholder="••••••••"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  required
                   data-testid="auth-confirm"
+                  {...register('confirm')}
                 />
 
                 <label className="flex items-start gap-2 text-sm wc-muted mb-4">
                   <input
                     type="checkbox"
                     className="mt-1 flex-none"
-                    checked={terms}
-                    onChange={(e) => setTerms(e.target.checked)}
-                    required
                     data-testid="auth-terms"
+                    {...register('terms')}
                   />
                   <span>
                     I agree to the Wildcat Radio{' '}
@@ -208,14 +202,14 @@ export default function RegisterPage() {
                   </span>
                 </label>
 
-                <button
+                <Button
                   type="submit"
-                  className="wc-btn wc-btn-primary wc-btn-block"
-                  disabled={loading}
+                  className="wc-btn-block"
+                  disabled={isSubmitting}
                   data-testid="auth-submit"
                 >
-                  {loading ? 'Creating account…' : 'Create account'}
-                </button>
+                  {isSubmitting ? 'Creating account…' : 'Create account'}
+                </Button>
               </form>
 
               <p className="text-center text-sm wc-muted mt-6">

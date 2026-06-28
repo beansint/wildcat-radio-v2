@@ -353,4 +353,40 @@ Originals renamed from opaque CDN hashes to descriptive slugs. Folders:
   inline-SVG `<pattern>` with a true brick offset (renders in Poppins; swap to Hurme via one
   `@font-face`), kept low-opacity so the maroon gradient bleeds through for organic tone. Use it
   on maroon surfaces (landing hero, auth brand panes).
+
+## Component layer — shadcn/ui (Radix)
+
+The interactive UI is built on **shadcn/ui primitives** (`src/components/ui/`), as called for in
+the locked tech stack (`final-build-plan/01-TECH-STACK-LOCKED.md` §2). Components are installed via
+the shadcn CLI into the repo and theme off the existing CSS-variable tokens — no recolor was needed
+because `globals.css` `:root` already matches the prototype `theme.css`.
+
+**Hybrid parity strategy (important):**
+
+- **Form primitives reuse the `wc-*` classes for byte-identical pixels.** `Button`, `Input`,
+  `Textarea`, and `Label` are shadcn-structured components (cva variants, `cn()`, `asChild`,
+  `data-slot`, prop-forwarding) whose classes resolve to `wc-btn*`, `wc-input`, `wc-textarea`,
+  `wc-label`. This guarantees 1:1 parity with the prototype by construction. `Button` variant map:
+  `default`→`wc-btn-primary` (gold), `maroon`→`wc-btn-maroon`, `outline`, `ghost`,
+  `destructive`→`wc-btn-danger`; sizes `default` / `sm`→`wc-btn-sm` / `icon`→`wc-btn-icon`; use
+  `className="wc-btn-block"` for full width and `asChild` to wrap a `<Link>`.
+- **Radix-backed components are restyled to the wc spec.** `Switch`, `Checkbox`, `Select`,
+  `Dialog`, `Sheet` use Radix under the hood (real focus-trap / ESC / ARIA / keyboard nav) and are
+  styled with Tailwind utilities to match the prototype. Per the design owner, the Radix `Select`
+  popover/checkmark open-state is accepted as a minor, intentional deviation in exchange for
+  accessibility. Overlay animations use `tw-animate-css` (imported in `globals.css`).
+- **Bespoke brand surfaces stay on `wc-*`** (live-status card, player, auth brand pane, chat,
+  stage, drawer chrome) — they have no a11y-adding shadcn equivalent, so migrating them would be
+  pure parity risk.
+
+**Tokens:** dark-mode tokens (`.dark` block) and the shadcn radius scale (`--radius-sm..2xl`) +
+`--color-popover*` were added to `globals.css`; public pages remain light-only (no route toggles
+`.dark` yet — it's staged for the future staff/studio app).
+
+**Forms** use `react-hook-form` + `@hookform/resolvers/zod` (`zodResolver`) with the shared zod
+schemas; field/server errors are funneled into a single `role="alert"` region per form.
+
+**Deferred:** the mobile drawer (`layout/mobile-drawer.tsx`) keeps its `.wc-sidenav` overlay (its
+`.sn-item`/`.sn-brand` styles are descendant selectors of `.wc-sidenav`; swapping in a Radix Sheet
+would strip them) — only its footer buttons were migrated to `<Button>`.
 </content>

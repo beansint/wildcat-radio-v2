@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { CheckCheck, XCircle, Loader2 } from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
 import { AuthBrandPane } from '@/components/auth/auth-brand-pane';
+import { Button } from '@/components/ui/button';
 
 type Status = 'pending' | 'verifying' | 'success' | 'error';
 
@@ -95,14 +96,15 @@ function VerifyContent() {
               New link sent — check your inbox.
             </p>
           ) : (
-            <button
+            <Button
               type="button"
-              className="wc-btn wc-btn-outline wc-btn-block"
+              variant="outline"
+              className="wc-btn-block"
               onClick={handleResend}
               disabled={sending}
             >
               {sending ? 'Sending…' : 'Resend verification email'}
-            </button>
+            </Button>
           )}
           <Link href="/login" className="block text-sm font-semibold text-maroon mt-4">
             ← Back to sign in

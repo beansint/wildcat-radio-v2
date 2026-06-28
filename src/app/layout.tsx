@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   title: "Wildcat Radio — CIT-U Campus Radio",
   description:
     "Wildcat Radio is the campus radio station of the Cebu Institute of Technology – University. Tune in, request a song, join the room.",
+  // Match the prototype: the wildcat mascot mark is the favicon / tab icon.
+  icons: { icon: "/brand/logo-mascot-mark.png" },
 };
 
 export default function RootLayout({

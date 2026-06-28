@@ -80,9 +80,9 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
           <Image
             src="/brand/logo-mascot-mark.png"
             alt=""
-            width={36}
-            height={36}
-            className="h-9 w-9"
+            width={32}
+            height={32}
+            className="h-8 w-8"
           />
           <span>
             Wildcat <span className="text-maroon">Radio</span>

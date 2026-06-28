@@ -8,7 +8,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCheck, XCircle, Loader2 } from 'lucide-react';
-import { authClient } from '@/lib/auth/client';
+import { authClient, useSession } from '@/lib/auth/client';
 import { AuthBrandPane } from '@/components/auth/auth-brand-pane';
 import { Button } from '@/components/ui/button';
 
@@ -17,6 +17,8 @@ type Status = 'pending' | 'verifying' | 'success' | 'error';
 function VerifyContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
+
+  const { data: session } = useSession();
 
   const [status,  setStatus]  = useState<Status>(token ? 'verifying' : 'pending');
   const [errMsg,  setErrMsg]  = useState('');
@@ -48,12 +50,21 @@ function VerifyContent() {
   }, [token]);
 
   async function handleResend() {
+    const email = session?.user?.email;
+    if (!email) {
+      setErrMsg('Please sign in again so we can resend your verification email.');
+      return;
+    }
     setSending(true);
     try {
-      await authClient.sendVerificationEmail({ email: '' /* pulled from session */ });
+      const { error } = await authClient.sendVerificationEmail({ email, callbackURL: '/' });
+      if (error) {
+        setErrMsg(error.message ?? 'Could not resend. Please try again in a moment.');
+        return;
+      }
       setResent(true);
-    } catch {
-      /* swallow — show generic message */
+    } catch (err) {
+      setErrMsg(err instanceof Error ? err.message : 'Could not resend. Please try again in a moment.');
     } finally {
       setSending(false);
     }

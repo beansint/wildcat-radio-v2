@@ -50,7 +50,13 @@ function ResetForm() {
         return;
       }
       try {
-        await authClient.resetPassword({ newPassword: values.newPassword, token });
+        // Better Auth returns { error } without throwing for an expired/used token —
+        // must check it, else we'd falsely show "Password updated!" and lock the user out.
+        const { error } = await authClient.resetPassword({ newPassword: values.newPassword, token });
+        if (error) {
+          setFormError(error.message ?? 'Reset failed. The link may have expired.');
+          return;
+        }
         setDone(true);
         setTimeout(() => router.replace('/login'), 2500);
       } catch (err) {

@@ -7,7 +7,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
     <input
       type={type}
       data-slot="input"
-      className={cn("wc-input aria-invalid:border-destructive", className)}
+      className={cn("wc-input", className)}
       {...props}
     />
   )

@@ -34,7 +34,14 @@ export default function ForgotPasswordPage() {
     async (values) => {
       setFormError(null);
       try {
-        await authClient.requestPasswordReset({ email: values.email, redirectTo: '/reset-password' });
+        // Anti-enumeration: Better Auth resolves successfully for unknown emails, so
+        // "check your inbox" is shown regardless. We only surface genuine transport
+        // failures (rate-limit / server error) — never "account doesn't exist".
+        const { error } = await authClient.requestPasswordReset({ email: values.email, redirectTo: '/reset-password' });
+        if (error) {
+          setFormError(error.message ?? 'Something went wrong. Please try again.');
+          return;
+        }
         setSent(true);
       } catch (err) {
         setFormError(err instanceof Error ? err.message : 'Something went wrong.');

@@ -302,11 +302,18 @@ export default function ProfilePage() {
         <div className={`grid sm:grid-cols-2 gap-4 mb-4 transition-opacity ${isCampus ? '' : 'opacity-50'}`}>
           <div>
             <Label htmlFor="yearLevel">Year level</Label>
-            <Select value={yearLevel} onValueChange={setYearLevel} disabled={!isCampus}>
+            {/* Radix Select forbids an empty-string SelectItem, so use a sentinel
+                to restore the native <option value=""> "clear" path. */}
+            <Select
+              value={yearLevel}
+              onValueChange={(v) => setYearLevel(v === '__none__' ? '' : v)}
+              disabled={!isCampus}
+            >
               <SelectTrigger id="yearLevel" data-testid="profile-year">
                 <SelectValue placeholder="Select year" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__none__">Select year</SelectItem>
                 {[1,2,3,4,5].map((y) => (
                   <SelectItem key={y} value={String(y)}>
                     {y === 1 ? '1st' : y === 2 ? '2nd' : y === 3 ? '3rd' : `${y}th`} year
@@ -317,11 +324,16 @@ export default function ProfilePage() {
           </div>
           <div>
             <Label htmlFor="college">College</Label>
-            <Select value={college} onValueChange={setCollege} disabled={!isCampus}>
+            <Select
+              value={college}
+              onValueChange={(v) => setCollege(v === '__none__' ? '' : v)}
+              disabled={!isCampus}
+            >
               <SelectTrigger id="college" data-testid="profile-college">
                 <SelectValue placeholder="Select college" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="__none__">Select college</SelectItem>
                 {COLLEGES.map((c) => (
                   <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}

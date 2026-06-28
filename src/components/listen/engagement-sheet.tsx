@@ -4,6 +4,16 @@ import { X, Music, Megaphone, HelpCircle } from "lucide-react";
 import { useState } from "react";
 import type { SheetTab } from "./engagement-tiles";
 import { useEngagementGate, EngagementGateNotice } from "./engagement-gate";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface EngagementSheetProps {
   open: boolean;
@@ -60,33 +70,19 @@ export function EngagementSheet({
   }
 
   return (
-    <>
-      {/* Overlay */}
-      <div
-        className={`wc-overlay${open ? " open" : ""}`}
-        aria-hidden="true"
-        onClick={onClose}
-      />
-
-      {/* Sheet */}
-      <div
-        className={`wc-sheet${open ? " open" : ""}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Send to the booth"
-      >
+    <Sheet open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent side="bottom" showCloseButton={false} aria-label="Send to the booth">
         <div className="p-4">
           {/* Header */}
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-extrabold">Send to the booth</h3>
-            <button
-              className="wc-btn wc-btn-ghost wc-btn-icon"
-              onClick={onClose}
-              aria-label="Close"
-            >
+            <SheetTitle className="text-lg font-extrabold">Send to the booth</SheetTitle>
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
               <X className="w-5 h-5" aria-hidden="true" />
-            </button>
+            </Button>
           </div>
+          <SheetDescription className="sr-only">
+            Send a song request, dedication, or question to the booth.
+          </SheetDescription>
 
           {/* Engagement gate — if not ok, show CTA instead of forms */}
           {gate !== 'ok' ? (
@@ -128,76 +124,76 @@ export function EngagementSheet({
               {/* Request panel */}
               {tab === "req" && (
                 <form onSubmit={handleReqSubmit}>
-                  <label className="wc-label" htmlFor="req-song">Song &amp; artist</label>
-                  <input
+                  <Label htmlFor="req-song">Song &amp; artist</Label>
+                  <Input
                     id="req-song"
-                    className="wc-input mb-3"
+                    className="mb-3"
                     placeholder="e.g. Ere — Juan Karlos"
                     value={reqSong}
                     onChange={(e) => setReqSong(e.target.value)}
                     required
                   />
-                  <label className="wc-label" htmlFor="req-note">
+                  <Label htmlFor="req-note">
                     Note to DJ <span className="wc-muted font-normal">(optional)</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     id="req-note"
-                    className="wc-input mb-4"
+                    className="mb-4"
                     placeholder="Birthday greet sana 🥳"
                     value={reqNote}
                     onChange={(e) => setReqNote(e.target.value)}
                   />
-                  <button type="submit" className="wc-btn wc-btn-primary wc-btn-block">
+                  <Button type="submit" className="wc-btn-block">
                     Send request
-                  </button>
+                  </Button>
                 </form>
               )}
 
               {/* Dedication panel */}
               {tab === "ded" && (
                 <form onSubmit={handleDedSubmit}>
-                  <label className="wc-label" htmlFor="ded-body">Your shout-out / bati</label>
-                  <textarea
+                  <Label htmlFor="ded-body">Your shout-out / bati</Label>
+                  <Textarea
                     id="ded-body"
-                    className="wc-textarea mb-3"
+                    className="mb-3"
                     rows={2}
                     placeholder="Para sa BSIT-3A, padayon mga 'dong!"
                     value={dedBody}
                     onChange={(e) => setDedBody(e.target.value)}
                     required
                   />
-                  <label className="wc-label" htmlFor="ded-to">
+                  <Label htmlFor="ded-to">
                     To <span className="wc-muted font-normal">(optional)</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     id="ded-to"
-                    className="wc-input mb-4"
+                    className="mb-4"
                     placeholder="BSIT-3A"
                     value={dedTo}
                     onChange={(e) => setDedTo(e.target.value)}
                   />
-                  <button type="submit" className="wc-btn wc-btn-primary wc-btn-block">
+                  <Button type="submit" className="wc-btn-block">
                     Send dedication
-                  </button>
+                  </Button>
                 </form>
               )}
 
               {/* Q&A panel */}
               {tab === "qa" && (
                 <form onSubmit={handleQaSubmit}>
-                  <label className="wc-label" htmlFor="qa-body">Your question</label>
-                  <textarea
+                  <Label htmlFor="qa-body">Your question</Label>
+                  <Textarea
                     id="qa-body"
-                    className="wc-textarea mb-4"
+                    className="mb-4"
                     rows={3}
                     placeholder="What's your favorite OPM album of all time?"
                     value={qaBody}
                     onChange={(e) => setQaBody(e.target.value)}
                     required
                   />
-                  <button type="submit" className="wc-btn wc-btn-primary wc-btn-block">
+                  <Button type="submit" className="wc-btn-block">
                     Ask the DJ
-                  </button>
+                  </Button>
                 </form>
               )}
 
@@ -207,7 +203,7 @@ export function EngagementSheet({
             </>
           )}
         </div>
-      </div>
-    </>
+      </SheetContent>
+    </Sheet>
   );
 }

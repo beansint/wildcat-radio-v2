@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /* =====================================================================
    WildCats Radio v2 — design system
@@ -52,6 +53,42 @@
   --canvas:    #faf9f7;
 }
 
+.dark {
+  --background:            #151414;
+  --foreground:            #ffffff;
+  --card:                  #1f1c1c;
+  --card-foreground:       #ffffff;
+  --popover:               #1f1c1c;
+  --popover-foreground:    #ffffff;
+
+  --primary:               #ffdf01;
+  --primary-foreground:    #151414;
+  --secondary:             #630001;
+  --secondary-foreground:  #ffffff;
+
+  --brand-maroon:           #630001;
+  --brand-maroon-foreground:#ffffff;
+  --live:                  #ffdf01;
+  --live-foreground:       #151414;
+
+  --muted:                 #2a2625;
+  --muted-foreground:      #b8b1ab;
+  --accent:                #3a2e00;
+  --accent-foreground:     #ffdf01;
+  --destructive:           #ef4444;
+  --destructive-foreground:#ffffff;
+  --success:               #4ade80;
+
+  --border:                rgba(255,255,255,0.10);
+  --input:                 rgba(255,255,255,0.16);
+  --ring:                  #ffdf01;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-md: 0 6px 20px rgba(0,0,0,.45);
+  --shadow-lg: 0 18px 44px rgba(0,0,0,.55);
+  --canvas:    #100f0f;
+}
+
 /* -------------------------------------------------------- Tailwind 4 @theme */
 @theme inline {
   --color-background:             var(--background);
@@ -78,6 +115,15 @@
   --color-amber:                  var(--amber);
   --color-ink:                    var(--ink);
   --color-live:                   var(--live);
+  --color-popover:                var(--popover);
+  --color-popover-foreground:     var(--popover-foreground);
+  --color-brand-maroon:           var(--brand-maroon);
+  --color-live-foreground:        var(--live-foreground);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
   --font-sans:                    var(--font-sans);
 }
 

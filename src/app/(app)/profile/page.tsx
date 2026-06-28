@@ -32,6 +32,17 @@ import {
   useUsersControllerGetMe,
   getUsersControllerGetMeQueryKey,
 } from '@/lib/api/endpoints/users/users';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 /* ------------------------------------------------------------------ types */
 
@@ -239,15 +250,17 @@ export default function ProfilePage() {
           {verifySent ? (
             <span className="text-xs font-semibold" style={{ color: 'var(--success)' }}>Sent!</span>
           ) : (
-            <button
+            <Button
               type="button"
-              className="wc-btn wc-btn-outline wc-btn-sm flex-none"
+              variant="outline"
+              size="sm"
               onClick={handleResendVerify}
               disabled={resendingVerify}
+              className="flex-none"
             >
               <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
               Resend
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -288,36 +301,32 @@ export default function ProfilePage() {
 
         <div className={`grid sm:grid-cols-2 gap-4 mb-4 transition-opacity ${isCampus ? '' : 'opacity-50'}`}>
           <div>
-            <label className="wc-label" htmlFor="yearLevel">Year level</label>
-            <select
-              id="yearLevel"
-              className="wc-select"
-              value={yearLevel}
-              onChange={(e) => setYearLevel(e.target.value)}
-              data-testid="profile-year"
-              disabled={!isCampus}
-            >
-              <option value="">Select year</option>
-              {[1,2,3,4,5].map((y) => (
-                <option key={y} value={String(y)}>{y === 1 ? '1st' : y === 2 ? '2nd' : y === 3 ? '3rd' : `${y}th`} year</option>
-              ))}
-            </select>
+            <Label htmlFor="yearLevel">Year level</Label>
+            <Select value={yearLevel} onValueChange={setYearLevel} disabled={!isCampus}>
+              <SelectTrigger id="yearLevel" data-testid="profile-year">
+                <SelectValue placeholder="Select year" />
+              </SelectTrigger>
+              <SelectContent>
+                {[1,2,3,4,5].map((y) => (
+                  <SelectItem key={y} value={String(y)}>
+                    {y === 1 ? '1st' : y === 2 ? '2nd' : y === 3 ? '3rd' : `${y}th`} year
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="wc-label" htmlFor="college">College</label>
-            <select
-              id="college"
-              className="wc-select"
-              value={college}
-              onChange={(e) => setCollege(e.target.value)}
-              data-testid="profile-college"
-              disabled={!isCampus}
-            >
-              <option value="">Select college</option>
-              {COLLEGES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+            <Label htmlFor="college">College</Label>
+            <Select value={college} onValueChange={setCollege} disabled={!isCampus}>
+              <SelectTrigger id="college" data-testid="profile-college">
+                <SelectValue placeholder="Select college" />
+              </SelectTrigger>
+              <SelectContent>
+                {COLLEGES.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -325,16 +334,17 @@ export default function ProfilePage() {
           <span className="wc-label">Age range</span>
           <div className="flex flex-wrap gap-2">
             {AGE_BUCKETS.map(({ label, value }) => (
-              <button
+              <Button
                 key={value}
                 type="button"
-                className={`wc-btn wc-btn-sm ${ageBucket === value ? 'wc-btn-maroon' : 'wc-btn-outline'}`}
+                size="sm"
+                variant={ageBucket === value ? 'maroon' : 'outline'}
                 aria-pressed={ageBucket === value}
                 onClick={() => setAgeBucket(ageBucket === value ? '' : value)}
-                data-testid={`profile-age`}
+                data-testid="profile-age"
               >
                 {label}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -343,28 +353,28 @@ export default function ProfilePage() {
           <span className="wc-label">Gender</span>
           <div className="flex flex-wrap gap-2">
             {GENDERS.map((g) => (
-              <button
+              <Button
                 key={g}
                 type="button"
-                className={`wc-btn wc-btn-sm ${gender === g ? 'wc-btn-maroon' : 'wc-btn-outline'}`}
+                size="sm"
+                variant={gender === g ? 'maroon' : 'outline'}
                 aria-pressed={gender === g}
                 onClick={() => setGender(gender === g ? '' : g)}
-                data-testid={`profile-gender`}
+                data-testid="profile-gender"
               >
                 {g}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
         {/* Consent checkbox — gates Save */}
         <label className="flex items-start gap-2 text-sm wc-muted mb-4">
-          <input
-            type="checkbox"
-            className="mt-1 flex-none"
+          <Checkbox
             checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
+            onCheckedChange={(v) => setConsent(v === true)}
             data-testid="profile-consent"
+            className="mt-1 flex-none"
           />
           <span>
             I agree to share this information anonymously to help the station understand its audience.
@@ -372,15 +382,15 @@ export default function ProfilePage() {
           </span>
         </label>
 
-        <button
+        <Button
           type="submit"
-          className="wc-btn wc-btn-primary"
+          variant="default"
           disabled={saving || !consent}
           data-testid="profile-save"
         >
           <Save className="w-4 h-4" aria-hidden="true" />
           {saving ? 'Saving…' : 'Save'}
-        </button>
+        </Button>
         <p className="wc-help">Aggregate-only — your identity is never published.</p>
       </form>
 
@@ -393,32 +403,24 @@ export default function ProfilePage() {
               <span className="font-semibold block">Queued-request emails</span>
               <span className="wc-help mt-0 block">Email me when a DJ queues my song request.</span>
             </span>
-            <span className="wc-switch">
-              <input
-                type="checkbox"
-                checked={notifyEmail}
-                onChange={(e) => setNotifyEmail(e.target.checked)}
-                aria-label="Queued-request emails"
-                data-testid="notif-email"
-              />
-              <span className="track" />
-            </span>
+            <Switch
+              checked={notifyEmail}
+              onCheckedChange={(v) => setNotifyEmail(v)}
+              aria-label="Queued-request emails"
+              data-testid="notif-email"
+            />
           </label>
           <label className="flex items-center justify-between gap-3">
             <span className="min-w-0">
               <span className="font-semibold block">On-air receipt emails</span>
               <span className="wc-help mt-0 block">Email me when my dedication or request airs.</span>
             </span>
-            <span className="wc-switch">
-              <input
-                type="checkbox"
-                checked={notifyInApp}
-                onChange={(e) => setNotifyInApp(e.target.checked)}
-                aria-label="On-air receipt emails"
-                data-testid="notif-inapp"
-              />
-              <span className="track" />
-            </span>
+            <Switch
+              checked={notifyInApp}
+              onCheckedChange={(v) => setNotifyInApp(v)}
+              aria-label="On-air receipt emails"
+              data-testid="notif-inapp"
+            />
           </label>
           <label className="flex items-center justify-between gap-3">
             <span className="min-w-0">
@@ -426,21 +428,19 @@ export default function ProfilePage() {
               <span className="wc-help mt-0 block">Push notifications for station news &amp; events.</span>
             </span>
             {/* Local TODO — no backend field yet */}
-            <span className="wc-switch">
-              <input type="checkbox" aria-label="Announcement pushes" disabled />
-              <span className="track" />
-            </span>
+            <Switch disabled aria-label="Announcement pushes" />
           </label>
         </div>
-        <button
+        <Button
           type="button"
-          className="wc-btn wc-btn-primary mt-4"
+          variant="default"
           onClick={handleNotifSave}
           disabled={saving}
+          className="mt-4"
         >
           <Save className="w-4 h-4" aria-hidden="true" />
           Save
-        </button>
+        </Button>
       </div>
 
       {/* ── QUICK LINKS ── */}

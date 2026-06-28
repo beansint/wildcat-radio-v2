@@ -9,8 +9,13 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, Loader2, CheckCheck } from 'lucide-react';
 import { z } from 'zod/v4';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { authClient } from '@/lib/auth/client';
 import { AuthBrandPane } from '@/components/auth/auth-brand-pane';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const schema = z
   .object({
@@ -22,40 +27,43 @@ const schema = z
     message: "Passwords don't match",
   });
 
+type RPValues = z.infer<typeof schema>;
+
 function ResetForm() {
   const searchParams = useSearchParams();
   const router       = useRouter();
   const token        = searchParams.get('token') ?? '';
 
-  const [newPassword, setNewPassword] = useState('');
-  const [confirm,     setConfirm]     = useState('');
-  const [error,       setError]       = useState<string | null>(null);
-  const [loading,     setLoading]     = useState(false);
-  const [done,        setDone]        = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [done,      setDone]      = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    const parsed = schema.safeParse({ newPassword, confirm });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0].message);
-      return;
-    }
-    if (!token) {
-      setError('Missing reset token. Please use the link from your email.');
-      return;
-    }
-    setLoading(true);
-    try {
-      await authClient.resetPassword({ newPassword, token });
-      setDone(true);
-      setTimeout(() => router.replace('/login'), 2500);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Reset failed. The link may have expired.');
-    } finally {
-      setLoading(false);
-    }
-  }
+  const { register, handleSubmit, formState: { isSubmitting } } = useForm<RPValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { newPassword: '', confirm: '' },
+  });
+
+  const onSubmit = handleSubmit(
+    async (values) => {
+      setFormError(null);
+      if (!token) {
+        setFormError('Missing reset token. Please use the link from your email.');
+        return;
+      }
+      try {
+        await authClient.resetPassword({ newPassword: values.newPassword, token });
+        setDone(true);
+        setTimeout(() => router.replace('/login'), 2500);
+      } catch (err) {
+        setFormError(err instanceof Error ? err.message : 'Reset failed. The link may have expired.');
+      }
+    },
+    (errors) => {
+      setFormError(
+        (Object.values(errors)[0] as { message?: string } | undefined)?.message
+          ?? 'Please check the form',
+      );
+    },
+  );
 
   if (!token) {
     return (
@@ -95,48 +103,44 @@ function ResetForm() {
       <h1 className="text-2xl font-extrabold">Set a new password</h1>
       <p className="wc-muted text-sm mt-1 mb-6">Choose something strong, wildcat.</p>
 
-      <form onSubmit={handleSubmit} noValidate>
-        {error && (
+      <form onSubmit={onSubmit} noValidate>
+        {formError && (
           <div
             role="alert"
             className="mb-4 p-3 rounded-xl text-sm font-semibold"
             style={{ background: 'color-mix(in srgb,var(--destructive) 10%,transparent)', color: 'var(--destructive)' }}
           >
-            {error}
+            {formError}
           </div>
         )}
 
-        <label className="wc-label" htmlFor="rp-pass">New password</label>
-        <input
+        <Label htmlFor="rp-pass">New password</Label>
+        <Input
           id="rp-pass"
           type="password"
           autoComplete="new-password"
-          className="wc-input mb-3"
+          className="mb-3"
           placeholder="••••••••"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          required
+          {...register('newPassword')}
         />
 
-        <label className="wc-label" htmlFor="rp-confirm">Confirm password</label>
-        <input
+        <Label htmlFor="rp-confirm">Confirm password</Label>
+        <Input
           id="rp-confirm"
           type="password"
           autoComplete="new-password"
-          className="wc-input mb-4"
+          className="mb-4"
           placeholder="••••••••"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          required
+          {...register('confirm')}
         />
 
-        <button
+        <Button
           type="submit"
-          className="wc-btn wc-btn-primary wc-btn-block"
-          disabled={loading}
+          className="wc-btn-block"
+          disabled={isSubmitting}
         >
-          {loading ? 'Updating…' : 'Update password'}
-        </button>
+          {isSubmitting ? 'Updating…' : 'Update password'}
+        </Button>
       </form>
     </div>
   );

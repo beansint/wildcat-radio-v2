@@ -6,7 +6,7 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
     <textarea
       data-slot="textarea"
-      className={cn("wc-textarea aria-invalid:border-destructive", className)}
+      className={cn("wc-textarea", className)}
       {...props}
     />
   )

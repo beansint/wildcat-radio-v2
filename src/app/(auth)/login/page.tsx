@@ -6,7 +6,7 @@
  * - Email + password sign-in via Better Auth
  * - CIT account (Entra) button rendered DISABLED with "coming soon" affordance (Gate B/M9)
  * - On success: redirects to ?next= or /
- * - Client-side zod validation
+ * - react-hook-form + zod validation
  */
 import { useState } from 'react';
 import Link from 'next/link';
@@ -14,48 +14,54 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { ChevronLeft, Building2 } from 'lucide-react';
 import { z } from 'zod/v4';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { signIn } from '@/lib/auth/client';
 import { AuthBrandPane } from '@/components/auth/auth-brand-pane';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const loginSchema = z.object({
   email:    z.email('Please enter a valid email'),
   password: z.string().min(1, 'Password is required'),
 });
 
+type LoginValues = z.infer<typeof loginSchema>;
+
 function LoginForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const nextUrl      = searchParams.get('next') ?? '/';
 
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [error,    setError]    = useState<string | null>(null);
-  const [loading,  setLoading]  = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  const { register, handleSubmit, formState: { isSubmitting } } = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
 
-    const parsed = loginSchema.safeParse({ email, password });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0].message);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await signIn.email({ email, password });
-      if (result.error) {
-        setError(result.error.message ?? 'Sign-in failed. Please try again.');
-      } else {
-        router.replace(nextUrl);
+  const onSubmit = handleSubmit(
+    async (values) => {
+      setFormError(null);
+      try {
+        const result = await signIn.email({ email: values.email, password: values.password });
+        if (result.error) {
+          setFormError(result.error.message ?? 'Sign-in failed. Please try again.');
+        } else {
+          router.replace(nextUrl);
+        }
+      } catch {
+        setFormError('Something went wrong. Please try again.');
       }
-    } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }
+    },
+    (errors) => {
+      setFormError(
+        (Object.values(errors)[0] as { message?: string } | undefined)?.message
+          ?? 'Please check the form',
+      );
+    },
+  );
 
   return (
     <div className="wc-auth-formcard">
@@ -73,9 +79,10 @@ function LoginForm() {
       </p>
 
       {/* CIT account — coming soon */}
-      <button
+      <Button
         type="button"
-        className="wc-btn wc-btn-maroon wc-btn-block opacity-50 cursor-not-allowed"
+        variant="maroon"
+        className="wc-btn-block opacity-50 cursor-not-allowed"
         disabled
         aria-disabled="true"
         title="Campus sign-in coming soon (Gate B / M9)"
@@ -83,7 +90,7 @@ function LoginForm() {
       >
         <Building2 className="w-5 h-5" aria-hidden="true" />
         Sign in with your CIT account
-      </button>
+      </Button>
       <p className="wc-help text-center">
         Campus (Microsoft Entra) sign-in — coming soon.
       </p>
@@ -91,41 +98,37 @@ function LoginForm() {
       <div className="wc-divider my-5">or</div>
 
       {/* Email / password */}
-      <form onSubmit={handleSubmit} noValidate>
-        {error && (
+      <form onSubmit={onSubmit} noValidate>
+        {formError && (
           <div
             role="alert"
             className="mb-4 p-3 rounded-xl text-sm font-semibold"
             style={{ background: 'color-mix(in srgb,var(--destructive) 10%,transparent)', color: 'var(--destructive)' }}
           >
-            {error}
+            {formError}
           </div>
         )}
 
-        <label className="wc-label" htmlFor="login-email">Email</label>
-        <input
+        <Label htmlFor="login-email">Email</Label>
+        <Input
           id="login-email"
           type="email"
           autoComplete="email"
-          className="wc-input mb-3"
+          className="mb-3"
           placeholder="you@cit.edu"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
           data-testid="auth-email"
+          {...register('email')}
         />
 
-        <label className="wc-label" htmlFor="login-pass">Password</label>
-        <input
+        <Label htmlFor="login-pass">Password</Label>
+        <Input
           id="login-pass"
           type="password"
           autoComplete="current-password"
-          className="wc-input mb-2"
+          className="mb-2"
           placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
           data-testid="auth-password"
+          {...register('password')}
         />
 
         <div className="flex justify-end mb-4">
@@ -134,14 +137,14 @@ function LoginForm() {
           </Link>
         </div>
 
-        <button
+        <Button
           type="submit"
-          className="wc-btn wc-btn-primary wc-btn-block"
-          disabled={loading}
+          className="wc-btn-block"
+          disabled={isSubmitting}
           data-testid="auth-submit"
         >
-          {loading ? 'Signing in…' : 'Sign in'}
-        </button>
+          {isSubmitting ? 'Signing in…' : 'Sign in'}
+        </Button>
       </form>
 
       <p className="text-center text-sm wc-muted mt-6">

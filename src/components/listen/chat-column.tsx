@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChatMessage, type ChatMessageProps } from "./chat-message";
 import { InlinePoll } from "./inline-poll";
 import { useEngagementGate, EngagementGateNotice } from "./engagement-gate";
+import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PollResponseDto } from "@/lib/api/model";
@@ -46,6 +47,11 @@ export function ChatColumn({
   const [sendError, setSendError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const gate = useEngagementGate();
+  // Avoid SSR/client hydration mismatch: the gate depends on session data
+  // that isn't visible during SSR (cross-origin httpOnly cookie), so the
+  // very first client render must match the server's neutral shell. Only
+  // reveal the auth-dependent branch (gate notice vs form) after mount.
+  const mounted = useHydrated();
 
   // Scroll to bottom whenever messages array grows
   useEffect(() => {
@@ -132,7 +138,13 @@ export function ChatColumn({
       </div>
 
       {/* Desktop-only input - gated */}
-      {gate !== 'ok' ? (
+      {!mounted ? (
+        <div
+          className="hidden lg:flex border-t"
+          style={{ borderColor: "var(--border)" }}
+          aria-hidden="true"
+        />
+      ) : gate !== 'ok' ? (
         <div
           className="hidden lg:flex border-t"
           style={{ borderColor: "var(--border)" }}

@@ -12,7 +12,7 @@ import { useToast } from "@/components/listen/toast";
 import type { SheetTab } from "@/components/listen/engagement-tiles";
 
 export default function ListenPage() {
-  const { listeners, episodeId, status } = useStream();
+  const { listeners, episodeId } = useStream();
   const { data: session } = useSession();
   const { pushToast, ToastHost } = useToast();
   const engagement = useEngagementRoom(episodeId, pushToast, session?.user?.id ?? null);
@@ -45,7 +45,7 @@ export default function ListenPage() {
           onReact={engagement.react}
           reacting={engagement.reacting}
           reactionError={engagement.reactionError}
-          isLive={Boolean(episodeId) && status === "LIVE"}
+          isLive={Boolean(episodeId)}
         />
 
         {/* Chat column - right column */}
@@ -70,6 +70,7 @@ export default function ListenPage() {
         onSend={engagement.sendChat}
         onReact={() => engagement.react("🔥")}
         reacting={engagement.reacting}
+        isLive={Boolean(episodeId)}
       />
 
       {/* Engagement bottom sheet + overlay */}

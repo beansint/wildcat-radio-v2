@@ -1,44 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "@/lib/auth/client";
 import { useStream } from "@/lib/stream/stream-context";
+import { useEngagementRoom } from "@/lib/realtime/use-engagement-room";
 import { Stage } from "@/components/listen/stage";
-import { ChatColumn, type ChatMsg } from "@/components/listen/chat-column";
+import { ChatColumn } from "@/components/listen/chat-column";
 import { MobileChatInput } from "@/components/listen/mobile-chat-input";
 import { EngagementSheet } from "@/components/listen/engagement-sheet";
 import { useToast } from "@/components/listen/toast";
 import type { SheetTab } from "@/components/listen/engagement-tiles";
 
-// Seed messages matching the prototype exactly (5 messages incl. booth + mod)
-// TODO(M5/M6): wire to live chat API (WebSocket / server-sent events)
-const SEED_MESSAGES: ChatMsg[] = [
-  { id: 1, name: "@ana_reyes",   time: "2:14 PM", body: "first time tuning in, this is so good 😭" },
-  { id: 2, name: "@carlo.bsit",  body: "PARA SA BSIT-3A!! 🔥" },
-  { id: 3, name: "Afternoon Vibes", body: "Shoutout sa BSIT-3A! Next up we got a request — stay tuned 🎶", variant: "booth" },
-  { id: 4, name: "@jamie",       body: "can you play Ere next 🙏" },
-  { id: 5, name: "@mod_mara",    body: "Keep it kind in chat, wildcat 💛", variant: "mod" },
-];
-
-let nextId = SEED_MESSAGES.length + 1;
-
 export default function ListenPage() {
-  const { listeners } = useStream();
+  const { listeners, episodeId, status } = useStream();
+  const { data: session } = useSession();
   const { pushToast, ToastHost } = useToast();
-
-  // Chat state
-  const [messages, setMessages] = useState<ChatMsg[]>(SEED_MESSAGES);
+  const engagement = useEngagementRoom(episodeId, pushToast, session?.user?.id ?? null);
 
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetTab, setSheetTab] = useState<SheetTab>("req");
-
-  function appendMessage(text: string) {
-    // TODO(M5/M6): wire to chat send API
-    setMessages((prev) => [
-      ...prev,
-      { id: nextId++, name: "@you", body: text },
-    ]);
-  }
 
   function openSheet(tab: SheetTab) {
     setSheetTab(tab);
@@ -55,19 +36,41 @@ export default function ListenPage() {
     /* muted background matches prototype `body{background:var(--muted)}` for listen page */
     <div className="flex-1 flex flex-col" style={{ background: "var(--muted)" }}>
       <main className="wc-container w-full py-4 grid gap-4 lg:grid-cols-[1.04fr_.96fr] lg:items-start">
-        {/* Stage — left column (sticky on desktop) */}
-        <Stage onOpenSheet={openSheet} />
+        {/* Stage - left column (sticky on desktop) */}
+        <Stage
+          onOpenSheet={openSheet}
+          pinnedTopic={engagement.pinnedTopic}
+          hype={engagement.hype}
+          upNext={engagement.upNext}
+          onReact={engagement.react}
+          reacting={engagement.reacting}
+          reactionError={engagement.reactionError}
+          isLive={Boolean(episodeId) && status === "LIVE"}
+        />
 
-        {/* Chat column — right column */}
+        {/* Chat column - right column */}
         <ChatColumn
-          messages={messages}
-          onSend={appendMessage}
+          messages={engagement.messages}
+          onSend={engagement.sendChat}
           listenerCount={listenerCount}
+          polls={engagement.polls}
+          selectedOptions={engagement.selectedOptions}
+          onVote={engagement.vote}
+          votePending={engagement.votePending}
+          voteError={engagement.voteError}
+          pollsLoading={engagement.pollsLoading}
+          pollsError={engagement.pollsError}
+          isLive={Boolean(episodeId)}
         />
       </main>
 
       {/* Mobile sticky chat input */}
-      <MobileChatInput onOpenSheet={openSheet} onSend={appendMessage} />
+      <MobileChatInput
+        onOpenSheet={openSheet}
+        onSend={engagement.sendChat}
+        onReact={() => engagement.react("🔥")}
+        reacting={engagement.reacting}
+      />
 
       {/* Engagement bottom sheet + overlay */}
       <EngagementSheet
@@ -76,6 +79,10 @@ export default function ListenPage() {
         onTabChange={setSheetTab}
         onClose={closeSheet}
         pushToast={pushToast}
+        onSubmitQueue={engagement.submitQueue}
+        submitting={engagement.submitQueuePending}
+        submitError={engagement.submitQueueError}
+        disabled={!episodeId}
       />
 
       {/* Toast portal */}

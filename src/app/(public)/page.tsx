@@ -20,18 +20,19 @@ export default function LandingPage() {
             <div className="grid md:grid-cols-2 gap-8 items-center">
               {/* Left: wordmark + copy */}
               <div>
-                {/* Visually-hidden page heading — the wordmark below is an image */}
-                <h1 className="sr-only">Wildcat Radio — CIT-U Campus Radio</h1>
+                {/* Visually-hidden page heading - the wordmark below is an image */}
+                <h1 className="sr-only">Wildcat Radio - CIT-U Campus Radio</h1>
                 <Image
                   src="/brand/logo-wordmark-lockup.png"
                   alt="Wildcat Radio"
                   width={280}
                   height={112}
                   className="h-20 md:h-28 w-auto mb-5 drop-shadow"
+                  style={{ width: "auto" }}
                   priority
                 />
                 <p className="text-white/85 max-w-md text-lg">
-                  The campus radio station of the Cebu Institute of Technology –
+                  The campus radio station of the Cebu Institute of Technology -
                   University. Tune in, request a song, join the room.
                 </p>
               </div>

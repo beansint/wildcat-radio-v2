@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "sh -c 'set -a; [ -f .env.local ] && . ./.env.local; set +a; exec next dev -p ${PORT:-3000} \"$@\"' --",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

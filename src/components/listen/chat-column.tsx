@@ -5,20 +5,46 @@ import { useEffect, useRef, useState } from "react";
 import { ChatMessage, type ChatMessageProps } from "./chat-message";
 import { InlinePoll } from "./inline-poll";
 import { useEngagementGate, EngagementGateNotice } from "./engagement-gate";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import type { PollResponseDto } from "@/lib/api/model";
+import { getApiErrorMessage } from "@/lib/api/error-message";
 
 export interface ChatMsg extends ChatMessageProps {
-  id: number;
+  id: string;
 }
 
 interface ChatColumnProps {
   messages: ChatMsg[];
-  onSend: (text: string) => void;
+  onSend: (text: string) => Promise<void>;
   listenerCount: number;
+  polls: PollResponseDto[];
+  selectedOptions: Record<string, string>;
+  onVote: (input: { pollId: string; optionId: string }) => Promise<unknown>;
+  votePending: boolean;
+  voteError: string | null;
+  pollsLoading: boolean;
+  pollsError: string | null;
+  isLive: boolean;
 }
 
-export function ChatColumn({ messages, onSend, listenerCount }: ChatColumnProps) {
+export function ChatColumn({
+  messages,
+  onSend,
+  listenerCount,
+  polls,
+  selectedOptions,
+  onVote,
+  votePending,
+  voteError,
+  pollsLoading,
+  pollsError,
+  isLive,
+}: ChatColumnProps) {
   const feedRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
   const gate = useEngagementGate();
 
   // Scroll to bottom whenever messages array grows
@@ -29,12 +55,20 @@ export function ChatColumn({ messages, onSend, listenerCount }: ChatColumnProps)
     }
   }, [messages.length]);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const text = inputValue.trim();
-    if (!text) return;
-    onSend(text);
-    setInputValue("");
+    if (!text || sending || !isLive) return;
+    setSending(true);
+    setSendError(null);
+    try {
+      await onSend(text);
+      setInputValue("");
+    } catch (error) {
+      setSendError(getApiErrorMessage(error));
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -67,21 +101,37 @@ export function ChatColumn({ messages, onSend, listenerCount }: ChatColumnProps)
         style={{ maxHeight: "min(62vh, 560px)" }}
         aria-live="polite"
         aria-relevant="additions"
+        data-testid="engagement-chat-feed"
       >
-        {messages.map((msg) => (
-          <ChatMessage
-            key={msg.id}
-            name={msg.name}
-            time={msg.time}
-            body={msg.body}
-            variant={msg.variant}
-          />
-        ))}
+        {messages.length === 0 ? (
+          <div className="wc-muted text-sm px-2 py-3">
+            Chat will appear here when listeners and the booth post during the episode.
+          </div>
+        ) : (
+          messages.map((msg) => (
+            <ChatMessage
+              key={msg.id}
+              name={msg.name}
+              time={msg.time}
+              body={msg.body}
+              variant={msg.variant}
+            />
+          ))
+        )}
         {/* Inline poll placed after messages, matching prototype order */}
-        <InlinePoll />
+        <InlinePoll
+          polls={polls}
+          selectedOptions={selectedOptions}
+          onVote={onVote}
+          votePending={votePending}
+          voteError={voteError}
+          loading={pollsLoading}
+          error={pollsError}
+          disabled={!isLive || gate !== "ok"}
+        />
       </div>
 
-      {/* Desktop-only input — gated */}
+      {/* Desktop-only input - gated */}
       {gate !== 'ok' ? (
         <div
           className="hidden lg:flex border-t"
@@ -96,21 +146,29 @@ export function ChatColumn({ messages, onSend, listenerCount }: ChatColumnProps)
           onSubmit={handleSubmit}
           aria-label="Desktop chat input"
         >
-          <input
-            className="wc-input flex-1"
+          <Input
+            className="flex-1"
             placeholder="Say something to the booth…"
             aria-label="Chat message"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             data-testid="listen-chat-input"
+            disabled={sending || !isLive}
           />
-          <button
+          <Button
             type="submit"
-            className="wc-btn wc-btn-maroon wc-btn-icon"
+            variant="maroon"
+            size="icon"
             aria-label="Send"
+            disabled={sending || !isLive}
           >
             <Send className="w-5 h-5" aria-hidden="true" />
-          </button>
+          </Button>
+          {(sendError || !isLive) && (
+            <div role="alert" className="sr-only">
+              {sendError ?? "No live episode right now."}
+            </div>
+          )}
         </form>
       )}
     </section>

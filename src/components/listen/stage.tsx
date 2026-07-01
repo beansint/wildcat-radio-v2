@@ -5,12 +5,30 @@ import { useStream } from "@/lib/stream/stream-context";
 import { ReactionBar } from "./reaction-bar";
 import { EngagementTiles } from "./engagement-tiles";
 import type { SheetTab } from "./engagement-tiles";
+import type { CreateReactionDtoEmoji } from "@/lib/api/model";
+import type { HypeState, PinnedTopic, UpNextItem } from "@/lib/realtime/use-engagement-room";
 
 interface StageProps {
   onOpenSheet: (tab: SheetTab) => void;
+  pinnedTopic: PinnedTopic | null;
+  hype: HypeState;
+  upNext: UpNextItem[];
+  onReact: (emoji: CreateReactionDtoEmoji) => Promise<unknown>;
+  reacting: boolean;
+  reactionError: string | null;
+  isLive: boolean;
 }
 
-export function Stage({ onOpenSheet }: StageProps) {
+export function Stage({
+  onOpenSheet,
+  pinnedTopic,
+  hype,
+  upNext,
+  onReact,
+  reacting,
+  reactionError,
+  isLive,
+}: StageProps) {
   const { isPlaying, play, pause, djs, listeners } = useStream();
 
   function handlePlayPause() {
@@ -55,7 +73,7 @@ export function Stage({ onOpenSheet }: StageProps) {
               Afternoon Vibes
             </h1>
             {/* TODO(M5/M6): wire to now-playing track from API */}
-            <div className="text-white/75 truncate text-sm">&ldquo;Golden Hour&rdquo; — JVKE</div>
+            <div className="text-white/75 truncate text-sm">&ldquo;Golden Hour&rdquo; - JVKE</div>
             <span className="wc-chip mt-2 text-[.72rem]">
               <Mic className="w-3.5 h-3.5" aria-hidden="true" />
               {djName}
@@ -104,24 +122,51 @@ export function Stage({ onOpenSheet }: StageProps) {
         </div>
 
         {/* Reaction bar (hype meter + emoji reactions) */}
-        <ReactionBar />
+        <ReactionBar
+          hype={hype}
+          onReact={onReact}
+          reacting={reacting}
+          error={reactionError}
+          isLive={isLive}
+        />
 
         {/* Engagement tiles */}
         <EngagementTiles onOpen={onOpenSheet} />
 
+        {upNext.length > 0 && (
+          <div
+            className="mt-5 rounded-xl p-3"
+            style={{ background: "rgba(255,255,255,.10)", border: "1px solid rgba(255,255,255,.16)" }}
+            data-testid="engagement-up-next"
+          >
+            <div className="text-[.62rem] font-bold uppercase tracking-[.12em] text-white/55 mb-2">
+              Up next
+            </div>
+            <div className="grid gap-2">
+              {upNext.map((item) => (
+                <div key={item.id} className="text-sm">
+                  <span className="font-extrabold text-gold">{item.type.toLowerCase()}</span>{" "}
+                  <span>{item.text}</span>
+                  {item.recipient && <span className="text-white/65"> · for {item.recipient}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Pinned topic */}
-        {/* TODO(M5/M6): wire to pinned message from DJ dashboard API */}
         <div
           className="mt-5 rounded-xl p-3 flex items-start gap-2.5"
           style={{ background: "rgba(255,255,255,.10)", border: "1px solid rgba(255,255,255,.16)" }}
+          data-testid="engagement-pinned-topic"
         >
           <Pin className="w-4 h-4 mt-0.5 flex-none text-gold" aria-hidden="true" />
           <div>
             <div className="text-[.62rem] font-bold uppercase tracking-[.12em] text-white/55">
-              Pinned by DJ Mara
+              Pinned by the booth
             </div>
             <div className="text-sm">
-              What song got you through finals week? Drop it in chat — DJ Mara&apos;s reading them on air.
+              {pinnedTopic?.text ?? "No pinned topic yet. The booth can pin prompts during the show."}
             </div>
           </div>
         </div>

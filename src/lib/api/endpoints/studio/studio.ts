@@ -20,6 +20,18 @@ import type {
   UseQueryResult
 } from '@tanstack/react-query';
 
+import type {
+  BoothChatDto,
+  ChatMessageResponseDto,
+  CreatePollDto,
+  PinTopicDto,
+  PinnedTopicResponseDto,
+  PollResponseDto,
+  QueueActDto,
+  QueueActionResponseDto,
+  StudioQueueResponseDto
+} from '../../model';
+
 import { customFetch } from '../../fetcher';
 
 
@@ -316,6 +328,613 @@ export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getTimeOutStudioQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getGetStudioQueueUrl = () => {
+
+
+
+
+  return `/api/studio/queue`
+}
+
+/**
+ * @summary Live engagement queue
+ */
+export const getStudioQueue = async ( options?: RequestInit): Promise<StudioQueueResponseDto> => {
+
+  return customFetch<StudioQueueResponseDto>(getGetStudioQueueUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStudioQueueQueryKey = () => {
+    return [
+    `/api/studio/queue`
+    ] as const;
+    }
+
+
+export const getGetStudioQueueQueryOptions = <TData = Awaited<ReturnType<typeof getStudioQueue>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioQueue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStudioQueueQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudioQueue>>> = ({ signal }) => getStudioQueue({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStudioQueue>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetStudioQueueQueryResult = NonNullable<Awaited<ReturnType<typeof getStudioQueue>>>
+export type GetStudioQueueQueryError = unknown
+
+
+export function useGetStudioQueue<TData = Awaited<ReturnType<typeof getStudioQueue>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioQueue>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStudioQueue>>,
+          TError,
+          Awaited<ReturnType<typeof getStudioQueue>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetStudioQueue<TData = Awaited<ReturnType<typeof getStudioQueue>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioQueue>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStudioQueue>>,
+          TError,
+          Awaited<ReturnType<typeof getStudioQueue>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetStudioQueue<TData = Awaited<ReturnType<typeof getStudioQueue>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioQueue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Live engagement queue
+ */
+
+export function useGetStudioQueue<TData = Awaited<ReturnType<typeof getStudioQueue>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioQueue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetStudioQueueQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getActOnQueueItemUrl = (id: string,) => {
+
+
+
+
+  return `/api/studio/queue/${id}/act`
+}
+
+/**
+ * @summary Act on a queue item
+ */
+export const actOnQueueItem = async (id: string,
+    queueActDto: QueueActDto, options?: RequestInit): Promise<QueueActionResponseDto> => {
+
+  return customFetch<QueueActionResponseDto>(getActOnQueueItemUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(queueActDto)
+  }
+);}
+
+
+
+
+
+export const getActOnQueueItemQueryKey = (id: string,
+    queueActDto?: QueueActDto,) => {
+    return [
+    'POST', `/api/studio/queue/${id}/act`, queueActDto
+    ] as const;
+    }
+
+
+export const getActOnQueueItemQueryOptions = <TData = Awaited<ReturnType<typeof actOnQueueItem>>, TError = unknown>(id: string,
+    queueActDto: QueueActDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof actOnQueueItem>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getActOnQueueItemQueryKey(id,queueActDto);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof actOnQueueItem>>> = ({ signal }) => actOnQueueItem(id,queueActDto, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof actOnQueueItem>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ActOnQueueItemQueryResult = NonNullable<Awaited<ReturnType<typeof actOnQueueItem>>>
+export type ActOnQueueItemQueryError = unknown
+
+
+export function useActOnQueueItem<TData = Awaited<ReturnType<typeof actOnQueueItem>>, TError = unknown>(
+ id: string,
+    queueActDto: QueueActDto, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof actOnQueueItem>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof actOnQueueItem>>,
+          TError,
+          Awaited<ReturnType<typeof actOnQueueItem>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useActOnQueueItem<TData = Awaited<ReturnType<typeof actOnQueueItem>>, TError = unknown>(
+ id: string,
+    queueActDto: QueueActDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof actOnQueueItem>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof actOnQueueItem>>,
+          TError,
+          Awaited<ReturnType<typeof actOnQueueItem>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useActOnQueueItem<TData = Awaited<ReturnType<typeof actOnQueueItem>>, TError = unknown>(
+ id: string,
+    queueActDto: QueueActDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof actOnQueueItem>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Act on a queue item
+ */
+
+export function useActOnQueueItem<TData = Awaited<ReturnType<typeof actOnQueueItem>>, TError = unknown>(
+ id: string,
+    queueActDto: QueueActDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof actOnQueueItem>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getActOnQueueItemQueryOptions(id,queueActDto,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getCreatePollUrl = () => {
+
+
+
+
+  return `/api/studio/polls`
+}
+
+/**
+ * @summary Launch a poll
+ */
+export const createPoll = async (createPollDto: CreatePollDto, options?: RequestInit): Promise<PollResponseDto> => {
+
+  return customFetch<PollResponseDto>(getCreatePollUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createPollDto)
+  }
+);}
+
+
+
+
+
+export const getCreatePollQueryKey = (createPollDto?: CreatePollDto,) => {
+    return [
+    'POST', `/api/studio/polls`, createPollDto
+    ] as const;
+    }
+
+
+export const getCreatePollQueryOptions = <TData = Awaited<ReturnType<typeof createPoll>>, TError = unknown>(createPollDto: CreatePollDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createPoll>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCreatePollQueryKey(createPollDto);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof createPoll>>> = ({ signal }) => createPoll(createPollDto, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof createPoll>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type CreatePollQueryResult = NonNullable<Awaited<ReturnType<typeof createPoll>>>
+export type CreatePollQueryError = unknown
+
+
+export function useCreatePoll<TData = Awaited<ReturnType<typeof createPoll>>, TError = unknown>(
+ createPollDto: CreatePollDto, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof createPoll>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof createPoll>>,
+          TError,
+          Awaited<ReturnType<typeof createPoll>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCreatePoll<TData = Awaited<ReturnType<typeof createPoll>>, TError = unknown>(
+ createPollDto: CreatePollDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createPoll>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof createPoll>>,
+          TError,
+          Awaited<ReturnType<typeof createPoll>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCreatePoll<TData = Awaited<ReturnType<typeof createPoll>>, TError = unknown>(
+ createPollDto: CreatePollDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createPoll>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Launch a poll
+ */
+
+export function useCreatePoll<TData = Awaited<ReturnType<typeof createPoll>>, TError = unknown>(
+ createPollDto: CreatePollDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createPoll>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getCreatePollQueryOptions(createPollDto,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getClosePollUrl = (id: string,) => {
+
+
+
+
+  return `/api/studio/polls/${id}/close`
+}
+
+/**
+ * @summary Close a poll
+ */
+export const closePoll = async (id: string, options?: RequestInit): Promise<PollResponseDto> => {
+
+  return customFetch<PollResponseDto>(getClosePollUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getClosePollQueryKey = (id: string,) => {
+    return [
+    'POST', `/api/studio/polls/${id}/close`
+    ] as const;
+    }
+
+
+export const getClosePollQueryOptions = <TData = Awaited<ReturnType<typeof closePoll>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof closePoll>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getClosePollQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof closePoll>>> = ({ signal }) => closePoll(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof closePoll>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ClosePollQueryResult = NonNullable<Awaited<ReturnType<typeof closePoll>>>
+export type ClosePollQueryError = unknown
+
+
+export function useClosePoll<TData = Awaited<ReturnType<typeof closePoll>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof closePoll>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof closePoll>>,
+          TError,
+          Awaited<ReturnType<typeof closePoll>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useClosePoll<TData = Awaited<ReturnType<typeof closePoll>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof closePoll>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof closePoll>>,
+          TError,
+          Awaited<ReturnType<typeof closePoll>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useClosePoll<TData = Awaited<ReturnType<typeof closePoll>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof closePoll>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Close a poll
+ */
+
+export function useClosePoll<TData = Awaited<ReturnType<typeof closePoll>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof closePoll>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getClosePollQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getSetPinnedTopicUrl = () => {
+
+
+
+
+  return `/api/studio/pin`
+}
+
+/**
+ * @summary Set pinned topic
+ */
+export const setPinnedTopic = async (pinTopicDto: PinTopicDto, options?: RequestInit): Promise<PinnedTopicResponseDto> => {
+
+  return customFetch<PinnedTopicResponseDto>(getSetPinnedTopicUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pinTopicDto)
+  }
+);}
+
+
+
+
+
+export const getSetPinnedTopicQueryKey = (pinTopicDto?: PinTopicDto,) => {
+    return [
+    'POST', `/api/studio/pin`, pinTopicDto
+    ] as const;
+    }
+
+
+export const getSetPinnedTopicQueryOptions = <TData = Awaited<ReturnType<typeof setPinnedTopic>>, TError = unknown>(pinTopicDto: PinTopicDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setPinnedTopic>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSetPinnedTopicQueryKey(pinTopicDto);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof setPinnedTopic>>> = ({ signal }) => setPinnedTopic(pinTopicDto, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof setPinnedTopic>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SetPinnedTopicQueryResult = NonNullable<Awaited<ReturnType<typeof setPinnedTopic>>>
+export type SetPinnedTopicQueryError = unknown
+
+
+export function useSetPinnedTopic<TData = Awaited<ReturnType<typeof setPinnedTopic>>, TError = unknown>(
+ pinTopicDto: PinTopicDto, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof setPinnedTopic>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof setPinnedTopic>>,
+          TError,
+          Awaited<ReturnType<typeof setPinnedTopic>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSetPinnedTopic<TData = Awaited<ReturnType<typeof setPinnedTopic>>, TError = unknown>(
+ pinTopicDto: PinTopicDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setPinnedTopic>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof setPinnedTopic>>,
+          TError,
+          Awaited<ReturnType<typeof setPinnedTopic>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSetPinnedTopic<TData = Awaited<ReturnType<typeof setPinnedTopic>>, TError = unknown>(
+ pinTopicDto: PinTopicDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setPinnedTopic>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Set pinned topic
+ */
+
+export function useSetPinnedTopic<TData = Awaited<ReturnType<typeof setPinnedTopic>>, TError = unknown>(
+ pinTopicDto: PinTopicDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setPinnedTopic>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSetPinnedTopicQueryOptions(pinTopicDto,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getPostBoothChatUrl = () => {
+
+
+
+
+  return `/api/studio/chat`
+}
+
+/**
+ * @summary Post booth chat
+ */
+export const postBoothChat = async (boothChatDto: BoothChatDto, options?: RequestInit): Promise<ChatMessageResponseDto> => {
+
+  return customFetch<ChatMessageResponseDto>(getPostBoothChatUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(boothChatDto)
+  }
+);}
+
+
+
+
+
+export const getPostBoothChatQueryKey = (boothChatDto?: BoothChatDto,) => {
+    return [
+    'POST', `/api/studio/chat`, boothChatDto
+    ] as const;
+    }
+
+
+export const getPostBoothChatQueryOptions = <TData = Awaited<ReturnType<typeof postBoothChat>>, TError = unknown>(boothChatDto: BoothChatDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postBoothChat>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPostBoothChatQueryKey(boothChatDto);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof postBoothChat>>> = ({ signal }) => postBoothChat(boothChatDto, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof postBoothChat>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PostBoothChatQueryResult = NonNullable<Awaited<ReturnType<typeof postBoothChat>>>
+export type PostBoothChatQueryError = unknown
+
+
+export function usePostBoothChat<TData = Awaited<ReturnType<typeof postBoothChat>>, TError = unknown>(
+ boothChatDto: BoothChatDto, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof postBoothChat>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postBoothChat>>,
+          TError,
+          Awaited<ReturnType<typeof postBoothChat>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostBoothChat<TData = Awaited<ReturnType<typeof postBoothChat>>, TError = unknown>(
+ boothChatDto: BoothChatDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postBoothChat>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postBoothChat>>,
+          TError,
+          Awaited<ReturnType<typeof postBoothChat>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostBoothChat<TData = Awaited<ReturnType<typeof postBoothChat>>, TError = unknown>(
+ boothChatDto: BoothChatDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postBoothChat>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Post booth chat
+ */
+
+export function usePostBoothChat<TData = Awaited<ReturnType<typeof postBoothChat>>, TError = unknown>(
+ boothChatDto: BoothChatDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postBoothChat>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPostBoothChatQueryOptions(boothChatDto,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

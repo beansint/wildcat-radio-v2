@@ -517,6 +517,8 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { scrollbar-width: none; }
 
+body.wc-studio-page .wc-player { display: none; }
+
 /* ---- monogram avatars ---- */
 .wc-mono { border-radius: 999px; display: grid; place-items: center; color: #fff; font-weight: 800; letter-spacing: -.02em; flex: none; background: var(--maroon); }
 .wc-mono-1 { background: linear-gradient(145deg,#9a1116,#5a0a06); }

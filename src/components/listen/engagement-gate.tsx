@@ -2,7 +2,7 @@
 
 /**
  * Engagement gate for the /listen page interactive features (chat, requests, dedications, Q&A).
- * Reactions stay open — never gated.
+ * Reactions stay open - never gated.
  *
  * Usage:
  *   const gate = useEngagementGate();   // 'anon' | 'unverified' | 'ok'

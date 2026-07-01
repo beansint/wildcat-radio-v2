@@ -12,4 +12,6 @@ export interface PinnedTopicResponseDto {
   text: string;
   /** @nullable */
   expiresAt: string | null;
+  /** Whether this pin auto-clears when the episode ends */
+  expiresAtEpisodeEnd: boolean;
 }

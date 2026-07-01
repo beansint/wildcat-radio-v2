@@ -23,5 +23,6 @@ Routes live under `src/app/` using **route groups** (`(group)` folders are organ
 - **`(public)`** — open to anyone; gets the public shell (top-nav + global player). e.g. `/`, `/listen`.
 - **`(auth)`** — unauthenticated credential flows; no app chrome (full-viewport split-pane). e.g. `/login`, `/register`, `/forgot-password`.
 - **`(app)`** — requires a session; its layout is a **client-side auth guard** (the better-auth cookie is cross-origin httpOnly, so the guard *must* be a layout, not middleware) + authed chrome. e.g. `/profile`, `/notifications`.
+- **`(station)`** — station-token surfaces, **not** a Better Auth user session. Auth is a pasted station Bearer token (device token) held client-side and sent as `Authorization: Bearer <token>`; no user login, no app chrome. e.g. `/studio` (the booth console). Use this group for booth/kiosk pages gated by the station device token rather than a user cookie.
 
 Rules: don't wrap groups in a real (non-paren) folder — it would inject that segment into the URL. Don't let two groups resolve to the same path (build error). Don't add a competing root `<html>` layout. When unsure where a page goes, apply the who-can-see-it + which-chrome test above.

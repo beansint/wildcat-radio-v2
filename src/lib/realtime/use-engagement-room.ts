@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   listPolls,
   react,
@@ -68,7 +68,9 @@ function toChatMessage(event: ChatEvent): LiveChatMessage {
   const author = event.author?.handle ?? event.author?.name ?? "@listener";
   return {
     id: event.id,
-    name: event.asBooth ? "🎙 Afternoon Vibes" : author,
+    // TODO: the listener manifest doesn't yet expose the live show name
+    // (M5/M6) — fall back to a neutral "Booth" label until it does.
+    name: event.asBooth ? "🎙 Booth" : author,
     body: event.content,
     time: formatTime(event.createdAt),
     variant: event.asBooth ? "booth" : undefined,
@@ -94,6 +96,11 @@ export function useEngagementRoom(
   const [upNext, setUpNext] = useState<UpNextItem[]>([]);
   const [pinnedTopic, setPinnedTopic] = useState<PinnedTopic | null>(null);
   const [hype, setHype] = useState<HypeState>({ count: 0, trend: "flat" });
+
+  // Tracks the last authSessionKey we actually cycled the socket for, so we
+  // only force a disconnect/reconnect when the session identity truly
+  // transitions (not on every effect re-run / episodeId change).
+  const prevAuthSessionKeyRef = useRef<string | null | undefined>(undefined);
 
   const pollsQuery = useListPolls(episodeId ?? "", {
     query: {
@@ -164,8 +171,22 @@ export function useEngagementRoom(
     socket.on("topic:pinned", onTopicPinned);
 
     const joinEpisode = () => socket.emit("episode:join", { episodeId });
-    socket.once("connect", joinEpisode);
-    if (authSessionKey && socket.connected) {
+    // Persistent (not `once`) so episode room membership is restored after
+    // ANY reconnect — including one triggered by the auth-session cycling
+    // below — not just the very first connection.
+    socket.on("connect", joinEpisode);
+
+    // Only force a disconnect/reconnect when the auth session identity has
+    // actually transitioned on an already-live socket. Re-running this
+    // effect for unrelated reasons (e.g. episodeId changing) must not
+    // gratuitously cycle the shared socket, since that also knocks out
+    // stream-presence room membership until it self-heals on `connect`.
+    const sessionChanged =
+      prevAuthSessionKeyRef.current !== undefined &&
+      prevAuthSessionKeyRef.current !== (authSessionKey ?? null);
+    prevAuthSessionKeyRef.current = authSessionKey ?? null;
+
+    if (socket.connected && sessionChanged) {
       socket.disconnect();
       socket.connect();
     } else if (socket.connected) {

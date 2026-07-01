@@ -584,6 +584,68 @@
           "studio"
         ]
       }
+    },
+    "/api/studio/session": {
+      "post": {
+        "operationId": "createStationSession",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudioSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Start a cookie-based station session",
+        "tags": [
+          "studio"
+        ]
+      },
+      "get": {
+        "operationId": "getStationSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudioSessionStatusResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Check the station session status",
+        "tags": [
+          "studio"
+        ]
+      },
+      "delete": {
+        "operationId": "clearStationSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudioSessionClearResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Clear the station session cookie",
+        "tags": [
+          "studio"
+        ]
+      }
     }
   },
   "info": {
@@ -847,6 +909,11 @@
             "type": "string",
             "description": "Active episode id (cuid)"
           },
+          "showName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Current show name, for \"Posting as 🎙 <show>\""
+          },
           "items": {
             "type": "array",
             "items": {
@@ -856,6 +923,7 @@
         },
         "required": [
           "episodeId",
+          "showName",
           "items"
         ]
       },
@@ -941,6 +1009,10 @@
           "expiresAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "expiresAtEpisodeEnd": {
+            "type": "boolean",
+            "default": true
           }
         },
         "required": [
@@ -961,12 +1033,17 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "expiresAtEpisodeEnd": {
+            "type": "boolean",
+            "description": "Whether this pin auto-clears when the episode ends"
           }
         },
         "required": [
           "episodeId",
           "text",
-          "expiresAt"
+          "expiresAt",
+          "expiresAtEpisodeEnd"
         ]
       },
       "BoothChatDto": {
@@ -1020,6 +1097,55 @@
           "asBooth",
           "createdAt",
           "author"
+        ]
+      },
+      "StudioSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "expiresAt": {
+            "type": "number",
+            "description": "Session expiry, epoch milliseconds"
+          }
+        },
+        "required": [
+          "ok",
+          "expiresAt"
+        ]
+      },
+      "StudioSessionStatusResponseDto": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "active",
+          "label"
+        ]
+      },
+      "StudioSessionClearResponseDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "ok"
         ]
       }
     }

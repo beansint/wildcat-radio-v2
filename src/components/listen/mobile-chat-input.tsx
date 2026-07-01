@@ -4,6 +4,7 @@ import { Plus, Send } from "lucide-react";
 import { useState } from "react";
 import type { SheetTab } from "./engagement-tiles";
 import { useEngagementGate, EngagementGateNotice } from "./engagement-gate";
+import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getApiErrorMessage } from "@/lib/api/error-message";
@@ -13,13 +14,18 @@ interface MobileChatInputProps {
   onSend: (text: string) => Promise<void>;
   onReact: () => Promise<unknown>;
   reacting: boolean;
+  isLive: boolean;
 }
 
-export function MobileChatInput({ onOpenSheet, onSend, onReact, reacting }: MobileChatInputProps) {
+export function MobileChatInput({ onOpenSheet, onSend, onReact, reacting, isLive }: MobileChatInputProps) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const gate = useEngagementGate();
+  // Avoid SSR/client hydration mismatch: the gate depends on session data
+  // that isn't visible during SSR (cross-origin httpOnly cookie), so the
+  // very first client render must match the server's neutral shell.
+  const mounted = useHydrated();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,7 +48,9 @@ export function MobileChatInput({ onOpenSheet, onSend, onReact, reacting }: Mobi
       className="sticky bottom-0 z-30 border-t lg:hidden"
       style={{ background: "var(--card)", borderColor: "var(--border)" }}
     >
-      {gate !== 'ok' ? (
+      {!mounted ? (
+        <div className="wc-container py-2 flex items-center gap-2" aria-hidden="true" />
+      ) : gate !== 'ok' ? (
         <div className="wc-container py-2">
           <EngagementGateNotice gate={gate} next="/listen" />
         </div>
@@ -74,8 +82,9 @@ export function MobileChatInput({ onOpenSheet, onSend, onReact, reacting }: Mobi
             variant="outline"
             size="icon"
             aria-label="React fire"
-            disabled={reacting}
+            disabled={reacting || !isLive}
             onClick={() => {
+              if (!isLive) return;
               setError(null);
               onReact().catch((err) => setError(getApiErrorMessage(err)));
             }}

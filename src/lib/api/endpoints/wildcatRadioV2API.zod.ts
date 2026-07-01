@@ -90,3 +90,230 @@ export const UsersControllerGetMyConsentResponse = zod.unknown()
  * @summary Record anonymous age-bucket contribution (L33/L27; PII-safe aggregate counter)
  */
 export const AnalyticsControllerRecordAgeBucketResponse = zod.unknown()
+
+
+/**
+ * @summary Submit to the show queue
+ */
+export const SubmitQueueItemParams = zod.object({
+  "id": zod.string().describe('Episode id (cuid)')
+})
+
+export const submitQueueItemBodyTextMax = 500;
+
+export const submitQueueItemBodyRecipientMax = 120;
+
+
+
+export const SubmitQueueItemBody = zod.object({
+  "type": zod.enum(['REQUEST', 'DEDICATION', 'QUESTION']),
+  "text": zod.string().min(1).max(submitQueueItemBodyTextMax),
+  "recipient": zod.string().max(submitQueueItemBodyRecipientMax).optional()
+})
+
+export const SubmitQueueItemResponse = zod.object({
+  "id": zod.string().describe('Queue item id (cuid)'),
+  "status": zod.enum(['PENDING']),
+  "remaining": zod.number().describe('Remaining queue submissions available to this listener for the episode')
+})
+
+
+/**
+ * @summary List episode polls
+ */
+export const ListPollsParams = zod.object({
+  "id": zod.string().describe('Episode id (cuid)')
+})
+
+export const ListPollsResponseItem = zod.object({
+  "id": zod.string().describe('Poll id (cuid)'),
+  "question": zod.string(),
+  "visibility": zod.enum(['PUBLIC', 'ANONYMOUS']),
+  "isActive": zod.boolean(),
+  "totalVotes": zod.number(),
+  "options": zod.array(zod.object({
+  "id": zod.string().describe('Poll option id (cuid)'),
+  "text": zod.string(),
+  "voteCount": zod.number()
+}))
+})
+export const ListPollsResponse = zod.array(ListPollsResponseItem)
+
+
+/**
+ * @summary Vote in a poll
+ */
+export const VotePollParams = zod.object({
+  "id": zod.string().describe('Poll id (cuid)')
+})
+
+export const VotePollBody = zod.object({
+  "optionId": zod.string().describe('Poll option id (cuid)')
+})
+
+export const VotePollResponse = zod.object({
+  "id": zod.string().describe('Poll id (cuid)'),
+  "question": zod.string(),
+  "visibility": zod.enum(['PUBLIC', 'ANONYMOUS']),
+  "isActive": zod.boolean(),
+  "totalVotes": zod.number(),
+  "options": zod.array(zod.object({
+  "id": zod.string().describe('Poll option id (cuid)'),
+  "text": zod.string(),
+  "voteCount": zod.number()
+}))
+})
+
+
+/**
+ * @summary Send a reaction
+ */
+export const ReactParams = zod.object({
+  "id": zod.string().describe('Episode id (cuid)')
+})
+
+export const ReactBody = zod.object({
+  "emoji": zod.enum(['🔥', '❤️', '😂', '👏'])
+})
+
+export const ReactResponse = zod.object({
+  "ok": zod.literal(true)
+})
+
+
+/**
+ * @summary Live engagement queue
+ */
+export const GetStudioQueueResponse = zod.object({
+  "episodeId": zod.string().describe('Active episode id (cuid)'),
+  "items": zod.array(zod.object({
+  "id": zod.string().describe('Queue item id (cuid)'),
+  "episodeId": zod.string().describe('Episode id (cuid)'),
+  "submitterId": zod.string().describe('Submitting user id (cuid)'),
+  "type": zod.enum(['REQUEST', 'DEDICATION', 'QUESTION']),
+  "text": zod.string(),
+  "recipient": zod.string().nullable(),
+  "status": zod.enum(['PENDING', 'QUEUED', 'READ', 'DECLINED', 'EXPIRED', 'REMOVED']),
+  "actedById": zod.string().nullable(),
+  "actedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "submitter": zod.object({
+  "id": zod.string().describe('User id (cuid)'),
+  "handle": zod.string(),
+  "name": zod.string()
+})
+}))
+})
+
+
+/**
+ * @summary Act on a queue item
+ */
+export const ActOnQueueItemParams = zod.object({
+  "id": zod.string().describe('Queue item id (cuid)')
+})
+
+export const ActOnQueueItemBody = zod.object({
+  "action": zod.enum(['QUEUE', 'READ', 'DECLINE'])
+})
+
+export const ActOnQueueItemResponse = zod.object({
+  "id": zod.string().describe('Queue item id (cuid)'),
+  "status": zod.enum(['QUEUED', 'READ', 'DECLINED']),
+  "receipt": zod.boolean().describe('Whether a private queue receipt is emitted to the submitter')
+})
+
+
+/**
+ * @summary Launch a poll
+ */
+export const createPollBodyQuestionMax = 200;
+
+export const createPollBodyOptionsMin = 2;
+export const createPollBodyOptionsMax = 6;
+
+export const createPollBodyVisibilityDefault = `PUBLIC`;
+
+export const CreatePollBody = zod.object({
+  "question": zod.string().min(1).max(createPollBodyQuestionMax),
+  "options": zod.array(zod.string()).min(createPollBodyOptionsMin).max(createPollBodyOptionsMax),
+  "visibility": zod.enum(['PUBLIC', 'ANONYMOUS']).default(createPollBodyVisibilityDefault)
+})
+
+export const CreatePollResponse = zod.object({
+  "id": zod.string().describe('Poll id (cuid)'),
+  "question": zod.string(),
+  "visibility": zod.enum(['PUBLIC', 'ANONYMOUS']),
+  "isActive": zod.boolean(),
+  "totalVotes": zod.number(),
+  "options": zod.array(zod.object({
+  "id": zod.string().describe('Poll option id (cuid)'),
+  "text": zod.string(),
+  "voteCount": zod.number()
+}))
+})
+
+
+/**
+ * @summary Close a poll
+ */
+export const ClosePollParams = zod.object({
+  "id": zod.string().describe('Poll id (cuid)')
+})
+
+export const ClosePollResponse = zod.object({
+  "id": zod.string().describe('Poll id (cuid)'),
+  "question": zod.string(),
+  "visibility": zod.enum(['PUBLIC', 'ANONYMOUS']),
+  "isActive": zod.boolean(),
+  "totalVotes": zod.number(),
+  "options": zod.array(zod.object({
+  "id": zod.string().describe('Poll option id (cuid)'),
+  "text": zod.string(),
+  "voteCount": zod.number()
+}))
+})
+
+
+/**
+ * @summary Set pinned topic
+ */
+export const setPinnedTopicBodyTextMax = 280;
+
+
+
+export const SetPinnedTopicBody = zod.object({
+  "text": zod.string().max(setPinnedTopicBodyTextMax),
+  "expiresAt": zod.iso.datetime({"offset":true}).optional()
+})
+
+export const SetPinnedTopicResponse = zod.object({
+  "episodeId": zod.string().describe('Active episode id (cuid)'),
+  "text": zod.string(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable()
+})
+
+
+/**
+ * @summary Post booth chat
+ */
+export const postBoothChatBodyContentMax = 500;
+
+
+
+export const PostBoothChatBody = zod.object({
+  "content": zod.string().min(1).max(postBoothChatBodyContentMax)
+})
+
+export const PostBoothChatResponse = zod.object({
+  "id": zod.string().describe('Chat message id (cuid)'),
+  "episodeId": zod.string().describe('Active episode id (cuid)'),
+  "content": zod.string(),
+  "asBooth": zod.boolean(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "author": zod.object({
+  "id": zod.string().describe('User id (cuid)'),
+  "handle": zod.string(),
+  "name": zod.string()
+}).nullable()
+})

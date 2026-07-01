@@ -231,6 +231,359 @@
           "analytics"
         ]
       }
+    },
+    "/api/episodes/{id}/queue": {
+      "post": {
+        "operationId": "submitQueueItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Episode id (cuid)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitQueueItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueSubmissionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Submit to the show queue",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/episodes/{id}/polls": {
+      "get": {
+        "operationId": "listPolls",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Episode id (cuid)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PollResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List episode polls",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/polls/{id}/vote": {
+      "post": {
+        "operationId": "votePoll",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Poll id (cuid)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VotePollDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PollResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Vote in a poll",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/episodes/{id}/reactions": {
+      "post": {
+        "operationId": "react",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Episode id (cuid)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReactionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReactionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Send a reaction",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/studio/queue": {
+      "get": {
+        "operationId": "getStudioQueue",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudioQueueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Live engagement queue",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/queue/{id}/act": {
+      "post": {
+        "operationId": "actOnQueueItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Queue item id (cuid)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueActDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueActionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Act on a queue item",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/polls": {
+      "post": {
+        "operationId": "createPoll",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePollDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PollResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Launch a poll",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/polls/{id}/close": {
+      "post": {
+        "operationId": "closePoll",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Poll id (cuid)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PollResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Close a poll",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/pin": {
+      "post": {
+        "operationId": "setPinnedTopic",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PinTopicDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PinnedTopicResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Set pinned topic",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/chat": {
+      "post": {
+        "operationId": "postBoothChat",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoothChatDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessageResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Post booth chat",
+        "tags": [
+          "studio"
+        ]
+      }
     }
   },
   "info": {
@@ -242,6 +595,433 @@
   "tags": [],
   "servers": [],
   "components": {
-    "schemas": {}
+    "schemas": {
+      "SubmitQueueItemDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "REQUEST",
+              "DEDICATION",
+              "QUESTION"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "recipient": {
+            "type": "string",
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ]
+      },
+      "QueueSubmissionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Queue item id (cuid)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING"
+            ]
+          },
+          "remaining": {
+            "type": "number",
+            "description": "Remaining queue submissions available to this listener for the episode"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "remaining"
+        ]
+      },
+      "PollOptionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Poll option id (cuid)"
+          },
+          "text": {
+            "type": "string"
+          },
+          "voteCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "voteCount"
+        ]
+      },
+      "PollResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Poll id (cuid)"
+          },
+          "question": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "ANONYMOUS"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "totalVotes": {
+            "type": "number"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PollOptionResponseDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "visibility",
+          "isActive",
+          "totalVotes",
+          "options"
+        ]
+      },
+      "VotePollDto": {
+        "type": "object",
+        "properties": {
+          "optionId": {
+            "type": "string",
+            "description": "Poll option id (cuid)"
+          }
+        },
+        "required": [
+          "optionId"
+        ]
+      },
+      "CreateReactionDto": {
+        "type": "object",
+        "properties": {
+          "emoji": {
+            "type": "string",
+            "enum": [
+              "🔥",
+              "❤️",
+              "😂",
+              "👏"
+            ]
+          }
+        },
+        "required": [
+          "emoji"
+        ]
+      },
+      "ReactionResponseDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "EngagementUserResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "User id (cuid)"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "handle",
+          "name"
+        ]
+      },
+      "StudioQueueItemResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Queue item id (cuid)"
+          },
+          "episodeId": {
+            "type": "string",
+            "description": "Episode id (cuid)"
+          },
+          "submitterId": {
+            "type": "string",
+            "description": "Submitting user id (cuid)"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "REQUEST",
+              "DEDICATION",
+              "QUESTION"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "recipient": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "QUEUED",
+              "READ",
+              "DECLINED",
+              "EXPIRED",
+              "REMOVED"
+            ]
+          },
+          "actedById": {
+            "type": "string",
+            "nullable": true
+          },
+          "actedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submitter": {
+            "$ref": "#/components/schemas/EngagementUserResponseDto"
+          }
+        },
+        "required": [
+          "id",
+          "episodeId",
+          "submitterId",
+          "type",
+          "text",
+          "recipient",
+          "status",
+          "actedById",
+          "actedAt",
+          "createdAt",
+          "submitter"
+        ]
+      },
+      "StudioQueueResponseDto": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string",
+            "description": "Active episode id (cuid)"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudioQueueItemResponseDto"
+            }
+          }
+        },
+        "required": [
+          "episodeId",
+          "items"
+        ]
+      },
+      "QueueActDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "QUEUE",
+              "READ",
+              "DECLINE"
+            ]
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "QueueActionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Queue item id (cuid)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "READ",
+              "DECLINED"
+            ]
+          },
+          "receipt": {
+            "type": "boolean",
+            "description": "Whether a private queue receipt is emitted to the submitter"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "receipt"
+        ]
+      },
+      "CreatePollDto": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "options": {
+            "minItems": 2,
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "ANONYMOUS"
+            ],
+            "default": "PUBLIC"
+          }
+        },
+        "required": [
+          "question",
+          "options"
+        ]
+      },
+      "PinTopicDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 280
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "PinnedTopicResponseDto": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string",
+            "description": "Active episode id (cuid)"
+          },
+          "text": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "episodeId",
+          "text",
+          "expiresAt"
+        ]
+      },
+      "BoothChatDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "ChatMessageResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Chat message id (cuid)"
+          },
+          "episodeId": {
+            "type": "string",
+            "description": "Active episode id (cuid)"
+          },
+          "content": {
+            "type": "string"
+          },
+          "asBooth": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "author": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EngagementUserResponseDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "episodeId",
+          "content",
+          "asBooth",
+          "createdAt",
+          "author"
+        ]
+      }
+    }
   }
 }

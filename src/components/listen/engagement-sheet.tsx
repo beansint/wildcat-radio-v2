@@ -1,9 +1,14 @@
 "use client";
 
-import { X, Music, Megaphone, HelpCircle } from "lucide-react";
-import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { HelpCircle, Megaphone, Music, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useForm, type FieldErrors } from "react-hook-form";
+import { z } from "zod";
 import type { SheetTab } from "./engagement-tiles";
 import { useEngagementGate, EngagementGateNotice } from "./engagement-gate";
+import { getApiErrorMessage } from "@/lib/api/error-message";
+import type { SubmitQueueItemDto } from "@/lib/api/model";
 import {
   Sheet,
   SheetContent,
@@ -21,6 +26,35 @@ interface EngagementSheetProps {
   onTabChange: (tab: SheetTab) => void;
   onClose: () => void;
   pushToast: (msg: string) => void;
+  onSubmitQueue: (payload: SubmitQueueItemDto) => Promise<unknown>;
+  submitting: boolean;
+  submitError: string | null;
+  disabled: boolean;
+}
+
+const requestSchema = z.object({
+  song: z.string().trim().min(1, "Add a song and artist.").max(240, "Keep it under 240 characters."),
+  note: z.string().trim().max(240, "Keep the note under 240 characters.").optional(),
+});
+
+const dedicationSchema = z.object({
+  body: z.string().trim().min(1, "Write the dedication.").max(500, "Keep it under 500 characters."),
+  to: z.string().trim().max(120, "Keep the recipient under 120 characters.").optional(),
+});
+
+const qaSchema = z.object({
+  body: z.string().trim().min(1, "Write your question.").max(500, "Keep it under 500 characters."),
+});
+
+type RequestForm = z.infer<typeof requestSchema>;
+type DedicationForm = z.infer<typeof dedicationSchema>;
+type QaForm = z.infer<typeof qaSchema>;
+
+function errorText(errors: FieldErrors) {
+  return Object.values(errors)
+    .map((error) => error?.message)
+    .filter(Boolean)
+    .join(" ");
 }
 
 export function EngagementSheet({
@@ -29,51 +63,94 @@ export function EngagementSheet({
   onTabChange,
   onClose,
   pushToast,
+  onSubmitQueue,
+  submitting,
+  submitError,
+  disabled,
 }: EngagementSheetProps) {
   const gate = useEngagementGate();
+  const [localError, setLocalError] = useState<string | null>(null);
+  const reqForm = useForm<RequestForm>({
+    resolver: zodResolver(requestSchema),
+    defaultValues: { song: "", note: "" },
+  });
+  const dedForm = useForm<DedicationForm>({
+    resolver: zodResolver(dedicationSchema),
+    defaultValues: { body: "", to: "" },
+  });
+  const qaForm = useForm<QaForm>({
+    resolver: zodResolver(qaSchema),
+    defaultValues: { body: "" },
+  });
 
-  // Request panel state
-  const [reqSong, setReqSong] = useState("");
-  const [reqNote, setReqNote] = useState("");
+  const activeError = useMemo(() => {
+    if (tab === "req") return errorText(reqForm.formState.errors);
+    if (tab === "ded") return errorText(dedForm.formState.errors);
+    return errorText(qaForm.formState.errors);
+  }, [dedForm.formState.errors, qaForm.formState.errors, reqForm.formState.errors, tab]);
 
-  // Dedication panel state
-  const [dedBody, setDedBody] = useState("");
-  const [dedTo, setDedTo] = useState("");
-
-  // Q&A panel state
-  const [qaBody, setQaBody] = useState("");
-
-  function handleReqSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    // TODO(M5/M6): wire to DJ queue API
-    pushToast("Queued! DJ will play it when ready");
-    setReqSong("");
-    setReqNote("");
-    onClose();
+  async function submitPayload(payload: SubmitQueueItemDto, reset: () => void, success: string) {
+    if (disabled) {
+      setLocalError("No live episode right now.");
+      return;
+    }
+    setLocalError(null);
+    try {
+      await onSubmitQueue(payload);
+      pushToast(success);
+      reset();
+      onClose();
+    } catch (error) {
+      setLocalError(getApiErrorMessage(error));
+    }
   }
 
-  function handleDedSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    // TODO(M5/M6): wire to DJ queue API
-    pushToast("Sent! Watch for it on air");
-    setDedBody("");
-    setDedTo("");
-    onClose();
+  async function handleReqSubmit(values: RequestForm) {
+    const note = values.note?.trim();
+    await submitPayload(
+      {
+        type: "REQUEST",
+        text: note ? `${values.song.trim()}\n${note}` : values.song.trim(),
+      },
+      () => reqForm.reset(),
+      "Request sent to the booth.",
+    );
   }
 
-  function handleQaSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    // TODO(M5/M6): wire to DJ queue API
-    pushToast("Asked! DJ will pick it up");
-    setQaBody("");
-    onClose();
+  async function handleDedSubmit(values: DedicationForm) {
+    await submitPayload(
+      {
+        type: "DEDICATION",
+        text: values.body.trim(),
+        recipient: values.to?.trim() || undefined,
+      },
+      () => dedForm.reset(),
+      "Dedication sent to the booth.",
+    );
   }
+
+  async function handleQaSubmit(values: QaForm) {
+    await submitPayload(
+      {
+        type: "QUESTION",
+        text: values.body.trim(),
+      },
+      () => qaForm.reset(),
+      "Question sent to the booth.",
+    );
+  }
+
+  const alert = localError ?? submitError ?? activeError;
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <SheetContent side="bottom" showCloseButton={false} aria-label="Send to the booth">
+      <SheetContent
+        side="bottom"
+        showCloseButton={false}
+        aria-label="Send to the booth"
+        data-testid="engagement-sheet"
+      >
         <div className="p-4">
-          {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <SheetTitle className="text-lg font-extrabold">Send to the booth</SheetTitle>
             <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
@@ -84,54 +161,69 @@ export function EngagementSheet({
             Send a song request, dedication, or question to the booth.
           </SheetDescription>
 
-          {/* Engagement gate — if not ok, show CTA instead of forms */}
-          {gate !== 'ok' ? (
+          {gate !== "ok" ? (
             <div className="py-4">
               <p className="wc-muted text-sm mb-3">
-                {gate === 'anon'
-                  ? 'Sign in to send requests, dedications, and questions to the booth.'
-                  : 'Verify your email to send requests and dedications.'}
+                {gate === "anon"
+                  ? "Sign in to send requests, dedications, and questions to the booth."
+                  : "Verify your email to send requests and dedications."}
               </p>
               <EngagementGateNotice gate={gate} next="/listen" />
             </div>
           ) : (
             <>
-              {/* Tabs */}
               <div className="wc-seg mb-4">
                 <button
                   className={tab === "req" ? "active" : ""}
-                  onClick={() => onTabChange("req")}
+                  onClick={() => {
+                    setLocalError(null);
+                    onTabChange("req");
+                  }}
+                  data-testid="engagement-tab-request"
                 >
                   <Music className="w-4 h-4" aria-hidden="true" />
                   Request
                 </button>
                 <button
                   className={tab === "ded" ? "active" : ""}
-                  onClick={() => onTabChange("ded")}
+                  onClick={() => {
+                    setLocalError(null);
+                    onTabChange("ded");
+                  }}
+                  data-testid="engagement-tab-dedication"
                 >
                   <Megaphone className="w-4 h-4" aria-hidden="true" />
                   Dedication
                 </button>
                 <button
                   className={tab === "qa" ? "active" : ""}
-                  onClick={() => onTabChange("qa")}
+                  onClick={() => {
+                    setLocalError(null);
+                    onTabChange("qa");
+                  }}
+                  data-testid="engagement-tab-qa"
                 >
                   <HelpCircle className="w-4 h-4" aria-hidden="true" />
                   Q&amp;A
                 </button>
               </div>
 
-              {/* Request panel */}
+              {alert && (
+                <div role="alert" className="mb-3 text-sm font-semibold text-destructive">
+                  {alert}
+                </div>
+              )}
+
               {tab === "req" && (
-                <form onSubmit={handleReqSubmit}>
+                <form onSubmit={reqForm.handleSubmit(handleReqSubmit)}>
                   <Label htmlFor="req-song">Song &amp; artist</Label>
                   <Input
                     id="req-song"
                     className="mb-3"
-                    placeholder="e.g. Ere — Juan Karlos"
-                    value={reqSong}
-                    onChange={(e) => setReqSong(e.target.value)}
-                    required
+                    placeholder="e.g. Ere - Juan Karlos"
+                    data-testid="engagement-request-song"
+                    disabled={submitting || disabled}
+                    {...reqForm.register("song")}
                   />
                   <Label htmlFor="req-note">
                     Note to DJ <span className="wc-muted font-normal">(optional)</span>
@@ -139,28 +231,33 @@ export function EngagementSheet({
                   <Input
                     id="req-note"
                     className="mb-4"
-                    placeholder="Birthday greet sana 🥳"
-                    value={reqNote}
-                    onChange={(e) => setReqNote(e.target.value)}
+                    placeholder="Birthday greet sana"
+                    data-testid="engagement-request-note"
+                    disabled={submitting || disabled}
+                    {...reqForm.register("note")}
                   />
-                  <Button type="submit" className="wc-btn-block">
+                  <Button
+                    type="submit"
+                    className="wc-btn-block"
+                    data-testid="engagement-submit"
+                    disabled={submitting || disabled}
+                  >
                     Send request
                   </Button>
                 </form>
               )}
 
-              {/* Dedication panel */}
               {tab === "ded" && (
-                <form onSubmit={handleDedSubmit}>
+                <form onSubmit={dedForm.handleSubmit(handleDedSubmit)}>
                   <Label htmlFor="ded-body">Your shout-out / bati</Label>
                   <Textarea
                     id="ded-body"
                     className="mb-3"
                     rows={2}
                     placeholder="Para sa BSIT-3A, padayon mga 'dong!"
-                    value={dedBody}
-                    onChange={(e) => setDedBody(e.target.value)}
-                    required
+                    data-testid="engagement-dedication-body"
+                    disabled={submitting || disabled}
+                    {...dedForm.register("body")}
                   />
                   <Label htmlFor="ded-to">
                     To <span className="wc-muted font-normal">(optional)</span>
@@ -169,36 +266,46 @@ export function EngagementSheet({
                     id="ded-to"
                     className="mb-4"
                     placeholder="BSIT-3A"
-                    value={dedTo}
-                    onChange={(e) => setDedTo(e.target.value)}
+                    data-testid="engagement-dedication-to"
+                    disabled={submitting || disabled}
+                    {...dedForm.register("to")}
                   />
-                  <Button type="submit" className="wc-btn-block">
+                  <Button
+                    type="submit"
+                    className="wc-btn-block"
+                    data-testid="engagement-submit"
+                    disabled={submitting || disabled}
+                  >
                     Send dedication
                   </Button>
                 </form>
               )}
 
-              {/* Q&A panel */}
               {tab === "qa" && (
-                <form onSubmit={handleQaSubmit}>
+                <form onSubmit={qaForm.handleSubmit(handleQaSubmit)}>
                   <Label htmlFor="qa-body">Your question</Label>
                   <Textarea
                     id="qa-body"
                     className="mb-4"
                     rows={3}
                     placeholder="What's your favorite OPM album of all time?"
-                    value={qaBody}
-                    onChange={(e) => setQaBody(e.target.value)}
-                    required
+                    data-testid="engagement-qa-body"
+                    disabled={submitting || disabled}
+                    {...qaForm.register("body")}
                   />
-                  <Button type="submit" className="wc-btn-block">
+                  <Button
+                    type="submit"
+                    className="wc-btn-block"
+                    data-testid="engagement-submit"
+                    disabled={submitting || disabled}
+                  >
                     Ask the DJ
                   </Button>
                 </form>
               )}
 
               <p className="wc-help mt-3">
-                The broadcast comes first — your message goes privately to the DJ&apos;s queue. You&apos;ll get a receipt only when it&apos;s used on air.
+                The broadcast comes first. Your message goes privately to the DJ&apos;s queue. You&apos;ll get a receipt only when it&apos;s used on air.
               </p>
             </>
           )}

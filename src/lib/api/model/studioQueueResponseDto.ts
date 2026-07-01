@@ -10,5 +10,10 @@ import type { StudioQueueItemResponseDto } from './studioQueueItemResponseDto';
 export interface StudioQueueResponseDto {
   /** Active episode id (cuid) */
   episodeId: string;
+  /**
+     * Current show name, for "Posting as 🎙 <show>"
+     * @nullable
+     */
+  showName: string | null;
   items: StudioQueueItemResponseDto[];
 }

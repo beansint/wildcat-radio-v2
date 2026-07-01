@@ -29,7 +29,10 @@ import type {
   PollResponseDto,
   QueueActDto,
   QueueActionResponseDto,
-  StudioQueueResponseDto
+  StudioQueueResponseDto,
+  StudioSessionClearResponseDto,
+  StudioSessionResponseDto,
+  StudioSessionStatusResponseDto
 } from '../../model';
 
 import { customFetch } from '../../fetcher';
@@ -935,6 +938,306 @@ export function usePostBoothChat<TData = Awaited<ReturnType<typeof postBoothChat
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getPostBoothChatQueryOptions(boothChatDto,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getCreateStationSessionUrl = () => {
+
+
+
+
+  return `/api/studio/session`
+}
+
+/**
+ * @summary Start a cookie-based station session
+ */
+export const createStationSession = async ( options?: RequestInit): Promise<StudioSessionResponseDto> => {
+
+  return customFetch<StudioSessionResponseDto>(getCreateStationSessionUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateStationSessionQueryKey = () => {
+    return [
+    'POST', `/api/studio/session`
+    ] as const;
+    }
+
+
+export const getCreateStationSessionQueryOptions = <TData = Awaited<ReturnType<typeof createStationSession>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createStationSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCreateStationSessionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof createStationSession>>> = ({ signal }) => createStationSession({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof createStationSession>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type CreateStationSessionQueryResult = NonNullable<Awaited<ReturnType<typeof createStationSession>>>
+export type CreateStationSessionQueryError = unknown
+
+
+export function useCreateStationSession<TData = Awaited<ReturnType<typeof createStationSession>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof createStationSession>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof createStationSession>>,
+          TError,
+          Awaited<ReturnType<typeof createStationSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCreateStationSession<TData = Awaited<ReturnType<typeof createStationSession>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createStationSession>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof createStationSession>>,
+          TError,
+          Awaited<ReturnType<typeof createStationSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCreateStationSession<TData = Awaited<ReturnType<typeof createStationSession>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createStationSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Start a cookie-based station session
+ */
+
+export function useCreateStationSession<TData = Awaited<ReturnType<typeof createStationSession>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createStationSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getCreateStationSessionQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getGetStationSessionUrl = () => {
+
+
+
+
+  return `/api/studio/session`
+}
+
+/**
+ * @summary Check the station session status
+ */
+export const getStationSession = async ( options?: RequestInit): Promise<StudioSessionStatusResponseDto> => {
+
+  return customFetch<StudioSessionStatusResponseDto>(getGetStationSessionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStationSessionQueryKey = () => {
+    return [
+    `/api/studio/session`
+    ] as const;
+    }
+
+
+export const getGetStationSessionQueryOptions = <TData = Awaited<ReturnType<typeof getStationSession>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStationSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStationSessionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStationSession>>> = ({ signal }) => getStationSession({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStationSession>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetStationSessionQueryResult = NonNullable<Awaited<ReturnType<typeof getStationSession>>>
+export type GetStationSessionQueryError = unknown
+
+
+export function useGetStationSession<TData = Awaited<ReturnType<typeof getStationSession>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStationSession>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStationSession>>,
+          TError,
+          Awaited<ReturnType<typeof getStationSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetStationSession<TData = Awaited<ReturnType<typeof getStationSession>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStationSession>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStationSession>>,
+          TError,
+          Awaited<ReturnType<typeof getStationSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetStationSession<TData = Awaited<ReturnType<typeof getStationSession>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStationSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Check the station session status
+ */
+
+export function useGetStationSession<TData = Awaited<ReturnType<typeof getStationSession>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStationSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetStationSessionQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getClearStationSessionUrl = () => {
+
+
+
+
+  return `/api/studio/session`
+}
+
+/**
+ * @summary Clear the station session cookie
+ */
+export const clearStationSession = async ( options?: RequestInit): Promise<StudioSessionClearResponseDto> => {
+
+  return customFetch<StudioSessionClearResponseDto>(getClearStationSessionUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getClearStationSessionQueryKey = () => {
+    return [
+    'DELETE', `/api/studio/session`
+    ] as const;
+    }
+
+
+export const getClearStationSessionQueryOptions = <TData = Awaited<ReturnType<typeof clearStationSession>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof clearStationSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getClearStationSessionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof clearStationSession>>> = ({ signal }) => clearStationSession({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof clearStationSession>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ClearStationSessionQueryResult = NonNullable<Awaited<ReturnType<typeof clearStationSession>>>
+export type ClearStationSessionQueryError = unknown
+
+
+export function useClearStationSession<TData = Awaited<ReturnType<typeof clearStationSession>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof clearStationSession>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof clearStationSession>>,
+          TError,
+          Awaited<ReturnType<typeof clearStationSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useClearStationSession<TData = Awaited<ReturnType<typeof clearStationSession>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof clearStationSession>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof clearStationSession>>,
+          TError,
+          Awaited<ReturnType<typeof clearStationSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useClearStationSession<TData = Awaited<ReturnType<typeof clearStationSession>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof clearStationSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Clear the station session cookie
+ */
+
+export function useClearStationSession<TData = Awaited<ReturnType<typeof clearStationSession>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof clearStationSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getClearStationSessionQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

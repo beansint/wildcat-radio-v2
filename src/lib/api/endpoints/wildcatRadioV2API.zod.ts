@@ -186,6 +186,7 @@ export const ReactResponse = zod.object({
  */
 export const GetStudioQueueResponse = zod.object({
   "episodeId": zod.string().describe('Active episode id (cuid)'),
+  "showName": zod.string().nullable().describe('Current show name, for \"Posting as 🎙 <show>\"'),
   "items": zod.array(zod.object({
   "id": zod.string().describe('Queue item id (cuid)'),
   "episodeId": zod.string().describe('Episode id (cuid)'),
@@ -280,17 +281,19 @@ export const ClosePollResponse = zod.object({
  */
 export const setPinnedTopicBodyTextMax = 280;
 
-
+export const setPinnedTopicBodyExpiresAtEpisodeEndDefault = true;
 
 export const SetPinnedTopicBody = zod.object({
   "text": zod.string().max(setPinnedTopicBodyTextMax),
-  "expiresAt": zod.iso.datetime({"offset":true}).optional()
+  "expiresAt": zod.iso.datetime({"offset":true}).optional(),
+  "expiresAtEpisodeEnd": zod.boolean().default(setPinnedTopicBodyExpiresAtEpisodeEndDefault)
 })
 
 export const SetPinnedTopicResponse = zod.object({
   "episodeId": zod.string().describe('Active episode id (cuid)'),
   "text": zod.string(),
-  "expiresAt": zod.iso.datetime({"offset":true}).nullable()
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAtEpisodeEnd": zod.boolean().describe('Whether this pin auto-clears when the episode ends')
 })
 
 
@@ -316,4 +319,30 @@ export const PostBoothChatResponse = zod.object({
   "handle": zod.string(),
   "name": zod.string()
 }).nullable()
+})
+
+
+/**
+ * @summary Start a cookie-based station session
+ */
+export const CreateStationSessionResponse = zod.object({
+  "ok": zod.literal(true),
+  "expiresAt": zod.number().describe('Session expiry, epoch milliseconds')
+})
+
+
+/**
+ * @summary Check the station session status
+ */
+export const GetStationSessionResponse = zod.object({
+  "active": zod.boolean(),
+  "label": zod.string().nullable()
+})
+
+
+/**
+ * @summary Clear the station session cookie
+ */
+export const ClearStationSessionResponse = zod.object({
+  "ok": zod.literal(true)
 })

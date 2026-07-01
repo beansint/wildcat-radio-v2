@@ -172,8 +172,12 @@ export function EngagementSheet({
             </div>
           ) : (
             <>
-              <div className="wc-seg mb-4">
+              <div className="wc-seg mb-4" role="tablist" aria-label="Message type">
                 <button
+                  id="engagement-tab-req-btn"
+                  role="tab"
+                  aria-selected={tab === "req"}
+                  aria-controls="engagement-panel-req"
                   className={tab === "req" ? "active" : ""}
                   onClick={() => {
                     setLocalError(null);
@@ -185,6 +189,10 @@ export function EngagementSheet({
                   Request
                 </button>
                 <button
+                  id="engagement-tab-ded-btn"
+                  role="tab"
+                  aria-selected={tab === "ded"}
+                  aria-controls="engagement-panel-ded"
                   className={tab === "ded" ? "active" : ""}
                   onClick={() => {
                     setLocalError(null);
@@ -196,6 +204,10 @@ export function EngagementSheet({
                   Dedication
                 </button>
                 <button
+                  id="engagement-tab-qa-btn"
+                  role="tab"
+                  aria-selected={tab === "qa"}
+                  aria-controls="engagement-panel-qa"
                   className={tab === "qa" ? "active" : ""}
                   onClick={() => {
                     setLocalError(null);
@@ -215,93 +227,99 @@ export function EngagementSheet({
               )}
 
               {tab === "req" && (
-                <form onSubmit={reqForm.handleSubmit(handleReqSubmit)}>
-                  <Label htmlFor="req-song">Song &amp; artist</Label>
-                  <Input
-                    id="req-song"
-                    className="mb-3"
-                    placeholder="e.g. Ere - Juan Karlos"
-                    data-testid="engagement-request-song"
-                    disabled={submitting || disabled}
-                    {...reqForm.register("song")}
-                  />
-                  <Label htmlFor="req-note">
-                    Note to DJ <span className="wc-muted font-normal">(optional)</span>
-                  </Label>
-                  <Input
-                    id="req-note"
-                    className="mb-4"
-                    placeholder="Birthday greet sana"
-                    data-testid="engagement-request-note"
-                    disabled={submitting || disabled}
-                    {...reqForm.register("note")}
-                  />
-                  <Button
-                    type="submit"
-                    className="wc-btn-block"
-                    data-testid="engagement-submit"
-                    disabled={submitting || disabled}
-                  >
-                    Send request
-                  </Button>
-                </form>
+                <div role="tabpanel" id="engagement-panel-req" aria-labelledby="engagement-tab-req-btn">
+                  <form onSubmit={reqForm.handleSubmit(handleReqSubmit)}>
+                    <Label htmlFor="req-song">Song &amp; artist</Label>
+                    <Input
+                      id="req-song"
+                      className="mb-3"
+                      placeholder="e.g. Ere - Juan Karlos"
+                      data-testid="engagement-request-song"
+                      disabled={submitting || disabled}
+                      {...reqForm.register("song")}
+                    />
+                    <Label htmlFor="req-note">
+                      Note to DJ <span className="wc-muted font-normal">(optional)</span>
+                    </Label>
+                    <Input
+                      id="req-note"
+                      className="mb-4"
+                      placeholder="Birthday greet sana"
+                      data-testid="engagement-request-note"
+                      disabled={submitting || disabled}
+                      {...reqForm.register("note")}
+                    />
+                    <Button
+                      type="submit"
+                      className="wc-btn-block"
+                      data-testid="engagement-submit"
+                      disabled={submitting || disabled}
+                    >
+                      Send request
+                    </Button>
+                  </form>
+                </div>
               )}
 
               {tab === "ded" && (
-                <form onSubmit={dedForm.handleSubmit(handleDedSubmit)}>
-                  <Label htmlFor="ded-body">Your shout-out / bati</Label>
-                  <Textarea
-                    id="ded-body"
-                    className="mb-3"
-                    rows={2}
-                    placeholder="Para sa BSIT-3A, padayon mga 'dong!"
-                    data-testid="engagement-dedication-body"
-                    disabled={submitting || disabled}
-                    {...dedForm.register("body")}
-                  />
-                  <Label htmlFor="ded-to">
-                    To <span className="wc-muted font-normal">(optional)</span>
-                  </Label>
-                  <Input
-                    id="ded-to"
-                    className="mb-4"
-                    placeholder="BSIT-3A"
-                    data-testid="engagement-dedication-to"
-                    disabled={submitting || disabled}
-                    {...dedForm.register("to")}
-                  />
-                  <Button
-                    type="submit"
-                    className="wc-btn-block"
-                    data-testid="engagement-submit"
-                    disabled={submitting || disabled}
-                  >
-                    Send dedication
-                  </Button>
-                </form>
+                <div role="tabpanel" id="engagement-panel-ded" aria-labelledby="engagement-tab-ded-btn">
+                  <form onSubmit={dedForm.handleSubmit(handleDedSubmit)}>
+                    <Label htmlFor="ded-body">Your shout-out / bati</Label>
+                    <Textarea
+                      id="ded-body"
+                      className="mb-3"
+                      rows={2}
+                      placeholder="Para sa BSIT-3A, padayon mga 'dong!"
+                      data-testid="engagement-dedication-body"
+                      disabled={submitting || disabled}
+                      {...dedForm.register("body")}
+                    />
+                    <Label htmlFor="ded-to">
+                      To <span className="wc-muted font-normal">(optional)</span>
+                    </Label>
+                    <Input
+                      id="ded-to"
+                      className="mb-4"
+                      placeholder="BSIT-3A"
+                      data-testid="engagement-dedication-to"
+                      disabled={submitting || disabled}
+                      {...dedForm.register("to")}
+                    />
+                    <Button
+                      type="submit"
+                      className="wc-btn-block"
+                      data-testid="engagement-submit"
+                      disabled={submitting || disabled}
+                    >
+                      Send dedication
+                    </Button>
+                  </form>
+                </div>
               )}
 
               {tab === "qa" && (
-                <form onSubmit={qaForm.handleSubmit(handleQaSubmit)}>
-                  <Label htmlFor="qa-body">Your question</Label>
-                  <Textarea
-                    id="qa-body"
-                    className="mb-4"
-                    rows={3}
-                    placeholder="What's your favorite OPM album of all time?"
-                    data-testid="engagement-qa-body"
-                    disabled={submitting || disabled}
-                    {...qaForm.register("body")}
-                  />
-                  <Button
-                    type="submit"
-                    className="wc-btn-block"
-                    data-testid="engagement-submit"
-                    disabled={submitting || disabled}
-                  >
-                    Ask the DJ
-                  </Button>
-                </form>
+                <div role="tabpanel" id="engagement-panel-qa" aria-labelledby="engagement-tab-qa-btn">
+                  <form onSubmit={qaForm.handleSubmit(handleQaSubmit)}>
+                    <Label htmlFor="qa-body">Your question</Label>
+                    <Textarea
+                      id="qa-body"
+                      className="mb-4"
+                      rows={3}
+                      placeholder="What's your favorite OPM album of all time?"
+                      data-testid="engagement-qa-body"
+                      disabled={submitting || disabled}
+                      {...qaForm.register("body")}
+                    />
+                    <Button
+                      type="submit"
+                      className="wc-btn-block"
+                      data-testid="engagement-submit"
+                      disabled={submitting || disabled}
+                    >
+                      Ask the DJ
+                    </Button>
+                  </form>
+                </div>
               )}
 
               <p className="wc-help mt-3">

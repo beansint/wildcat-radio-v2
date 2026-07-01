@@ -6,9 +6,6 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface PinTopicDto {
-  /** @maxLength 280 */
-  text: string;
-  expiresAt?: string;
-  expiresAtEpisodeEnd?: boolean;
+export interface StudioSessionClearResponseDto {
+  ok: true;
 }

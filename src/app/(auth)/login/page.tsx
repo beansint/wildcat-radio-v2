@@ -12,7 +12,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { ChevronLeft, Building2 } from 'lucide-react';
+import { ChevronLeft, Building2, Eye, EyeOff } from 'lucide-react';
 import { z } from 'zod/v4';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,7 +34,8 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const nextUrl      = searchParams.get('next') ?? '/';
 
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError]         = useState<string | null>(null);
+  const [showPassword, setShowPassword]   = useState(false);
 
   const { register, handleSubmit, formState: { isSubmitting } } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -121,15 +122,29 @@ function LoginForm() {
         />
 
         <Label htmlFor="login-pass">Password</Label>
-        <Input
-          id="login-pass"
-          type="password"
-          autoComplete="current-password"
-          className="mb-2"
-          placeholder="••••••••"
-          data-testid="auth-password"
-          {...register('password')}
-        />
+        <div className="relative mb-2">
+          <Input
+            id="login-pass"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            className="pr-11"
+            placeholder="••••••••"
+            data-testid="auth-password"
+            {...register('password')}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            aria-pressed={showPassword}
+            data-testid="auth-password-toggle"
+            className="absolute right-0 top-0 h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl"
+          >
+            {showPassword
+              ? <EyeOff className="w-4 h-4" aria-hidden="true" />
+              : <Eye className="w-4 h-4" aria-hidden="true" />}
+          </button>
+        </div>
 
         <div className="flex justify-end mb-4">
           <Link href="/forgot-password" className="text-sm font-semibold text-maroon">

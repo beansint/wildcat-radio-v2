@@ -43,7 +43,10 @@ export function ReactionBar({ hype, onReact, reacting, error, isLive }: Reaction
 
   async function handleReact(key: ReactionKey) {
     const btn = bumpRefs.current[key];
-    if (btn) {
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (btn && !prefersReducedMotion) {
       btn.animate([{ transform: "scale(1)" }, { transform: "scale(1.18)" }, { transform: "scale(1)" }], {
         duration: 220,
         easing: "ease-out",
@@ -89,13 +92,13 @@ export function ReactionBar({ hype, onReact, reacting, error, isLive }: Reaction
               key={key}
               className="rx"
               aria-label={r.label}
+              aria-busy={reacting || undefined}
               disabled={reacting || !isLive}
               onClick={() => handleReact(key)}
               ref={(el) => { bumpRefs.current[key] = el; }}
               data-testid={r.testId}
             >
-              {r.emoji}
-              <b>{reacting ? "..." : "send"}</b>
+              <span aria-hidden="true">{r.emoji}</span>
             </button>
           );
         })}

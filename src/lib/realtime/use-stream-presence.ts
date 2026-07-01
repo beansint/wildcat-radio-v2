@@ -46,6 +46,17 @@ export function useStreamPresence(
 
     socket.on("stream:status", onStreamStatus);
 
+    // Re-join presence after any (re)connect — the server drops room
+    // membership on disconnect, so a reconnect (e.g. triggered by an auth
+    // handshake cycle elsewhere) must re-emit `listening:join` or the
+    // listener silently falls out of the live count until a full reload.
+    function onConnect() {
+      if (active && prevEpisodeId.current) {
+        socket.emit("listening:join", { episodeId: prevEpisodeId.current });
+      }
+    }
+    socket.on("connect", onConnect);
+
     // Join / leave presence
     if (active && episodeId) {
       if (prevEpisodeId.current && prevEpisodeId.current !== episodeId) {
@@ -60,6 +71,7 @@ export function useStreamPresence(
 
     return () => {
       socket.off("stream:status", onStreamStatus);
+      socket.off("connect", onConnect);
     };
   }, [episodeId, active]);
 

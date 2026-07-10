@@ -1,8 +1,11 @@
 "use client";
 
 /**
- * `/mod` layout — role-gated staff shell, layered on top of the `(app)`
- * client-side session guard (src/app/(app)/layout.tsx).
+ * `/mod` layout — role-gated staff shell in the `(staff)` route group.
+ *
+ * Deliberately NOT under `(app)`: staff pages use the black+gold sidebar shell,
+ * not the public top-nav/player chrome (prototype parity). This layout runs its
+ * own session guard via `useSession` and hides the global player like `/studio`.
  *
  * - isPending          → skeleton chrome (no layout shift)
  * - !data               → redirect to /login?next=<pathname>
@@ -30,6 +33,13 @@ export default function ModLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const user = data?.user as SessionUser | undefined;
+
+  // Hide the persistent global player on staff pages (parity with the
+  // prototype + the /studio booth). CSS: `body.wc-staff-page .wc-player`.
+  useEffect(() => {
+    document.body.classList.add("wc-staff-page");
+    return () => document.body.classList.remove("wc-staff-page");
+  }, []);
 
   useEffect(() => {
     if (isPending) return;

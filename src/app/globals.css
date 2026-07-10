@@ -528,6 +528,45 @@ body.wc-studio-page .wc-player { display: none; }
 .wc-mono-5 { background: linear-gradient(145deg,#6d4150,#3a2530); }
 .wc-mono-6 { background: linear-gradient(145deg,#a8763a,#5a3a14); }
 
+/* ------------------------------------------------------------- sidebar (staff) */
+.wc-shell { display: flex; min-height: 100dvh; }
+.wc-sidebar {
+  width: 248px; flex: none; background: var(--card); border-right: 1px solid var(--border);
+  position: sticky; top: 0; height: 100dvh; overflow-y: auto; padding: 1rem .75rem;
+  display: flex; flex-direction: column;
+}
+.wc-sidebar a {
+  display: flex; align-items: center; gap: .65rem; padding: .55rem .7rem; border-radius: 10px;
+  font-size: .9rem; font-weight: 600; color: var(--muted-foreground); text-decoration: none; margin-bottom: 2px;
+  transition: background .15s ease, color .15s ease;
+}
+.wc-sidebar a:hover { background: var(--muted); color: var(--foreground); }
+.wc-sidebar a.active { background: var(--accent); color: var(--accent-foreground); box-shadow: inset 3px 0 0 var(--maroon); }
+.dark .wc-sidebar a.active { box-shadow: inset 3px 0 0 var(--gold); }
+.wc-sidebar a.active svg { color: var(--maroon); }
+.dark .wc-sidebar a.active svg { color: var(--gold); }
+.wc-sidebar-group { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted-foreground); padding: .8rem .7rem .3rem; opacity: .8; }
+.wc-main { flex: 1; min-width: 0; }
+.wc-staffbar { display: none; }
+@media (max-width: 1023px) {
+  .wc-sidebar { position: fixed; top: 0; left: 0; z-index: 85; transform: translateX(-100%); transition: transform .2s ease; box-shadow: 0 0 40px rgba(0,0,0,.4); }
+  .wc-sidebar.open { transform: translateX(0); }
+  .wc-staffbar {
+    display: flex; align-items: center; gap: .6rem; position: sticky; top: 0; z-index: 40;
+    background: color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border); padding: .6rem .9rem;
+  }
+}
+
+/* --------------------------------------------------------------- tables */
+.wc-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.wc-table th { text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-foreground); font-weight: 700; padding: .6rem .85rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.wc-table td { padding: .72rem .85rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.wc-table tbody tr { transition: background .12s ease; }
+.wc-table tbody tr:hover { background: color-mix(in srgb, var(--muted) 55%, transparent); }
+.wc-table tr:last-child td { border-bottom: none; }
+.wc-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }

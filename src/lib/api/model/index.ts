@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
+export * from './attendanceControllerListParams';
 export * from './boothChatDto';
 export * from './chatMessageResponseDto';
 export * from './createPollDto';
@@ -25,6 +26,7 @@ export * from './queueActionResponseDtoStatus';
 export * from './queueSubmissionResponseDto';
 export * from './queueSubmissionResponseDtoStatus';
 export * from './reactionResponseDto';
+export * from './rosterControllerListParams';
 export * from './studioQueueItemResponseDto';
 export * from './studioQueueItemResponseDtoStatus';
 export * from './studioQueueItemResponseDtoType';

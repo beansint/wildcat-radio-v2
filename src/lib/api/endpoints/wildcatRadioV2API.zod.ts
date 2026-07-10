@@ -346,3 +346,88 @@ export const GetStationSessionResponse = zod.object({
 export const ClearStationSessionResponse = zod.object({
   "ok": zod.literal(true)
 })
+
+
+/**
+ * @summary List roster entries (DJs)
+ */
+export const RosterControllerListQueryParams = zod.object({
+  "includeArchived": zod.boolean().optional()
+})
+
+export const RosterControllerListResponse = zod.unknown()
+
+
+/**
+ * @summary Create a roster entry
+ */
+export const RosterControllerCreateResponse = zod.unknown()
+
+
+/**
+ * @summary Update or archive a roster entry
+ */
+export const RosterControllerUpdateParams = zod.object({
+  "id": zod.string()
+})
+
+export const RosterControllerUpdateResponse = zod.unknown()
+
+
+/**
+ * @summary List shows with roster and cadence
+ */
+export const ShowsControllerListResponse = zod.unknown()
+
+
+/**
+ * @summary Create a show
+ */
+export const ShowsControllerCreateResponse = zod.unknown()
+
+
+/**
+ * @summary Update a show
+ */
+export const ShowsControllerUpdateParams = zod.object({
+  "id": zod.string()
+})
+
+export const ShowsControllerUpdateResponse = zod.unknown()
+
+
+/**
+ * @summary Delete a show
+ */
+export const ShowsControllerRemoveParams = zod.object({
+  "id": zod.string()
+})
+
+export const ShowsControllerRemoveResponse = zod.void()
+
+
+/**
+ * @summary Get public weekly schedule grid
+ */
+export const ScheduleControllerGetWeeklyScheduleResponse = zod.unknown()
+
+
+/**
+ * @summary Get attendance sheet for a date, optionally filtered by show
+ */
+export const AttendanceControllerListQueryParams = zod.object({
+  "showId": zod.string().optional(),
+  "date": zod.string().describe('YYYY-MM-DD')
+})
+
+export const AttendanceControllerListResponse = zod.unknown()
+
+
+/**
+ * @summary Correct an attendance record (time in/out, note)
+ */
+export const AttendanceControllerCorrectParams = zod.object({
+  "recordId": zod.string()
+})
+
+export const AttendanceControllerCorrectResponse = zod.unknown()

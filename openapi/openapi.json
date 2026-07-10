@@ -646,6 +646,213 @@
           "studio"
         ]
       }
+    },
+    "/api/roster": {
+      "get": {
+        "operationId": "RosterController_list",
+        "parameters": [
+          {
+            "name": "includeArchived",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of roster entries"
+          }
+        },
+        "summary": "List roster entries (DJs)",
+        "tags": [
+          "roster"
+        ]
+      },
+      "post": {
+        "operationId": "RosterController_create",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Created roster entry"
+          }
+        },
+        "summary": "Create a roster entry",
+        "tags": [
+          "roster"
+        ]
+      }
+    },
+    "/api/roster/{id}": {
+      "patch": {
+        "operationId": "RosterController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated roster entry"
+          }
+        },
+        "summary": "Update or archive a roster entry",
+        "tags": [
+          "roster"
+        ]
+      }
+    },
+    "/api/shows": {
+      "get": {
+        "operationId": "ShowsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Array of shows"
+          }
+        },
+        "summary": "List shows with roster and cadence",
+        "tags": [
+          "shows"
+        ]
+      },
+      "post": {
+        "operationId": "ShowsController_create",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Created show"
+          }
+        },
+        "summary": "Create a show",
+        "tags": [
+          "shows"
+        ]
+      }
+    },
+    "/api/shows/{id}": {
+      "patch": {
+        "operationId": "ShowsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated show"
+          }
+        },
+        "summary": "Update a show",
+        "tags": [
+          "shows"
+        ]
+      },
+      "delete": {
+        "operationId": "ShowsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Delete a show",
+        "tags": [
+          "shows"
+        ]
+      }
+    },
+    "/api/schedule": {
+      "get": {
+        "operationId": "ScheduleController_getWeeklySchedule",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Weekly schedule grid, MON..SUN"
+          }
+        },
+        "summary": "Get public weekly schedule grid",
+        "tags": [
+          "schedule"
+        ]
+      }
+    },
+    "/api/attendance": {
+      "get": {
+        "operationId": "AttendanceController_list",
+        "parameters": [
+          {
+            "name": "showId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "required": true,
+            "in": "query",
+            "description": "YYYY-MM-DD",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of attendance rows"
+          }
+        },
+        "summary": "Get attendance sheet for a date, optionally filtered by show",
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/attendance/{recordId}": {
+      "patch": {
+        "operationId": "AttendanceController_correct",
+        "parameters": [
+          {
+            "name": "recordId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Corrected attendance row"
+          }
+        },
+        "summary": "Correct an attendance record (time in/out, note)",
+        "tags": [
+          "attendance"
+        ]
+      }
     }
   },
   "info": {

@@ -9,7 +9,7 @@ import { useSession, type SessionUser } from "@/lib/auth/client";
 const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/listen", label: "Listen" },
-  { href: "#", label: "Schedule" },
+  { href: "/schedule", label: "Schedule" },
   { href: "#", label: "Shows" },
   { href: "#", label: "DJs" },
   { href: "#", label: "Charts" },

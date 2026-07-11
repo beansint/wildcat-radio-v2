@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 const NAV_ITEMS = [
   { href: "/", label: "Home", Icon: Home },
   { href: "/listen", label: "Listen", Icon: Radio },
-  { href: "#", label: "Schedule", Icon: CalendarDays },
+  { href: "/schedule", label: "Schedule", Icon: CalendarDays },
   { href: "#", label: "Shows", Icon: Disc3 },
   { href: "#", label: "DJs", Icon: Mic2 },
   { href: "#", label: "Charts", Icon: BarChart3 },

@@ -7,6 +7,8 @@
  */
 
 export * from './attendanceControllerListParams.ts';
+export * from './attendanceRowDto.ts';
+export * from './attendanceRowDtoStatus.ts';
 export * from './boothChatDto.ts';
 export * from './chatMessageResponseDto.ts';
 export * from './createPollDto.ts';
@@ -27,13 +29,26 @@ export * from './queueSubmissionResponseDto.ts';
 export * from './queueSubmissionResponseDtoStatus.ts';
 export * from './reactionResponseDto.ts';
 export * from './rosterControllerListParams.ts';
+export * from './rosterEntryDto.ts';
+export * from './rosterRefDto.ts';
+export * from './scheduleDayDto.ts';
+export * from './scheduleDto.ts';
+export * from './scheduleShowDto.ts';
+export * from './showDto.ts';
+export * from './showDtoCadence.ts';
+export * from './studioAttendeeDto.ts';
+export * from './studioEpisodeDto.ts';
 export * from './studioQueueItemResponseDto.ts';
 export * from './studioQueueItemResponseDtoStatus.ts';
 export * from './studioQueueItemResponseDtoType.ts';
 export * from './studioQueueResponseDto.ts';
+export * from './studioRosterEntryDto.ts';
 export * from './studioSessionClearResponseDto.ts';
 export * from './studioSessionResponseDto.ts';
 export * from './studioSessionStatusResponseDto.ts';
+export * from './studioSlotRosterEntryDto.ts';
+export * from './studioTodayDto.ts';
+export * from './studioTodayShowDto.ts';
 export * from './submitQueueItemDto.ts';
 export * from './submitQueueItemDtoType.ts';
 export * from './votePollDto.ts';

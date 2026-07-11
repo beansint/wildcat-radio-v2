@@ -21,7 +21,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  RosterControllerListParams
+  RosterControllerListParams,
+  RosterEntryDto
 } from '../../model';
 
 import { customFetch } from '../../fetcher';
@@ -49,9 +50,9 @@ export const getRosterControllerListUrl = (params?: RosterControllerListParams,)
 /**
  * @summary List roster entries (DJs)
  */
-export const rosterControllerList = async (params?: RosterControllerListParams, options?: RequestInit): Promise<void> => {
+export const rosterControllerList = async (params?: RosterControllerListParams, options?: RequestInit): Promise<RosterEntryDto[]> => {
 
-  return customFetch<void>(getRosterControllerListUrl(params),
+  return customFetch<RosterEntryDto[]>(getRosterControllerListUrl(params),
   {
     ...options,
     method: 'GET'
@@ -149,9 +150,9 @@ export const getRosterControllerCreateUrl = () => {
 /**
  * @summary Create a roster entry
  */
-export const rosterControllerCreate = async ( options?: RequestInit): Promise<void> => {
+export const rosterControllerCreate = async ( options?: RequestInit): Promise<RosterEntryDto> => {
 
-  return customFetch<void>(getRosterControllerCreateUrl(),
+  return customFetch<RosterEntryDto>(getRosterControllerCreateUrl(),
   {
     ...options,
     method: 'POST'
@@ -249,9 +250,9 @@ export const getRosterControllerUpdateUrl = (id: string,) => {
 /**
  * @summary Update or archive a roster entry
  */
-export const rosterControllerUpdate = async (id: string, options?: RequestInit): Promise<void> => {
+export const rosterControllerUpdate = async (id: string, options?: RequestInit): Promise<RosterEntryDto> => {
 
-  return customFetch<void>(getRosterControllerUpdateUrl(id),
+  return customFetch<RosterEntryDto>(getRosterControllerUpdateUrl(id),
   {
     ...options,
     method: 'PATCH'

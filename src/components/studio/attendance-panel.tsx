@@ -31,7 +31,7 @@ import {
   useGetStudioToday,
 } from "@/lib/api/endpoints/studio/studio";
 import { getApiErrorMessage } from "@/lib/api/error-message";
-import type { StudioTodayDto, StudioTodayShowDto } from "@/lib/studio/types";
+import type { StudioTodayDto, StudioTodayShowDto } from "@/lib/api/model";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/listen/toast";
 import { SubTimeInDialog } from "@/components/studio/sub-timein-dialog";
@@ -57,7 +57,10 @@ function formatClock(iso: string | null): string {
 function scheduleRowMeta(show: StudioTodayShowDto): { label: string; pillClass: string } {
   if (show.status === "ON_AIR") return { label: "On air", pillClass: "wc-badge-live" };
   if (show.status === "TECH_DIFFICULTIES") return { label: "Tech issues", pillClass: "wc-pill-bad" };
-  const scheduledMs = new Date(show.scheduledFor).getTime();
+  // `scheduledFor` is nullable for an ad-hoc episode with no show attached —
+  // treat "no schedule" the same as "already happened" (Done), same as an
+  // episode whose scheduled time has passed.
+  const scheduledMs = show.scheduledFor ? new Date(show.scheduledFor).getTime() : 0;
   if (scheduledMs <= Date.now()) return { label: "Done", pillClass: "wc-pill-neutral" };
   return { label: "Upcoming", pillClass: "wc-pill-warn" };
 }

@@ -21,7 +21,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  AttendanceControllerListParams
+  AttendanceControllerListParams,
+  AttendanceRowDto
 } from '../../model';
 
 import { customFetch } from '../../fetcher';
@@ -49,9 +50,9 @@ export const getAttendanceControllerListUrl = (params: AttendanceControllerListP
 /**
  * @summary Get attendance sheet for a date, optionally filtered by show
  */
-export const attendanceControllerList = async (params: AttendanceControllerListParams, options?: RequestInit): Promise<void> => {
+export const attendanceControllerList = async (params: AttendanceControllerListParams, options?: RequestInit): Promise<AttendanceRowDto[]> => {
 
-  return customFetch<void>(getAttendanceControllerListUrl(params),
+  return customFetch<AttendanceRowDto[]>(getAttendanceControllerListUrl(params),
   {
     ...options,
     method: 'GET'
@@ -149,9 +150,9 @@ export const getAttendanceControllerCorrectUrl = (recordId: string,) => {
 /**
  * @summary Correct an attendance record (time in/out, note)
  */
-export const attendanceControllerCorrect = async (recordId: string, options?: RequestInit): Promise<void> => {
+export const attendanceControllerCorrect = async (recordId: string, options?: RequestInit): Promise<AttendanceRowDto> => {
 
-  return customFetch<void>(getAttendanceControllerCorrectUrl(recordId),
+  return customFetch<AttendanceRowDto>(getAttendanceControllerCorrectUrl(recordId),
   {
     ...options,
     method: 'PATCH'

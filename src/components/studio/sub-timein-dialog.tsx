@@ -12,7 +12,7 @@ import { useMutation } from "@tanstack/react-query";
 import { UserPlus } from "lucide-react";
 import { useListStudioRoster, timeInStudio } from "@/lib/api/endpoints/studio/studio";
 import { getApiErrorMessage } from "@/lib/api/error-message";
-import type { StudioRosterEntryDto } from "@/lib/studio/types";
+import type { StudioRosterEntryDto } from "@/lib/api/model";
 import {
   Dialog,
   DialogContent,

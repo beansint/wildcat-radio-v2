@@ -38,6 +38,13 @@ export interface ScheduleDto {
 }
 
 export interface DaypartRow {
+  /**
+   * Unique row identity — the exact `start`-`end` (including minutes), e.g.
+   * "13:00-13:30". Use this for React `key`s. `label` is display-only and
+   * formats hours alone, so two slots sharing a start/end hour but differing
+   * in minutes (e.g. 1:00–4:00 PM and 1:30–4:00 PM) collide on `label`.
+   */
+  key: string;
   /** e.g. "1–4 PM" */
   label: string;
   start: string;
@@ -79,7 +86,7 @@ export function toDaypartGrid(schedule: ScheduleDto): DaypartGrid {
       const dayRow = schedule.days.find((d) => d.day === weekday);
       cells[weekday] = dayRow?.shows.find((s) => s.start === start && s.end === end) ?? null;
     }
-    return { label: daypartLabel(start, end), start, end, cells };
+    return { key: `${start}-${end}`, label: daypartLabel(start, end), start, end, cells };
   });
 
   return { rows };

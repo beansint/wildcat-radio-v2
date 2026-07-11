@@ -3,12 +3,14 @@
 /**
  * Add/edit show dialog — 1:1 with
  * docs/frontend-design-basis-prototype/mod/schedule.html #mShow, extended
- * with a Recurrence select (One-time/Mon-Wed-Fri/Daily/Custom) that maps to
- * the backend `Cadence` shape:
- *   One-time     -> { kind:'ONE_TIME', date }
+ * with a Recurrence select (Mon-Wed-Fri/Daily/Custom) that maps to the
+ * backend `Cadence` shape:
  *   Mon-Wed-Fri  -> { kind:'WEEKLY', days:['MON','WED','FRI'] }
  *   Daily        -> { kind:'WEEKLY', days:<all 7> }
  *   Custom       -> { kind:'WEEKLY', days:<checked days> }
+ * One-time (`Cadence.kind === "ONE_TIME"`) is intentionally not offered —
+ * the weekly schedule grid only renders WEEKLY shows, so a one-time show
+ * would have no cell to appear in.
  * Mounted only while open, so each open gets fresh defaults from `show` (edit)
  * or the `prefillDay`/`prefillStart`/`prefillEnd` props (clicking an empty
  * schedule cell).
@@ -58,7 +60,12 @@ const DAY_LABEL: Record<Weekday, string> = {
   SUN: "Sun",
 };
 
-type Recurrence = "ONE_TIME" | "MWF" | "DAILY" | "CUSTOM";
+// One-time (`Cadence.kind === "ONE_TIME"`) is deliberately not exposed here:
+// the weekly schedule grid (`/mod/schedule`, `/schedule`) only renders
+// WEEKLY shows, so a show created as one-time would have no cell to render
+// in and become unmanageable. The `Cadence` type itself keeps ONE_TIME for
+// a future slice; this form just never produces or round-trips it.
+type Recurrence = "MWF" | "DAILY" | "CUSTOM";
 
 function sameDaySet(a: Weekday[], b: Weekday[]): boolean {
   return a.length === b.length && [...a].sort().join(",") === [...b].sort().join(",");
@@ -66,33 +73,28 @@ function sameDaySet(a: Weekday[], b: Weekday[]): boolean {
 
 function recurrenceFromCadence(cadence?: Cadence | null): {
   recurrence: Recurrence;
-  date: string;
   customDays: Weekday[];
 } {
-  if (!cadence) return { recurrence: "MWF", date: "", customDays: [] };
-  if (cadence.kind === "ONE_TIME") {
-    return { recurrence: "ONE_TIME", date: cadence.date ?? "", customDays: [] };
-  }
+  // A ONE_TIME cadence should never reach this dialog (see note above), but
+  // fall back to MWF defensively rather than a recurrence value the select
+  // no longer offers.
+  if (!cadence || cadence.kind === "ONE_TIME") return { recurrence: "MWF", customDays: [] };
   const days = cadence.days ?? [];
-  if (sameDaySet(days, MWF)) return { recurrence: "MWF", date: "", customDays: [] };
-  if (sameDaySet(days, ALL_DAYS)) return { recurrence: "DAILY", date: "", customDays: [] };
-  return { recurrence: "CUSTOM", date: "", customDays: days };
+  if (sameDaySet(days, MWF)) return { recurrence: "MWF", customDays: [] };
+  if (sameDaySet(days, ALL_DAYS)) return { recurrence: "DAILY", customDays: [] };
+  return { recurrence: "CUSTOM", customDays: days };
 }
 
 const schema = z
   .object({
     name: z.string().trim().min(1, "Add a show name.").max(120, "Keep it under 120 characters."),
-    recurrence: z.enum(["ONE_TIME", "MWF", "DAILY", "CUSTOM"]),
-    date: z.string(),
+    recurrence: z.enum(["MWF", "DAILY", "CUSTOM"]),
     customDays: z.array(z.enum(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"])),
     start: z.string().min(1, "Add a start time."),
     end: z.string().min(1, "Add an end time."),
     rosterIds: z.array(z.string()).min(1, "Assign at least one DJ."),
   })
   .superRefine((val, ctx) => {
-    if (val.recurrence === "ONE_TIME" && !val.date) {
-      ctx.addIssue({ code: "custom", path: ["date"], message: "Pick a date for a one-time show." });
-    }
     if (val.recurrence === "CUSTOM" && val.customDays.length === 0) {
       ctx.addIssue({ code: "custom", path: ["customDays"], message: "Pick at least one day." });
     }
@@ -104,9 +106,6 @@ const schema = z
 type FormValues = z.infer<typeof schema>;
 
 function cadenceFromForm(values: FormValues): Cadence {
-  if (values.recurrence === "ONE_TIME") {
-    return { kind: "ONE_TIME", date: values.date, start: values.start, end: values.end };
-  }
   const days =
     values.recurrence === "MWF" ? MWF : values.recurrence === "DAILY" ? ALL_DAYS : values.customDays;
   return { kind: "WEEKLY", days, start: values.start, end: values.end };
@@ -152,7 +151,6 @@ export function ShowFormDialog({
     defaultValues: {
       name: show?.name ?? "",
       recurrence: isEdit ? initial.recurrence : prefillDay ? "CUSTOM" : "MWF",
-      date: initial.date,
       customDays: isEdit ? initial.customDays : prefillDay ? [prefillDay] : [],
       start: show?.cadence.start ?? prefillStart ?? "13:00",
       end: show?.cadence.end ?? prefillEnd ?? "16:00",
@@ -163,7 +161,18 @@ export function ShowFormDialog({
   const recurrence = watch("recurrence");
   const customDays = watch("customDays");
   const selectedRosterIds = watch("rosterIds");
-  const selectedRoster = roster.filter((r) => selectedRosterIds.includes(r.id));
+  // `roster` is active-only (the "add DJ" picker should only offer active
+  // DJs), but a show can have an archived DJ still assigned to it — that
+  // entry won't be in `roster` yet stays in `rosterIds` until explicitly
+  // removed. Union the active roster with the show's own (possibly
+  // archived) roster so every assigned DJ renders as a removable chip.
+  const rosterById = new Map<string, string>();
+  roster.forEach((r) => rosterById.set(r.id, r.displayName));
+  show?.roster.forEach((r) => rosterById.set(r.id, r.displayName));
+  const selectedRoster = selectedRosterIds.map((id) => ({
+    id,
+    displayName: rosterById.get(id) ?? id,
+  }));
   const availableRoster = roster.filter((r) => !selectedRosterIds.includes(r.id));
 
   const saveMutation = useMutation({
@@ -194,7 +203,6 @@ export function ShowFormDialog({
 
   const alertMessage =
     errors.name?.message ??
-    errors.date?.message ??
     errors.customDays?.message ??
     errors.start?.message ??
     errors.end?.message ??
@@ -260,7 +268,6 @@ export function ShowFormDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ONE_TIME">One-time</SelectItem>
                     <SelectItem value="MWF">Mon-Wed-Fri</SelectItem>
                     <SelectItem value="DAILY">Daily</SelectItem>
                     <SelectItem value="CUSTOM">Custom</SelectItem>
@@ -268,20 +275,6 @@ export function ShowFormDialog({
                 </Select>
               )}
             />
-
-            {recurrence === "ONE_TIME" && (
-              <>
-                <Label htmlFor="show-date">Date</Label>
-                <Input
-                  id="show-date"
-                  type="date"
-                  className="mb-3 tnum"
-                  data-testid="show-date"
-                  disabled={busy}
-                  {...register("date")}
-                />
-              </>
-            )}
 
             {recurrence === "CUSTOM" && (
               <div className="mb-3">

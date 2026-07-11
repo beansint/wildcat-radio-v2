@@ -26,35 +26,19 @@ async function loginAs(page: Page, email: string, next: string) {
 }
 
 /**
- * Picks a Radix `<Select>` item by its exact visible text using pure keyboard
- * navigation (ArrowDown + Enter). Required here (see the app-bug note at the
- * "show-djs-add" call site below) because this Select is opened from inside a
- * Dialog, where its popover is stacked behind the Dialog's own overlay —
- * pointer clicks (even `force: true`) never reach the option. Typeahead
- * (typing the label) is too timing-sensitive when several roster entries
- * share a common prefix (e.g. repeated "E2E DJ …" runs), so this walks
- * ArrowDown to the exact index instead, which is deterministic.
- * Assumes the trigger is already open (`select-item`s are visible in the DOM,
- * even if the popover as a whole is not the top-most element).
+ * Picks a Radix `<Select>` item by its exact visible text with a real mouse
+ * click. Selects here are opened from inside a Dialog; the SelectContent is
+ * raised to z-[90] (above the Dialog's z-[80] overlay) so the option is the
+ * top-most element at its point and a genuine pointer click registers — this
+ * exercises the same interaction a real user performs. Assumes the trigger is
+ * already open.
  */
-async function pickSelectItemByKeyboard(page: Page, exactText: string) {
-  const items = page.locator('[data-slot="select-item"]');
-  const count = await items.count();
-  await expect(items.filter({ hasText: exactText })).toHaveCount(1);
-
-  // Walk ArrowDown, checking `document.activeElement`'s text after each press
-  // (Radix moves real DOM focus between items via roving tabindex — the
-  // `data-highlighted` attribute does not reflect keyboard nav, only pointer
-  // hover, so it can't be used here) — more robust than guessing a fixed
-  // offset, since the very first item is already focused on open.
-  const maxAttempts = (count + 2) * 4;
-  for (let attempt = 0; attempt <= maxAttempts; attempt += 1) {
-    const activeText = await page.evaluate(() => document.activeElement?.textContent?.trim());
-    if (activeText === exactText) break;
-    await page.keyboard.press('ArrowDown');
-    await page.waitForTimeout(60);
-  }
-  await page.keyboard.press('Enter');
+async function pickSelectItem(page: Page, exactText: string) {
+  const option = page
+    .locator('[data-slot="select-item"]')
+    .filter({ hasText: exactText });
+  await expect(option).toHaveCount(1);
+  await option.click();
 }
 
 test.describe.configure({ mode: 'serial' });
@@ -116,26 +100,12 @@ test.describe('mod org/schedule/attendance', () => {
     // so this show lands in its own grid row.
     await page.getByTestId('show-start').fill('09:00');
     await page.getByTestId('show-end').fill('10:00');
-    // Assign the DJ just added above.
-    //
-    // NOTE (app bug, worked around here via keyboard, not by editing source):
-    // shadcn Select popovers render at z-50 (src/components/ui/select.tsx)
-    // while the Dialog overlay is z-[80] (src/components/ui/dialog.tsx). Any
-    // Select opened from inside a Dialog (this one, roster-status,
-    // show-recurrence) is therefore visually and pointer-wise BEHIND the
-    // dialog's own overlay: `document.elementFromPoint` over an open option
-    // resolves to the `dialog-overlay` div, not the option. A real mouse user
-    // cannot pick a DJ here at all, and even a Playwright `.click({ force:
-    // true })` on the option element does not register a selection (verified:
-    // no chip appears) — Radix's pointer-capture handling for the item
-    // apparently depends on the same broken hit-test. `pickSelectItemByKeyboard`
-    // below (ArrowDown navigation + Enter) does not hit-test and reliably
-    // drives the real `onValueChange` handler, so it's used to keep this
-    // golden path exercising genuine business logic. The z-index bug itself
-    // is reported precisely in the task summary — it was not fixed here per
-    // the "don't edit app source to work around it" instruction.
+    // Assign the DJ just added above. This Select is opened from inside the
+    // show Dialog; SelectContent is z-[90] (above the Dialog's z-[80] overlay,
+    // see src/components/ui/select.tsx) so a real mouse click on the option
+    // registers — pickSelectItem drives the genuine pointer interaction.
     await page.getByTestId('show-djs-add').click();
-    await pickSelectItemByKeyboard(page, djName);
+    await pickSelectItem(page, djName);
     // Scope to the rendered chip (`.wc-chip-ghost`) — `show-djs` also contains
     // the Select's own hidden native <option> mirror (same text, not visible),
     // so a plain getByText() here can match that instead of the real chip.

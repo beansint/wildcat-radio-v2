@@ -14,6 +14,7 @@ import { useMutation } from "@tanstack/react-query";
 import { attendanceControllerCorrect } from "@/lib/api/endpoints/attendance/attendance";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import type { AttendanceRowDto } from "@/lib/api/model";
+import { stationHhmm, stationLocalToUtcISO } from "@/lib/time/station";
 import {
   Dialog,
   DialogContent,
@@ -40,15 +41,20 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-/** Combines the attendance sheet's selected date with a `type=time` value into an ISO datetime. */
+/**
+ * Combines the attendance sheet's selected date with a `type=time` value,
+ * both station-local, into the UTC ISO datetime the backend expects. Using
+ * the browser's local timezone here would roll a correction near midnight to
+ * the wrong day for anyone outside the station's timezone.
+ */
 function toIso(date: string, hhmm: string): string {
-  return new Date(`${date}T${hhmm}:00`).toISOString();
+  return stationLocalToUtcISO(date, hhmm);
 }
 
+/** Renders a UTC ISO instant as a station-local 'HH:MM' for the time input. */
 function isoToTimeInput(iso: string | null): string {
   if (!iso) return "";
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return stationHhmm(iso);
 }
 
 interface AttendanceEditDialogProps {

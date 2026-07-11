@@ -62,6 +62,20 @@ function StaffThemeToggle() {
     document.documentElement.classList.toggle("dark", isDark);
   }, [isDark]);
 
+  // The public site has no dark mode at all (globals.css only defines a
+  // `.dark` override, no prefers-color-scheme hook, and nothing outside
+  // this component ever touches `<html>`'s class list) — so `.dark` is
+  // purely a staff-register concern. Strip it when this toggle unmounts
+  // (i.e. leaving `/mod` entirely, since `ModLayout` keeps the sidebar
+  // mounted across staff subpages) so the class never leaks onto public
+  // pages after "View public site". The `wc-staff-theme` preference stays
+  // in localStorage so the next `/mod` visit reopens with it.
+  useEffect(() => {
+    return () => {
+      document.documentElement.classList.remove("dark");
+    };
+  }, []);
+
   function toggle() {
     const next = !isDark;
     setIsDark(next);

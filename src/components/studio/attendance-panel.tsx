@@ -103,7 +103,12 @@ export function AttendancePanel({ onOpenConsole }: AttendancePanelProps) {
     pushToast(`✓ ${displayName} timed in ${new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`);
   }
 
-  const timedInCount = today?.slotRoster.filter((r) => r.timedIn).length ?? today?.attendees.length ?? 0;
+  // `attendees` is the open episode's full attendance-record set (every
+  // timed-in roster member, including subs merged into `slotRoster` and
+  // ad-hoc episodes that have no `slotRoster` at all) — it's the
+  // authoritative timed-in count, unlike filtering `slotRoster` which is
+  // empty for ad-hoc episodes even when people are timed in.
+  const timedInCount = today?.attendees.length ?? 0;
   const consoleLive = timedInCount > 0;
 
   // Single role="alert" region for the panel — query load failures win over a

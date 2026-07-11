@@ -12,7 +12,7 @@ import { Home, Radio, CalendarDays, Megaphone, User } from 'lucide-react';
 const NAV_ITEMS = [
   { href: '/',              label: 'Home',     Icon: Home },
   { href: '/listen',        label: 'Listen',   Icon: Radio },
-  { href: '#',              label: 'Schedule', Icon: CalendarDays },
+  { href: '/schedule',      label: 'Schedule', Icon: CalendarDays },
   { href: '#',              label: 'News',     Icon: Megaphone },
   { href: '/profile',       label: 'You',      Icon: User },
 ] as const;

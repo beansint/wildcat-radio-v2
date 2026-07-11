@@ -32,6 +32,7 @@ import {
 } from "@/lib/api/endpoints/studio/studio";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import type { StudioTodayDto, StudioTodayShowDto } from "@/lib/api/model";
+import { stationHhmm } from "@/lib/time/station";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/listen/toast";
 import { SubTimeInDialog } from "@/components/studio/sub-timein-dialog";
@@ -42,9 +43,13 @@ function monoClassFor(index: number): string {
   return MONO_CLASSES[index % MONO_CLASSES.length];
 }
 
+/** `iso` is a UTC instant — render it in station-local time, not the browser's timezone. */
 function formatClock(iso: string | null): string {
   if (!iso) return "";
-  return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const [h, m] = stationHhmm(iso).split(":").map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
 /**

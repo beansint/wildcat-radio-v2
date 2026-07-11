@@ -28,28 +28,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AttendanceEditDialog } from "@/components/mod/attendance-edit-dialog";
+import { stationDate, stationHhmm } from "@/lib/time/station";
 
 const ALL_SHOWS = "all";
 
-function todayIso(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function formatTime(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
-
-function formatScheduled(hhmm: string | null): string {
-  if (!hhmm) return "—";
+/** Formats a station-local 'HH:MM' as a 12-hour display string, e.g. "1:00 PM". */
+function formatHhmmDisplay(hhmm: string): string {
   const [h, m] = hhmm.split(":").map(Number);
   const d = new Date();
   d.setHours(h, m, 0, 0);
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+/** `iso` is a UTC instant — render it in station-local time, not the browser's timezone. */
+function formatTime(iso: string | null): string {
+  if (!iso) return "—";
+  return formatHhmmDisplay(stationHhmm(iso));
+}
+
+/** `hhmm` is already station-local wall-clock time (no timezone conversion needed). */
+function formatScheduled(hhmm: string | null): string {
+  if (!hhmm) return "—";
+  return formatHhmmDisplay(hhmm);
 }
 
 const STATUS_META: Record<AttendanceRowDtoStatus, { label: string; pillClass: string }> = {
@@ -66,7 +66,7 @@ function statusLabel(row: AttendanceRowDto): string {
 
 export default function AttendancePage() {
   const queryClient = useQueryClient();
-  const [date, setDate] = useState(todayIso());
+  const [date, setDate] = useState(() => stationDate(new Date()));
   const [showId, setShowId] = useState<string>(ALL_SHOWS);
   const [editRow, setEditRow] = useState<AttendanceRowDto | null>(null);
 

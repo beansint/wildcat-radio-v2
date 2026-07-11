@@ -5,9 +5,9 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
-import type { EngagementUserResponseDto } from './engagementUserResponseDto';
-import type { StudioQueueItemResponseDtoStatus } from './studioQueueItemResponseDtoStatus';
-import type { StudioQueueItemResponseDtoType } from './studioQueueItemResponseDtoType';
+import type { EngagementUserResponseDto } from './engagementUserResponseDto.ts';
+import type { StudioQueueItemResponseDtoStatus } from './studioQueueItemResponseDtoStatus.ts';
+import type { StudioQueueItemResponseDtoType } from './studioQueueItemResponseDtoType.ts';
 
 export interface StudioQueueItemResponseDto {
   /** Queue item id (cuid) */

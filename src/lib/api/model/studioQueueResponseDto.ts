@@ -5,7 +5,7 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
-import type { StudioQueueItemResponseDto } from './studioQueueItemResponseDto';
+import type { StudioQueueItemResponseDto } from './studioQueueItemResponseDto.ts';
 
 export interface StudioQueueResponseDto {
   /** Active episode id (cuid) */

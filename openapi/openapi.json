@@ -91,6 +91,21 @@
         ]
       }
     },
+    "/api/studio/roster": {
+      "get": {
+        "operationId": "listStudioRoster",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List active roster entries",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
     "/api/studio/time-in": {
       "post": {
         "operationId": "timeInStudio",

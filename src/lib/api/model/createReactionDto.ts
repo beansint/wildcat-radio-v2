@@ -5,7 +5,7 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
-import type { CreateReactionDtoEmoji } from './createReactionDtoEmoji';
+import type { CreateReactionDtoEmoji } from './createReactionDtoEmoji.ts';
 
 export interface CreateReactionDto {
   emoji: CreateReactionDtoEmoji;

@@ -142,6 +142,106 @@ export function useGetStudioToday<TData = Awaited<ReturnType<typeof getStudioTod
 
 
 
+export const getListStudioRosterUrl = () => {
+
+
+
+
+  return `/api/studio/roster`
+}
+
+/**
+ * @summary List active roster entries
+ */
+export const listStudioRoster = async ( options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getListStudioRosterUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStudioRosterQueryKey = () => {
+    return [
+    `/api/studio/roster`
+    ] as const;
+    }
+
+
+export const getListStudioRosterQueryOptions = <TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStudioRosterQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStudioRoster>>> = ({ signal }) => listStudioRoster({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListStudioRosterQueryResult = NonNullable<Awaited<ReturnType<typeof listStudioRoster>>>
+export type ListStudioRosterQueryError = unknown
+
+
+export function useListStudioRoster<TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listStudioRoster>>,
+          TError,
+          Awaited<ReturnType<typeof listStudioRoster>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListStudioRoster<TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listStudioRoster>>,
+          TError,
+          Awaited<ReturnType<typeof listStudioRoster>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListStudioRoster<TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List active roster entries
+ */
+
+export function useListStudioRoster<TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListStudioRosterQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 export const getTimeInStudioUrl = () => {
 
 

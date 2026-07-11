@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
   Check,
+  ClipboardCheck,
   Flame,
   Heart,
   HelpCircle,
@@ -17,6 +18,7 @@ import {
   Radio,
   RefreshCw,
   Send,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
@@ -46,6 +48,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { AttendancePanel } from "@/components/studio/attendance-panel";
 
 const STUDIO_UNLOCKED_KEY = "wc.studioUnlocked";
 
@@ -128,6 +131,9 @@ export default function StudioPage() {
   const [pinnedTopic, setPinnedTopicState] = useState("");
   const [messages, setMessages] = useState<ChatMessageResponseDto[]>([]);
   const [status, setStatus] = useState<string | null>(null);
+  // Attendance is the default surface (booth kiosk convention) — Console is
+  // the pre-existing unlock-gated panel below, now reachable via the segment.
+  const [mode, setMode] = useState<"attendance" | "console">("attendance");
   const feedRef = useRef<HTMLDivElement | null>(null);
 
   const tokenForm = useForm<TokenForm>({
@@ -387,6 +393,38 @@ export default function StudioPage() {
 
   return (
     <main className="dark min-h-screen bg-background text-foreground">
+      <div className="mx-auto w-full max-w-7xl px-4 pt-4">
+        <div className="wc-seg" role="tablist" aria-label="Studio mode">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "attendance"}
+            className={mode === "attendance" ? "active" : undefined}
+            data-testid="studio-seg-attendance"
+            onClick={() => setMode("attendance")}
+          >
+            <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
+            Attendance
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "console"}
+            className={mode === "console" ? "active" : undefined}
+            data-testid="studio-seg-console"
+            onClick={() => setMode("console")}
+          >
+            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+            Console
+          </button>
+        </div>
+      </div>
+
+      {mode === "attendance" ? (
+        <div className="mx-auto w-full max-w-7xl px-4 py-4">
+          <AttendancePanel onOpenConsole={() => setMode("console")} />
+        </div>
+      ) : (
       <div className="mx-auto grid w-full max-w-7xl gap-4 px-4 py-4 lg:grid-cols-[1fr_360px]">
         <div className="grid min-w-0 gap-4">
         <section className="wc-card">
@@ -703,6 +741,7 @@ export default function StudioPage() {
           />
         </aside>
       </div>
+      )}
     </main>
   );
 }

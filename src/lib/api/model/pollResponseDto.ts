@@ -5,8 +5,8 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
-import type { PollOptionResponseDto } from './pollOptionResponseDto';
-import type { PollResponseDtoVisibility } from './pollResponseDtoVisibility';
+import type { PollOptionResponseDto } from './pollOptionResponseDto.ts';
+import type { PollResponseDtoVisibility } from './pollResponseDtoVisibility.ts';
 
 export interface PollResponseDto {
   /** Poll id (cuid) */

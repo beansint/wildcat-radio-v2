@@ -5,7 +5,7 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
-import type { QueueActDtoAction } from './queueActDtoAction';
+import type { QueueActDtoAction } from './queueActDtoAction.ts';
 
 export interface QueueActDto {
   action: QueueActDtoAction;

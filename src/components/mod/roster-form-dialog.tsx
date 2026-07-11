@@ -16,7 +16,7 @@ import {
   rosterControllerUpdate,
 } from "@/lib/api/endpoints/roster/roster";
 import { getApiErrorMessage } from "@/lib/api/error-message";
-import type { RosterEntryDto } from "@/lib/mod/types";
+import type { RosterEntryDto } from "@/lib/api/model";
 import {
   Dialog,
   DialogContent,
@@ -76,9 +76,9 @@ export function RosterFormDialog({ open, onOpenChange, entry, onSaved }: RosterF
         isActive: values.status === "ACTIVE",
       };
       if (isEdit && entry) {
-        return rosterControllerUpdate(entry.id, { body: JSON.stringify(body) }) as unknown as Promise<RosterEntryDto>;
+        return rosterControllerUpdate(entry.id, { body: JSON.stringify(body) });
       }
-      return rosterControllerCreate({ body: JSON.stringify(body) }) as unknown as Promise<RosterEntryDto>;
+      return rosterControllerCreate({ body: JSON.stringify(body) });
     },
     onSuccess: () => onSaved(),
   });

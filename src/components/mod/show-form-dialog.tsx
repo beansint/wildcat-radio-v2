@@ -27,7 +27,8 @@ import {
   showsControllerRemove,
 } from "@/lib/api/endpoints/shows/shows";
 import { getApiErrorMessage } from "@/lib/api/error-message";
-import type { ShowDto, RosterEntryDto, Cadence, Weekday } from "@/lib/mod/types";
+import type { ShowDto, RosterEntryDto } from "@/lib/api/model";
+import type { Cadence, Weekday } from "@/lib/mod/types";
 import {
   Dialog,
   DialogContent,
@@ -136,7 +137,12 @@ export function ShowFormDialog({
   prefillEnd,
 }: ShowFormDialogProps) {
   const isEdit = !!show;
-  const initial = recurrenceFromCadence(show?.cadence);
+  // `ShowDto.cadence` comes back as `ShowDtoCadence` (an untyped object) —
+  // the backend spec doesn't declare a discriminated union for cadence, so
+  // orval generates a blob type. The runtime shape is `Cadence` 1:1 (see
+  // `src/lib/mod/types.ts`).
+  const cadence = show?.cadence as Cadence | undefined;
+  const initial = recurrenceFromCadence(cadence);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const {
@@ -152,8 +158,8 @@ export function ShowFormDialog({
       name: show?.name ?? "",
       recurrence: isEdit ? initial.recurrence : prefillDay ? "CUSTOM" : "MWF",
       customDays: isEdit ? initial.customDays : prefillDay ? [prefillDay] : [],
-      start: show?.cadence.start ?? prefillStart ?? "13:00",
-      end: show?.cadence.end ?? prefillEnd ?? "16:00",
+      start: cadence?.start ?? prefillStart ?? "13:00",
+      end: cadence?.end ?? prefillEnd ?? "16:00",
       rosterIds: show?.roster.map((r) => r.id) ?? [],
     },
   });
@@ -183,9 +189,9 @@ export function ShowFormDialog({
         rosterIds: values.rosterIds,
       };
       if (isEdit && show) {
-        return showsControllerUpdate(show.id, { body: JSON.stringify(body) }) as unknown as Promise<ShowDto>;
+        return showsControllerUpdate(show.id, { body: JSON.stringify(body) });
       }
-      return showsControllerCreate({ body: JSON.stringify(body) }) as unknown as Promise<ShowDto>;
+      return showsControllerCreate({ body: JSON.stringify(body) });
     },
     onSuccess: () => onSaved(),
   });

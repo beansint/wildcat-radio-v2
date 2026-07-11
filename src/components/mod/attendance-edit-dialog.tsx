@@ -13,7 +13,7 @@ import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { attendanceControllerCorrect } from "@/lib/api/endpoints/attendance/attendance";
 import { getApiErrorMessage } from "@/lib/api/error-message";
-import type { AttendanceRowDto } from "@/lib/mod/types";
+import type { AttendanceRowDto } from "@/lib/api/model";
 import {
   Dialog,
   DialogContent,

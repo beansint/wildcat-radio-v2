@@ -20,6 +20,10 @@ import type {
   UseQueryResult
 } from '@tanstack/react-query';
 
+import type {
+  ShowDto
+} from '../../model';
+
 import { customFetch } from '../../fetcher';
 
 
@@ -38,9 +42,9 @@ export const getShowsControllerListUrl = () => {
 /**
  * @summary List shows with roster and cadence
  */
-export const showsControllerList = async ( options?: RequestInit): Promise<void> => {
+export const showsControllerList = async ( options?: RequestInit): Promise<ShowDto[]> => {
 
-  return customFetch<void>(getShowsControllerListUrl(),
+  return customFetch<ShowDto[]>(getShowsControllerListUrl(),
   {
     ...options,
     method: 'GET'
@@ -138,9 +142,9 @@ export const getShowsControllerCreateUrl = () => {
 /**
  * @summary Create a show
  */
-export const showsControllerCreate = async ( options?: RequestInit): Promise<void> => {
+export const showsControllerCreate = async ( options?: RequestInit): Promise<ShowDto> => {
 
-  return customFetch<void>(getShowsControllerCreateUrl(),
+  return customFetch<ShowDto>(getShowsControllerCreateUrl(),
   {
     ...options,
     method: 'POST'
@@ -238,9 +242,9 @@ export const getShowsControllerUpdateUrl = (id: string,) => {
 /**
  * @summary Update a show
  */
-export const showsControllerUpdate = async (id: string, options?: RequestInit): Promise<void> => {
+export const showsControllerUpdate = async (id: string, options?: RequestInit): Promise<ShowDto> => {
 
-  return customFetch<void>(getShowsControllerUpdateUrl(id),
+  return customFetch<ShowDto>(getShowsControllerUpdateUrl(id),
   {
     ...options,
     method: 'PATCH'

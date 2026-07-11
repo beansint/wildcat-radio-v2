@@ -273,6 +273,36 @@ test.describe('studio attendance', () => {
     }
   });
 
+  test('edge: "Console is live" CTA appears once a DJ is timed in and opens the Console segment', async ({
+    page,
+  }) => {
+    // Clean slot: no attendance yet, so the CTA (gated on attendees.length > 0)
+    // starts hidden.
+    openSlotEpisode();
+
+    await page.goto(`${WEB_BASE}/studio`);
+    await page.getByTestId('studio-token-input').fill(STATION_TOKEN);
+    await page.getByTestId('studio-token-save').click();
+
+    const carlaRow = page.getByTestId('studio-slot-row').filter({ hasText: 'DJ Carla' });
+    await expect(carlaRow).toBeVisible({ timeout: 15_000 });
+    // Nobody timed in yet — the CTA is not rendered.
+    await expect(page.getByTestId('studio-console-cta')).toHaveCount(0);
+
+    await carlaRow.getByTestId('studio-timein').click();
+    await expect(carlaRow.getByTestId('studio-timedin-pill')).toBeVisible({ timeout: 10_000 });
+
+    // Timed in → the "Console is live" CTA appears.
+    const cta = page.getByTestId('studio-console-cta');
+    await expect(cta).toBeVisible({ timeout: 10_000 });
+    await expect(cta).toContainText(/Console is live/i);
+
+    // Clicking it switches the segmented control to Console.
+    await cta.click();
+    await expect(page.getByTestId('studio-seg-console')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('heading', { name: 'Studio console' })).toBeVisible({ timeout: 10_000 });
+  });
+
   test('edge: time in a sub/guest DJ not on any show roster', async ({ page }) => {
     // `slotRoster` (the left check-in card) only ever lists the *open
     // episode's own show roster* (stream-state.service.ts `getStudioToday()`

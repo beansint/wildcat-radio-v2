@@ -28,6 +28,7 @@ import {
 import {
   getGetStudioTodayQueryKey,
   timeInStudio,
+  timeOutStudio,
   useGetStudioToday,
 } from "@/lib/api/endpoints/studio/studio";
 import { getApiErrorMessage } from "@/lib/api/error-message";
@@ -97,11 +98,24 @@ export function AttendancePanel({ onOpenConsole }: AttendancePanelProps) {
     mutationFn: (rosterId: string) => timeInStudio({ body: JSON.stringify({ rosterId }) }),
   });
 
+  const timeOutMutation = useMutation({
+    mutationFn: (rosterId: string) => timeOutStudio({ body: JSON.stringify({ rosterId }) }),
+  });
+
   function handleTimeIn(rosterId: string, displayName: string) {
     timeInMutation.mutate(rosterId, {
       onSuccess: async () => {
         await invalidateToday();
         pushToast(`✓ ${displayName} timed in ${new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`);
+      },
+    });
+  }
+
+  function handleTimeOut(rosterId: string, displayName: string) {
+    timeOutMutation.mutate(rosterId, {
+      onSuccess: async () => {
+        await invalidateToday();
+        pushToast(`↩ ${displayName} timed out ${new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`);
       },
     });
   }
@@ -126,7 +140,9 @@ export function AttendancePanel({ onOpenConsole }: AttendancePanelProps) {
     ? getApiErrorMessage(todayQuery.error)
     : timeInMutation.isError
       ? getApiErrorMessage(timeInMutation.error)
-      : null;
+      : timeOutMutation.isError
+        ? getApiErrorMessage(timeOutMutation.error)
+        : null;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
@@ -183,10 +199,24 @@ export function AttendancePanel({ onOpenConsole }: AttendancePanelProps) {
                     </div>
                   </div>
                   {entry.timedIn ? (
-                    <span className="wc-pill wc-pill-ok" data-testid="studio-timedin-pill">
-                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                      Timed in ✓ {formatClock(entry.timeIn)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="wc-pill wc-pill-ok" data-testid="studio-timedin-pill">
+                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                        Timed in ✓ {formatClock(entry.timeIn)}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid="studio-timeout"
+                        aria-label={`Time out ${entry.displayName}`}
+                        disabled={timeOutMutation.isPending}
+                        onClick={() => handleTimeOut(entry.rosterId, entry.displayName)}
+                      >
+                        <LogIn className="h-3.5 w-3.5 rotate-180" aria-hidden="true" />
+                        Time out
+                      </Button>
+                    </div>
                   ) : (
                     <Button
                       type="button"
@@ -221,10 +251,24 @@ export function AttendancePanel({ onOpenConsole }: AttendancePanelProps) {
                       <div className="font-bold truncate">{attendee.displayName}</div>
                       <div className="text-xs wc-muted tnum">in {formatClock(attendee.timeIn)}</div>
                     </div>
-                    <span className="wc-pill wc-pill-ok">
-                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                      Timed in ✓ {formatClock(attendee.timeIn)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="wc-pill wc-pill-ok">
+                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                        Timed in ✓ {formatClock(attendee.timeIn)}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid="studio-timeout"
+                        aria-label={`Time out ${attendee.displayName}`}
+                        disabled={timeOutMutation.isPending}
+                        onClick={() => handleTimeOut(attendee.rosterId, attendee.displayName)}
+                      >
+                        <LogIn className="h-3.5 w-3.5 rotate-180" aria-hidden="true" />
+                        Time out
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </>

@@ -255,9 +255,14 @@ export default function StudioPage() {
     };
   }, [episodeId, addChatMessage]);
 
+  // Also depends on `mode`: the chat feed (and `feedRef`) unmounts while
+  // Attendance is shown, so this effect doesn't run for messages that
+  // arrive off-screen. Re-running it when switching back to Console
+  // catches the feed up to the latest message instead of leaving it
+  // wherever it happened to be mounted last.
   useEffect(() => {
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight });
-  }, [messages]);
+  }, [messages, mode]);
 
   const actMutation = useMutation({
     mutationFn: ({ id, action }: { id: string; action: QueueActDtoAction }) =>

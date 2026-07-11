@@ -86,7 +86,7 @@ export default function SchedulePage() {
                 </tr>
               ) : (
                 grid.rows.map((row) => (
-                  <tr key={row.label}>
+                  <tr key={row.key}>
                     <td className="tnum wc-muted font-semibold">{row.label}</td>
                     {WEEKDAYS.map((day) => {
                       const cell = row.cells[day];

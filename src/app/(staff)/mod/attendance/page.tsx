@@ -171,7 +171,7 @@ export default function AttendancePage() {
           columns={columns}
           rows={rows}
           testid="mod-attendance"
-          rowKey={(r) => r.recordId ?? r.rosterId}
+          rowKey={(r, i) => r.recordId ?? `absent-${r.rosterId}-${i}`}
           emptyState={
             <div className="p-6 text-center wc-muted">No attendance rows for this date.</div>
           }

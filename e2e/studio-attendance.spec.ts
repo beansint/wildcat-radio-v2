@@ -79,6 +79,64 @@ function closeSlotEpisode() {
   runBackendScript(script);
 }
 
+const SECOND_DJ_ROSTER_ID = 'e2e-fe5-timeout-dj2';
+const SECOND_DJ_NAME = 'E2E Timeout DJ2';
+
+/**
+ * Adds a second roster entry to the seeded "Afternoon Vibes" show so its
+ * `slotRoster` has two rows. Timing ONE of them out then leaves the episode
+ * open (the other is still timed in), which is the state where the row flips
+ * back from the "Timed in" pill to a fresh `studio-timein` button. (Timing
+ * out the *only* DJ instead transitions the episode to OFF_AIR and closes it
+ * — a separate, intended path where the whole slot card empties, not what
+ * this test exercises.)
+ */
+function addSecondSlotDj() {
+  const script = `
+    import * as dotenv from 'dotenv';
+    import { PrismaPg } from '@prisma/adapter-pg';
+    import { PrismaClient } from '@prisma/client';
+    async function main() {
+      dotenv.config({ path: ${JSON.stringify(path.join(BACKEND_DIR, 'apps/api/.env'))} });
+      const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+      const prisma = new PrismaClient({ adapter });
+      await prisma.rosterEntry.upsert({
+        where: { id: ${JSON.stringify(SECOND_DJ_ROSTER_ID)} },
+        update: { displayName: ${JSON.stringify(SECOND_DJ_NAME)}, isActive: true },
+        create: { id: ${JSON.stringify(SECOND_DJ_ROSTER_ID)}, displayName: ${JSON.stringify(SECOND_DJ_NAME)}, isActive: true },
+      });
+      await prisma.showRosterEntry.upsert({
+        where: { showId_rosterId: { showId: ${JSON.stringify(SHOW_ID)}, rosterId: ${JSON.stringify(SECOND_DJ_ROSTER_ID)} } },
+        update: {},
+        create: { showId: ${JSON.stringify(SHOW_ID)}, rosterId: ${JSON.stringify(SECOND_DJ_ROSTER_ID)} },
+      });
+      await prisma.$disconnect();
+    }
+    main().catch((error) => { console.error(error); process.exit(1); });
+  `;
+  runBackendScript(script);
+}
+
+/** Removes the second slot DJ (FK-safe: attendance -> show link -> roster entry). */
+function removeSecondSlotDj() {
+  const script = `
+    import * as dotenv from 'dotenv';
+    import { PrismaPg } from '@prisma/adapter-pg';
+    import { PrismaClient } from '@prisma/client';
+    async function main() {
+      dotenv.config({ path: ${JSON.stringify(path.join(BACKEND_DIR, 'apps/api/.env'))} });
+      const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+      const prisma = new PrismaClient({ adapter });
+      await prisma.attendanceRecord.deleteMany({ where: { rosterId: ${JSON.stringify(SECOND_DJ_ROSTER_ID)} } });
+      await prisma.showRosterEntry.deleteMany({ where: { rosterId: ${JSON.stringify(SECOND_DJ_ROSTER_ID)} } });
+      await prisma.rosterEntry.deleteMany({ where: { id: ${JSON.stringify(SECOND_DJ_ROSTER_ID)} } });
+      await prisma.$disconnect();
+    }
+    main().catch((error) => { console.error(error); process.exit(1); });
+  `;
+  runBackendScript(script);
+}
+
 test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(() => {
@@ -172,6 +230,47 @@ test.describe('studio attendance', () => {
     await page.getByTestId('studio-seg-attendance').click();
     await expect(page.getByTestId('studio-seg-attendance')).toHaveAttribute('aria-selected', 'true');
     await expect(carlaRow.getByTestId('studio-timedin-pill')).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('edge: time a slot DJ out — pill disappears and the time-in button returns', async ({ page }) => {
+    // Reset the fixture episode to a clean slot (no attendance) so this test
+    // is self-contained, and add a second slot DJ so the episode stays open
+    // after we time the first one out (see addSecondSlotDj's note).
+    openSlotEpisode();
+    addSecondSlotDj();
+
+    try {
+      await page.goto(`${WEB_BASE}/studio`);
+      await page.getByTestId('studio-token-input').fill(STATION_TOKEN);
+      await page.getByTestId('studio-token-save').click();
+
+      const carlaRow = page.getByTestId('studio-slot-row').filter({ hasText: 'DJ Carla' });
+      const dj2Row = page.getByTestId('studio-slot-row').filter({ hasText: SECOND_DJ_NAME });
+      await expect(carlaRow).toBeVisible({ timeout: 15_000 });
+      await expect(dj2Row).toBeVisible({ timeout: 15_000 });
+      await expect(carlaRow.getByTestId('studio-timein')).toBeVisible();
+
+      // Time BOTH in (keeps the episode open when one later times out) — each
+      // row's pill appears and its time-in button is gone.
+      await carlaRow.getByTestId('studio-timein').click();
+      await expect(carlaRow.getByTestId('studio-timedin-pill')).toBeVisible({ timeout: 10_000 });
+      await dj2Row.getByTestId('studio-timein').click();
+      await expect(dj2Row.getByTestId('studio-timedin-pill')).toBeVisible({ timeout: 10_000 });
+      await expect(carlaRow.getByTestId('studio-timein')).toHaveCount(0);
+
+      // Time Carla OUT — backend flips her `timedIn` false (att.timeOut set).
+      // DJ2 is still in, so the episode stays open: Carla's pill + time-out
+      // button disappear and her `studio-timein` button returns on the same
+      // row, while DJ2's pill is untouched.
+      await expect(carlaRow.getByTestId('studio-timeout')).toBeVisible();
+      await carlaRow.getByTestId('studio-timeout').click();
+      await expect(carlaRow.getByTestId('studio-timedin-pill')).toHaveCount(0, { timeout: 10_000 });
+      await expect(carlaRow.getByTestId('studio-timeout')).toHaveCount(0);
+      await expect(carlaRow.getByTestId('studio-timein')).toBeVisible({ timeout: 10_000 });
+      await expect(dj2Row.getByTestId('studio-timedin-pill')).toBeVisible();
+    } finally {
+      removeSecondSlotDj();
+    }
   });
 
   test('edge: time in a sub/guest DJ not on any show roster', async ({ page }) => {

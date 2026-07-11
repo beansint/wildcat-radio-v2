@@ -9,7 +9,7 @@ runs; nothing here depends on it).
 
 Full run: `PLAYWRIGHT_BASE_URL=http://localhost:3011 pnpm exec playwright
 test e2e/mod-org-schedule-attendance.spec.ts e2e/studio-attendance.spec.ts
-e2e/public-schedule.spec.ts --reporter=list` → **14 passed**, run twice to
+e2e/public-schedule.spec.ts --reporter=list` → **15 passed**, run twice to
 confirm no flakiness.
 
 ## Coverage matrix
@@ -34,7 +34,7 @@ confirm no flakiness.
 | Studio: token unlock | Yes | `studio-attendance.spec.ts::AC-6 golden` | |
 | Studio: Attendance is default segment, Console/Attendance toggle | Yes | `studio-attendance.spec.ts::AC-6 golden` | |
 | Studio: time-in (slot roster row) | Yes | `studio-attendance.spec.ts::AC-6 golden` | |
-| Studio: time-out | **NOT covered — real app bug, see below** | — | No UI trigger exists anywhere in the app for a DJ time-out; see "Bugs found" |
+| Studio: time-out | Yes (was an open bug, now fixed + tested) | `studio-attendance.spec.ts::edge: time a slot DJ out — pill disappears and the time-in button returns` | The missing UI was added (a `studio-timeout` button next to the timed-in pill, wired to `timeOutStudio`) after this QA pass first surfaced the gap; see "Bugs found" |
 | Studio: sub/guest time-in (DJ not on the slot roster) | Yes | `studio-attendance.spec.ts::edge: time in a sub/guest DJ not on any show roster` | Closes the fixture's open slot episode first (so there's genuinely no slot), opens an ad-hoc episode via "Time in a sub / guest DJ", asserts the guest renders as timed-in in the `attendees` branch (`studio-attendee-row` + guidance copy) |
 | Studio: "Console is live" CTA once someone's timed in | Not separately tested | — | Exercised indirectly (both the golden and sub tests leave at least one attendee timed in, which is what drives `consoleLive`), but no test asserts the CTA text/click-through itself. Not in the requested scenario list; low risk, single boolean render condition already covered by `today.attendees.length > 0` in both passing tests |
 | Studio: ad-hoc episode with no show ("console is live" CTA precondition) | Verified as a side effect | `studio-attendance.spec.ts::edge: time in a sub/guest DJ...` | This is the scenario the task called out as possibly impossible to set up in-browser — it's not impossible, the sub/guest flow naturally creates exactly this ad-hoc episode via `POST /api/studio/time-in` with no `rosterId` tied to a show |
@@ -44,37 +44,38 @@ confirm no flakiness.
 
 ## Bugs found
 
-**Studio time-out has no UI entry point (real app bug, not fixed here per
-task instructions).**
+**Studio time-out had no UI entry point — FOUND during this QA pass, now
+FIXED and regression-tested.**
 
-- The backend fully implements DJ time-out: `POST /api/studio/time-out`
-  (`wildcat-radio-v2-backend/apps/api/src/studio/studio.controller.ts:49-54`
-  → `StreamStateService.timeOut()` in `stream-state.service.ts:151`).
-- The frontend's generated API client has a matching hook/function
-  (`useTimeOutStudio` / `timeOutStudio` in
-  `src/lib/api/endpoints/studio/studio.ts`).
-- But **nothing in the UI ever calls it.** `src/components/studio/attendance-panel.tsx`
-  renders a `studio-timein` button for not-yet-timed-in slot rows and a
-  static `studio-timedin-pill` `<span>` (not a button) once someone's timed
-  in — there's no "time out" affordance anywhere on that pill, no button
-  elsewhere on `/studio`, and a repo-wide grep for `timeOutStudio`/
-  `useTimeOutStudio` outside the generated API file returns nothing.
-- **Repro:** unlock `/studio` with the station token, time a DJ in
-  (`studio-timein`), and try to find any way to time them back out from the
-  UI. There isn't one — the only way to close their attendance record today
-  is the mod `/mod/attendance` correction dialog (`att-timeout` field), which
-  is a manual after-the-fact audit-logged correction, not the live "tap out"
-  flow the backend endpoint and generated hook exist for.
-- **Impact:** once a DJ taps in for a shift, staff have no live way to tap
-  them back out; the record stays open (`timeOut: null`) until someone
-  manually corrects it later from `/mod/attendance`. This also means
-  on-air-hours (`computeOnAirHours`) and the derived attendance status stay
-  wrong for the rest of the day for anyone who forgets to have a mod
-  manually close their record.
-- **Scenario 8 ("Studio: time-out") is therefore NOT covered by a passing
-  test** — writing one would require adding the missing UI, which is out of
-  scope for a QA pass (task instructions: don't edit app source to hide a
-  real bug). No app source was changed to work around this.
+- Originally: the backend fully implemented DJ time-out (`POST
+  /api/studio/time-out` → `StreamStateService.timeOut()` in
+  `wildcat-radio-v2-backend/.../stream-state.service.ts:151`) and the
+  frontend even had the generated hook (`timeOutStudio` /`useTimeOutStudio`
+  in `src/lib/api/endpoints/studio/studio.ts`), but **nothing in the UI ever
+  called it** — a timed-in slot row rendered only a static
+  `studio-timedin-pill` `<span>`, no time-out affordance anywhere on
+  `/studio`. Once a DJ tapped in, staff had no live way to tap them back out;
+  the record stayed open (`timeOut: null`) until a mod manually corrected it
+  from `/mod/attendance`, leaving on-air-hours and status wrong in the
+  meantime.
+- **Fix (applied in app source by the coordinator, not by this QA pass):**
+  `src/components/studio/attendance-panel.tsx` now renders a
+  `data-testid="studio-timeout"` button (outline, size sm) next to the
+  timed-in pill on **both** the slot-roster rows and the attendees-fallback
+  rows, wired to `timeOutStudio({ body: JSON.stringify({ rosterId }) })`
+  followed by a today-query invalidation. The backend sets `timedIn: !!att &&
+  att.timeOut === null`, so after time-out the row's `studio-timedin-pill`
+  disappears and — as long as the episode stays open — the `studio-timein`
+  button returns.
+- **Coverage:** `studio-attendance.spec.ts::edge: time a slot DJ out — pill
+  disappears and the time-in button returns` exercises this end-to-end. It
+  adds a second slot DJ via fixture so the episode stays open after one DJ
+  times out (timing out the *only* DJ instead transitions the episode to
+  OFF_AIR and closes it — a separate, intended path where the whole slot card
+  empties; that's the reason the test uses two DJs). It times both in,
+  asserts both pills, times the first out, then asserts that row's pill +
+  time-out button disappear and its `studio-timein` button returns, while the
+  second DJ's pill is untouched.
 
 No other app bugs were found. The station-TZ attendance-correction bug the
 golden path's existing comment calls out is **already fixed** in both layers
@@ -94,6 +95,10 @@ live repro.
   `finally` block so it can't become the "most recently created open
   episode" and break `studio-attendance.spec.ts`'s own fixture episode on a
   later run.
+- The new studio time-out test adds a second roster entry to the seeded
+  Afternoon Vibes show (`e2e-fe5-timeout-dj2`) and removes it (attendance →
+  show-roster link → roster entry, FK-safe) in a `finally` block, so the
+  seed show's roster is left exactly as it was.
 - Roster/show rows created purely through UI actions in the pre-existing
   golden test (e.g. its own `E2E DJ …` card) are left as-is, matching the
   golden test's existing convention — they don't affect any assertion here

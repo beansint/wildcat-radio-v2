@@ -30,9 +30,11 @@ import type {
   QueueActDto,
   QueueActionResponseDto,
   StudioQueueResponseDto,
+  StudioRosterEntryDto,
   StudioSessionClearResponseDto,
   StudioSessionResponseDto,
-  StudioSessionStatusResponseDto
+  StudioSessionStatusResponseDto,
+  StudioTodayDto
 } from '../../model';
 
 import { customFetch } from '../../fetcher';
@@ -53,9 +55,9 @@ export const getGetStudioTodayUrl = () => {
 /**
  * @summary Get studio today view
  */
-export const getStudioToday = async ( options?: RequestInit): Promise<void> => {
+export const getStudioToday = async ( options?: RequestInit): Promise<StudioTodayDto> => {
 
-  return customFetch<void>(getGetStudioTodayUrl(),
+  return customFetch<StudioTodayDto>(getGetStudioTodayUrl(),
   {
     ...options,
     method: 'GET'
@@ -153,9 +155,9 @@ export const getListStudioRosterUrl = () => {
 /**
  * @summary List active roster entries
  */
-export const listStudioRoster = async ( options?: RequestInit): Promise<void> => {
+export const listStudioRoster = async ( options?: RequestInit): Promise<StudioRosterEntryDto[]> => {
 
-  return customFetch<void>(getListStudioRosterUrl(),
+  return customFetch<StudioRosterEntryDto[]>(getListStudioRosterUrl(),
   {
     ...options,
     method: 'GET'

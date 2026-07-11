@@ -17,7 +17,7 @@ import {
   rosterControllerUpdate,
 } from "@/lib/api/endpoints/roster/roster";
 import { getApiErrorMessage } from "@/lib/api/error-message";
-import type { RosterEntryDto } from "@/lib/mod/types";
+import type { RosterEntryDto } from "@/lib/api/model";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -53,7 +53,7 @@ export default function RosterPage() {
     mutationFn: (target: RosterEntryDto) =>
       rosterControllerUpdate(target.id, {
         body: JSON.stringify({ isActive: !target.isActive }),
-      }) as unknown as Promise<RosterEntryDto>,
+      }),
     onSuccess: () => {
       invalidate();
       setArchiveTarget(null);

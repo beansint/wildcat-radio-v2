@@ -20,6 +20,10 @@ import type {
   UseQueryResult
 } from '@tanstack/react-query';
 
+import type {
+  ScheduleDto
+} from '../../model';
+
 import { customFetch } from '../../fetcher';
 
 
@@ -38,9 +42,9 @@ export const getScheduleControllerGetWeeklyScheduleUrl = () => {
 /**
  * @summary Get public weekly schedule grid
  */
-export const scheduleControllerGetWeeklySchedule = async ( options?: RequestInit): Promise<void> => {
+export const scheduleControllerGetWeeklySchedule = async ( options?: RequestInit): Promise<ScheduleDto> => {
 
-  return customFetch<void>(getScheduleControllerGetWeeklyScheduleUrl(),
+  return customFetch<ScheduleDto>(getScheduleControllerGetWeeklyScheduleUrl(),
   {
     ...options,
     method: 'GET'

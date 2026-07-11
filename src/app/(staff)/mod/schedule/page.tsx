@@ -14,9 +14,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useShowsControllerList, getShowsControllerListQueryKey } from "@/lib/api/endpoints/shows/shows";
 import { useRosterControllerList } from "@/lib/api/endpoints/roster/roster";
-import type { ShowDto, RosterEntryDto } from "@/lib/mod/types";
+import type { ShowDto, RosterEntryDto } from "@/lib/api/model";
 import { buildScheduleFromShows, toDaypartGrid, WEEKDAYS } from "@/lib/schedule/grid";
-import type { Weekday } from "@/lib/mod/types";
+import type { Weekday, Cadence } from "@/lib/mod/types";
+import type { ScheduleSourceShow } from "@/lib/schedule/grid";
 import { Button } from "@/components/ui/button";
 import { ShowFormDialog } from "@/components/mod/show-form-dialog";
 
@@ -44,7 +45,19 @@ export default function SchedulePage() {
   const roster = rosterQuery.data ?? [];
   const shows = useMemo(() => showsQuery.data ?? [], [showsQuery.data]);
 
-  const grid = useMemo(() => toDaypartGrid(buildScheduleFromShows(shows)), [shows]);
+  const grid = useMemo(() => {
+    // `ShowDto.cadence` comes back as `ShowDtoCadence` (an untyped object) —
+    // the backend spec doesn't declare a discriminated union for cadence, so
+    // orval generates a blob type. The runtime shape is `Cadence` 1:1 (see
+    // `src/lib/mod/types.ts`), which is what `buildScheduleFromShows` needs.
+    const sourceShows: ScheduleSourceShow[] = shows.map((s) => ({
+      id: s.id,
+      name: s.name,
+      cadence: s.cadence as unknown as Cadence,
+      roster: s.roster,
+    }));
+    return toDaypartGrid(buildScheduleFromShows(sourceShows));
+  }, [shows]);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: getShowsControllerListQueryKey() });

@@ -31,13 +31,46 @@ export const PostStreamHeartbeatResponse = zod.unknown()
 /**
  * @summary Get studio today view
  */
-export const GetStudioTodayResponse = zod.unknown()
+export const GetStudioTodayResponse = zod.object({
+  "episode": zod.object({
+  "id": zod.string(),
+  "status": zod.string(),
+  "startedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "endedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "showId": zod.string().nullable(),
+  "unscheduled": zod.boolean()
+}).nullable(),
+  "attendees": zod.array(zod.object({
+  "rosterId": zod.string(),
+  "displayName": zod.string(),
+  "timeIn": zod.iso.datetime({"offset":true}).nullable()
+})),
+  "slotRoster": zod.array(zod.object({
+  "rosterId": zod.string(),
+  "displayName": zod.string(),
+  "timedIn": zod.boolean(),
+  "timeIn": zod.iso.datetime({"offset":true}).nullable(),
+  "timeOut": zod.iso.datetime({"offset":true}).nullable()
+})),
+  "todayShows": zod.array(zod.object({
+  "id": zod.string(),
+  "showId": zod.string().nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "status": zod.string(),
+  "showName": zod.string().nullable(),
+  "djs": zod.array(zod.string())
+}))
+})
 
 
 /**
  * @summary List active roster entries
  */
-export const ListStudioRosterResponse = zod.unknown()
+export const ListStudioRosterResponseItem = zod.object({
+  "id": zod.string(),
+  "displayName": zod.string()
+})
+export const ListStudioRosterResponse = zod.array(ListStudioRosterResponseItem)
 
 
 /**
@@ -361,13 +394,28 @@ export const RosterControllerListQueryParams = zod.object({
   "includeArchived": zod.boolean().optional()
 })
 
-export const RosterControllerListResponse = zod.unknown()
+export const RosterControllerListResponseItem = zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "bio": zod.string().nullable(),
+  "photoUrl": zod.string().nullable(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.iso.datetime({"offset":true})
+})
+export const RosterControllerListResponse = zod.array(RosterControllerListResponseItem)
 
 
 /**
  * @summary Create a roster entry
  */
-export const RosterControllerCreateResponse = zod.unknown()
+export const RosterControllerCreateResponse = zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "bio": zod.string().nullable(),
+  "photoUrl": zod.string().nullable(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.iso.datetime({"offset":true})
+})
 
 
 /**
@@ -377,19 +425,51 @@ export const RosterControllerUpdateParams = zod.object({
   "id": zod.string()
 })
 
-export const RosterControllerUpdateResponse = zod.unknown()
+export const RosterControllerUpdateResponse = zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "bio": zod.string().nullable(),
+  "photoUrl": zod.string().nullable(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.iso.datetime({"offset":true})
+})
 
 
 /**
  * @summary List shows with roster and cadence
  */
-export const ShowsControllerListResponse = zod.unknown()
+export const ShowsControllerListResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string().nullable(),
+  "cadence": zod.record(zod.string(), zod.unknown()),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "roster": zod.array(zod.object({
+  "id": zod.string(),
+  "displayName": zod.string()
+}))
+})
+export const ShowsControllerListResponse = zod.array(ShowsControllerListResponseItem)
 
 
 /**
  * @summary Create a show
  */
-export const ShowsControllerCreateResponse = zod.unknown()
+export const ShowsControllerCreateResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string().nullable(),
+  "cadence": zod.record(zod.string(), zod.unknown()),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "roster": zod.array(zod.object({
+  "id": zod.string(),
+  "displayName": zod.string()
+}))
+})
 
 
 /**
@@ -399,7 +479,19 @@ export const ShowsControllerUpdateParams = zod.object({
   "id": zod.string()
 })
 
-export const ShowsControllerUpdateResponse = zod.unknown()
+export const ShowsControllerUpdateResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string().nullable(),
+  "cadence": zod.record(zod.string(), zod.unknown()),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "roster": zod.array(zod.object({
+  "id": zod.string(),
+  "displayName": zod.string()
+}))
+})
 
 
 /**
@@ -415,7 +507,18 @@ export const ShowsControllerRemoveResponse = zod.void()
 /**
  * @summary Get public weekly schedule grid
  */
-export const ScheduleControllerGetWeeklyScheduleResponse = zod.unknown()
+export const ScheduleControllerGetWeeklyScheduleResponse = zod.object({
+  "days": zod.array(zod.object({
+  "day": zod.string(),
+  "shows": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "roster": zod.array(zod.string())
+}))
+}))
+})
 
 
 /**
@@ -426,7 +529,20 @@ export const AttendanceControllerListQueryParams = zod.object({
   "date": zod.string().describe('YYYY-MM-DD')
 })
 
-export const AttendanceControllerListResponse = zod.unknown()
+export const AttendanceControllerListResponseItem = zod.object({
+  "recordId": zod.string().nullable(),
+  "episodeId": zod.string().nullable(),
+  "rosterId": zod.string(),
+  "displayName": zod.string(),
+  "scheduled": zod.string().nullable(),
+  "timeIn": zod.iso.datetime({"offset":true}).nullable(),
+  "timeOut": zod.iso.datetime({"offset":true}).nullable(),
+  "onAirHours": zod.number().nullable(),
+  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT', 'AGREED_OVERTIME']),
+  "lateMinutes": zod.number(),
+  "note": zod.string().nullable()
+})
+export const AttendanceControllerListResponse = zod.array(AttendanceControllerListResponseItem)
 
 
 /**
@@ -436,4 +552,16 @@ export const AttendanceControllerCorrectParams = zod.object({
   "recordId": zod.string()
 })
 
-export const AttendanceControllerCorrectResponse = zod.unknown()
+export const AttendanceControllerCorrectResponse = zod.object({
+  "recordId": zod.string().nullable(),
+  "episodeId": zod.string().nullable(),
+  "rosterId": zod.string(),
+  "displayName": zod.string(),
+  "scheduled": zod.string().nullable(),
+  "timeIn": zod.iso.datetime({"offset":true}).nullable(),
+  "timeOut": zod.iso.datetime({"offset":true}).nullable(),
+  "onAirHours": zod.number().nullable(),
+  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT', 'AGREED_OVERTIME']),
+  "lateMinutes": zod.number(),
+  "note": zod.string().nullable()
+})

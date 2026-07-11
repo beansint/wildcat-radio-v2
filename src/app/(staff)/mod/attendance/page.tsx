@@ -14,7 +14,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import { useAttendanceControllerList, getAttendanceControllerListQueryKey } from "@/lib/api/endpoints/attendance/attendance";
 import { useShowsControllerList } from "@/lib/api/endpoints/shows/shows";
-import type { AttendanceRowDto, AttendanceStatus, ShowDto } from "@/lib/mod/types";
+import type { AttendanceRowDto, ShowDto } from "@/lib/api/model";
+import { AttendanceRowDtoStatus } from "@/lib/api/model";
 import { DataTable, type DataTableColumn } from "@/components/mod/data-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,15 +52,15 @@ function formatScheduled(hhmm: string | null): string {
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
-const STATUS_META: Record<AttendanceStatus, { label: string; pillClass: string }> = {
-  ON_TIME: { label: "On time", pillClass: "wc-pill-ok" },
-  LATE: { label: "Late", pillClass: "wc-pill-warn" },
-  ABSENT: { label: "Absent", pillClass: "wc-pill-bad" },
-  AGREED_OVERTIME: { label: "Agreed overtime", pillClass: "wc-pill-neutral" },
+const STATUS_META: Record<AttendanceRowDtoStatus, { label: string; pillClass: string }> = {
+  [AttendanceRowDtoStatus.ON_TIME]: { label: "On time", pillClass: "wc-pill-ok" },
+  [AttendanceRowDtoStatus.LATE]: { label: "Late", pillClass: "wc-pill-warn" },
+  [AttendanceRowDtoStatus.ABSENT]: { label: "Absent", pillClass: "wc-pill-bad" },
+  [AttendanceRowDtoStatus.AGREED_OVERTIME]: { label: "Agreed overtime", pillClass: "wc-pill-neutral" },
 };
 
 function statusLabel(row: AttendanceRowDto): string {
-  if (row.status === "LATE") return `Late ${row.lateMinutes}m`;
+  if (row.status === AttendanceRowDtoStatus.LATE) return `Late ${row.lateMinutes}m`;
   return STATUS_META[row.status].label;
 }
 

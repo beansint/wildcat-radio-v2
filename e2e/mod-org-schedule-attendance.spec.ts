@@ -141,6 +141,79 @@ function seedAbsentToday(runId: string) {
   return { rosterId, showId, djName };
 }
 
+/**
+ * Seeds two distinct shows, each airing today (station-local weekday) with its
+ * own assigned DJ, its own open episode, and an attendance record timed in
+ * today — so both render as present rows on the attendance sheet. Used to
+ * prove the `mod-attendance-show` filter narrows the sheet to a single show.
+ */
+function seedTwoShowsWithAttendance(runId: string) {
+  const a = {
+    rosterId: `${FIXTURE_PREFIX}filter-roster-a-${runId}`,
+    showId: `${FIXTURE_PREFIX}filter-show-a-${runId}`,
+    episodeId: `${FIXTURE_PREFIX}filter-episode-a-${runId}`,
+    djName: `E2E Filter DJ A ${runId}`,
+    showName: `E2E Filter Show A ${runId}`,
+  };
+  const b = {
+    rosterId: `${FIXTURE_PREFIX}filter-roster-b-${runId}`,
+    showId: `${FIXTURE_PREFIX}filter-show-b-${runId}`,
+    episodeId: `${FIXTURE_PREFIX}filter-episode-b-${runId}`,
+    djName: `E2E Filter DJ B ${runId}`,
+    showName: `E2E Filter Show B ${runId}`,
+  };
+  runPrismaScript(`
+    const OFFSET_MIN = Number.parseInt(process.env.STATION_UTC_OFFSET_MINUTES ?? '480', 10);
+    const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const shifted = new Date(Date.now() + OFFSET_MIN * 60000);
+    const todayWeekday = DAYS[shifted.getUTCDay()];
+    function stationDateNow() { return shifted.toISOString().slice(0, 10); }
+    function stationLocalToUtc(dateISO, hhmm) {
+      const [y, mo, d] = dateISO.split('-').map(Number);
+      const [h, mi] = hhmm.split(':').map(Number);
+      return new Date(Date.UTC(y, mo - 1, d, h, mi) - OFFSET_MIN * 60000);
+    }
+    const today = stationDateNow();
+    const timeIn = stationLocalToUtc(today, '13:00');
+    for (const s of [
+      { rosterId: ${JSON.stringify(a.rosterId)}, showId: ${JSON.stringify(a.showId)}, episodeId: ${JSON.stringify(a.episodeId)}, djName: ${JSON.stringify(a.djName)}, showName: ${JSON.stringify(a.showName)} },
+      { rosterId: ${JSON.stringify(b.rosterId)}, showId: ${JSON.stringify(b.showId)}, episodeId: ${JSON.stringify(b.episodeId)}, djName: ${JSON.stringify(b.djName)}, showName: ${JSON.stringify(b.showName)} },
+    ]) {
+      const cadence = { kind: 'WEEKLY', days: [todayWeekday], start: '13:00', end: '14:00' };
+      await prisma.rosterEntry.upsert({
+        where: { id: s.rosterId },
+        update: { displayName: s.djName, isActive: true },
+        create: { id: s.rosterId, displayName: s.djName, isActive: true },
+      });
+      await prisma.show.upsert({
+        where: { id: s.showId },
+        update: { cadence },
+        create: { id: s.showId, name: s.showName, slug: s.showId, cadence },
+      });
+      await prisma.showRosterEntry.upsert({
+        where: { showId_rosterId: { showId: s.showId, rosterId: s.rosterId } },
+        update: {},
+        create: { showId: s.showId, rosterId: s.rosterId },
+      });
+      // Closed (endedAt set): the attendance sheet buckets by timeIn day-window
+      // + showId, not by endedAt, so these still render — and a *closed*
+      // episode can't hijack the studio spec's findOpenEpisode() when the two
+      // files run in parallel.
+      await prisma.episode.upsert({
+        where: { id: s.episodeId },
+        update: { showId: s.showId, unscheduled: false, endedAt: timeIn, scheduledFor: timeIn },
+        create: { id: s.episodeId, showId: s.showId, unscheduled: false, endedAt: timeIn, scheduledFor: timeIn },
+      });
+      await prisma.attendanceRecord.upsert({
+        where: { episodeId_rosterId: { episodeId: s.episodeId, rosterId: s.rosterId } },
+        update: { timeIn, timeOut: null },
+        create: { episodeId: s.episodeId, rosterId: s.rosterId, timeIn },
+      });
+    }
+  `);
+  return { a, b };
+}
+
 /** Deletes every backend row this file's fixtures created, FK-safe order. */
 function cleanupFixtures() {
   runPrismaScript(`
@@ -546,6 +619,29 @@ test.describe('mod org/schedule/attendance', () => {
     await expect(row).toBeVisible({ timeout: 10_000 });
     await expect(row).toContainText('Absent');
     await expect(row.getByTestId('mod-attendance-edit')).toHaveCount(0);
+  });
+
+  test('edge: the attendance show filter narrows the sheet to the selected show', async ({ page }) => {
+    const runId = uniqueSuffix();
+    const { a, b } = seedTwoShowsWithAttendance(runId);
+
+    await loginAs(page, MOD_EMAIL, '/mod/attendance');
+    // Default "all shows": both DJs present.
+    await expect(page.getByTestId('mod-attendance-row').filter({ hasText: a.djName })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId('mod-attendance-row').filter({ hasText: b.djName })).toBeVisible();
+
+    // Select show A in the filter (a Radix Select — its content isn't inside a
+    // Dialog here, so a plain option click works).
+    await page.getByTestId('mod-attendance-show').click();
+    await page.locator('[data-slot="select-item"]').filter({ hasText: a.showName }).click();
+
+    // Only show A's DJ remains; show B's row is filtered out server-side.
+    await expect(page.getByTestId('mod-attendance-row').filter({ hasText: a.djName })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId('mod-attendance-row').filter({ hasText: b.djName })).toHaveCount(0);
   });
 
   test('cross-cutting edge: staff dark mode does not leak onto the public site', async ({ page }) => {

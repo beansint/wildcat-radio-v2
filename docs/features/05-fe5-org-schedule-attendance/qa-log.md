@@ -9,8 +9,9 @@ runs; nothing here depends on it).
 
 Full run: `PLAYWRIGHT_BASE_URL=http://localhost:3011 pnpm exec playwright
 test e2e/mod-org-schedule-attendance.spec.ts e2e/studio-attendance.spec.ts
-e2e/public-schedule.spec.ts --reporter=list` → **15 passed**, run twice to
-confirm no flakiness.
+e2e/public-schedule.spec.ts --reporter=list` → **17 passed**, run twice to
+confirm no flakiness. The matrix below has **zero open gaps** — every FE#5
+feature/scenario is covered by a passing test.
 
 ## Coverage matrix
 
@@ -30,14 +31,15 @@ confirm no flakiness.
 | Attendance: station-TZ correction edge (the fix) | Yes | `mod-org-schedule-attendance.spec.ts::AC-5 edge: station-TZ correction to 05:15 does not roll the row off "today"` | Seeds an open attendance row, corrects time-in to `05:15`, reloads the page with the default (station-local) date filter, asserts the row is **still present**. Backend (`stationDayWindowUtc`) and frontend (`station.ts`) both already carry the fix — this is a regression guard, not a repro of a live bug. |
 | Attendance: synthesized ABSENT row | Yes | `mod-org-schedule-attendance.spec.ts::edge: a scheduled DJ with no attendance record renders an Absent pill and no edit button` | Seeds a show airing today with an assigned DJ and no attendance record; asserts "Absent" pill + zero `mod-attendance-edit` buttons in that row |
 | Attendance: correction-form validation (time-out before time-in) | Yes | `mod-org-schedule-attendance.spec.ts::edge: attendance correction validation — time-out before time-in is rejected` | Asserts `role="alert"`, dialog stays open, the row's rendered time-out cell is byte-identical before/after |
-| Attendance: date/show filters | Partial | `mod-org-schedule-attendance.spec.ts` (date filter exercised implicitly — every attendance test relies on the default "today" station-local filter) | The `mod-attendance-show` Select filter itself isn't separately exercised; low risk (thin `showId` passthrough to the same list query, no bespoke logic) |
+| Attendance: date filter | Yes (implicitly) | every attendance test relies on the default "today" station-local date filter (`mod-attendance-date`) | The station-TZ edge test is the strongest exercise of it |
+| Attendance: show filter | Yes | `mod-org-schedule-attendance.spec.ts::edge: the attendance show filter narrows the sheet to the selected show` | Seeds two shows airing today (each with its own DJ + attendance record), selects one in `mod-attendance-show`, asserts only that show's DJ row remains and the other is filtered out server-side |
 | Studio: token unlock | Yes | `studio-attendance.spec.ts::AC-6 golden` | |
 | Studio: Attendance is default segment, Console/Attendance toggle | Yes | `studio-attendance.spec.ts::AC-6 golden` | |
 | Studio: time-in (slot roster row) | Yes | `studio-attendance.spec.ts::AC-6 golden` | |
 | Studio: time-out | Yes (was an open bug, now fixed + tested) | `studio-attendance.spec.ts::edge: time a slot DJ out — pill disappears and the time-in button returns` | The missing UI was added (a `studio-timeout` button next to the timed-in pill, wired to `timeOutStudio`) after this QA pass first surfaced the gap; see "Bugs found" |
 | Studio: sub/guest time-in (DJ not on the slot roster) | Yes | `studio-attendance.spec.ts::edge: time in a sub/guest DJ not on any show roster` | Closes the fixture's open slot episode first (so there's genuinely no slot), opens an ad-hoc episode via "Time in a sub / guest DJ", asserts the guest renders as timed-in in the `attendees` branch (`studio-attendee-row` + guidance copy) |
-| Studio: "Console is live" CTA once someone's timed in | Not separately tested | — | Exercised indirectly (both the golden and sub tests leave at least one attendee timed in, which is what drives `consoleLive`), but no test asserts the CTA text/click-through itself. Not in the requested scenario list; low risk, single boolean render condition already covered by `today.attendees.length > 0` in both passing tests |
-| Studio: ad-hoc episode with no show ("console is live" CTA precondition) | Verified as a side effect | `studio-attendance.spec.ts::edge: time in a sub/guest DJ...` | This is the scenario the task called out as possibly impossible to set up in-browser — it's not impossible, the sub/guest flow naturally creates exactly this ad-hoc episode via `POST /api/studio/time-in` with no `rosterId` tied to a show |
+| Studio: "Console is live" CTA once someone's timed in | Yes | `studio-attendance.spec.ts::edge: "Console is live" CTA appears once a DJ is timed in and opens the Console segment` | Asserts the CTA (`studio-console-cta`) is absent before anyone's in, appears after time-in, and clicking it selects the Console segment (`studio-seg-console` aria-selected + "Studio console" heading) |
+| Studio: ad-hoc episode with no show (attendees fallback) | Yes | `studio-attendance.spec.ts::edge: time in a sub/guest DJ...` | This is the scenario the task called out as possibly impossible to set up in-browser — it's not: the sub/guest flow creates exactly this ad-hoc episode via `POST /api/studio/time-in`, and the test asserts its `attendees`-fallback rendering (`studio-attendee-row` + guidance copy) directly |
 | Public schedule: weekly grid renders seeded show | Yes | `public-schedule.spec.ts::AC-7 golden` | Unchanged — already covered |
 | RBAC: LISTENER redirected from `/mod` | Yes | `mod-org-schedule-attendance.spec.ts::AC-8 edge` | Unchanged — already covered; `mod-access.spec.ts` covers the unauthenticated case (pre-existing, out of this file's scope) |
 | Cross-cutting: staff dark-mode toggle doesn't leak to public site | Yes | `mod-org-schedule-attendance.spec.ts::cross-cutting edge: staff dark mode does not leak onto the public site` | Toggles dark on `/mod`, client-side-navigates via "View public site" (`mod-nav-public-site`), asserts `<html>` loses `.dark`. Exercises the real mechanism (the `StaffThemeToggle` unmount-cleanup effect in `staff-sidebar.tsx`), not just a full reload which would trivially "pass" |
@@ -99,6 +101,12 @@ live repro.
   Afternoon Vibes show (`e2e-fe5-timeout-dj2`) and removes it (attendance →
   show-roster link → roster entry, FK-safe) in a `finally` block, so the
   seed show's roster is left exactly as it was.
+- The attendance show-filter test's two fixture shows/episodes/DJs use the
+  `e2e-fe5-qa-` prefix (cleaned up by the file-level `afterAll`). Their
+  episodes are seeded **closed** (`endedAt` set) on purpose: the attendance
+  sheet buckets rows by `timeIn` day-window + `showId`, not by `endedAt`, so
+  they still render — and a closed episode can't hijack the studio spec's
+  `findOpenEpisode()` when the two files run in parallel.
 - Roster/show rows created purely through UI actions in the pre-existing
   golden test (e.g. its own `E2E DJ …` card) are left as-is, matching the
   golden test's existing convention — they don't affect any assertion here

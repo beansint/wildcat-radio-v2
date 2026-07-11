@@ -5,7 +5,7 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
-import type { SubmitQueueItemDtoType } from './submitQueueItemDtoType';
+import type { SubmitQueueItemDtoType } from './submitQueueItemDtoType.ts';
 
 export interface SubmitQueueItemDto {
   type: SubmitQueueItemDtoType;

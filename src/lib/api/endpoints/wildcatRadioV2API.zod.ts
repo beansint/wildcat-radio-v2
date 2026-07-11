@@ -35,6 +35,12 @@ export const GetStudioTodayResponse = zod.unknown()
 
 
 /**
+ * @summary List active roster entries
+ */
+export const ListStudioRosterResponse = zod.unknown()
+
+
+/**
  * @summary DJ time-in (tap in)
  */
 export const TimeInStudioResponse = zod.unknown()

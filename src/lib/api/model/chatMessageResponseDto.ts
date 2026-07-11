@@ -5,7 +5,7 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
-import type { EngagementUserResponseDto } from './engagementUserResponseDto';
+import type { EngagementUserResponseDto } from './engagementUserResponseDto.ts';
 
 export interface ChatMessageResponseDto {
   /** Chat message id (cuid) */

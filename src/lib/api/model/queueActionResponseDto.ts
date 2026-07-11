@@ -5,7 +5,7 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
-import type { QueueActionResponseDtoStatus } from './queueActionResponseDtoStatus';
+import type { QueueActionResponseDtoStatus } from './queueActionResponseDtoStatus.ts';
 
 export interface QueueActionResponseDto {
   /** Queue item id (cuid) */

@@ -20,6 +20,11 @@ import type {
   UseQueryResult
 } from '@tanstack/react-query';
 
+import type {
+  PublicSettingDto,
+  SettingDto
+} from '../../model';
+
 import { customFetch } from '../../fetcher';
 
 
@@ -35,9 +40,9 @@ export const getListSettingsUrl = () => {
   return `/api/settings`
 }
 
-export const listSettings = async ( options?: RequestInit): Promise<void> => {
+export const listSettings = async ( options?: RequestInit): Promise<PublicSettingDto[]> => {
 
-  return customFetch<void>(getListSettingsUrl(),
+  return customFetch<PublicSettingDto[]>(getListSettingsUrl(),
   {
     ...options,
     method: 'GET'
@@ -110,6 +115,106 @@ export function useListSettings<TData = Awaited<ReturnType<typeof listSettings>>
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getListSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getUpdateSettingUrl = (key: string,) => {
+
+
+
+
+  return `/api/settings/${key}`
+}
+
+/**
+ * @summary Upsert a setting value (moderator)
+ */
+export const updateSetting = async (key: string, options?: RequestInit): Promise<SettingDto> => {
+
+  return customFetch<SettingDto>(getUpdateSettingUrl(key),
+  {
+    ...options,
+    method: 'PUT'
+
+
+  }
+);}
+
+
+
+
+
+export const getUpdateSettingQueryKey = (key: string,) => {
+    return [
+    'PUT', `/api/settings/${key}`
+    ] as const;
+    }
+
+
+export const getUpdateSettingQueryOptions = <TData = Awaited<ReturnType<typeof updateSetting>>, TError = unknown>(key: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof updateSetting>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getUpdateSettingQueryKey(key);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof updateSetting>>> = ({ signal }) => updateSetting(key, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: key !== null && key !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof updateSetting>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type UpdateSettingQueryResult = NonNullable<Awaited<ReturnType<typeof updateSetting>>>
+export type UpdateSettingQueryError = unknown
+
+
+export function useUpdateSetting<TData = Awaited<ReturnType<typeof updateSetting>>, TError = unknown>(
+ key: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof updateSetting>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof updateSetting>>,
+          TError,
+          Awaited<ReturnType<typeof updateSetting>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUpdateSetting<TData = Awaited<ReturnType<typeof updateSetting>>, TError = unknown>(
+ key: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof updateSetting>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof updateSetting>>,
+          TError,
+          Awaited<ReturnType<typeof updateSetting>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUpdateSetting<TData = Awaited<ReturnType<typeof updateSetting>>, TError = unknown>(
+ key: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof updateSetting>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Upsert a setting value (moderator)
+ */
+
+export function useUpdateSetting<TData = Awaited<ReturnType<typeof updateSetting>>, TError = unknown>(
+ key: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof updateSetting>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getUpdateSettingQueryOptions(key,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

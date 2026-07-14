@@ -5,9 +5,10 @@
  * bespoke brand surfaces stay `wc-*`, don't shadcn-ify). Ported 1:1 from
  * docs/frontend-design-basis-prototype/mod/{roster,attendance}.html.
  *
- * Only the Station group (Roster/Schedule/Attendance) is wired to real routes
- * for FE#5 Task 9; Moderate/Insights/Custodian/Broadcast PC links are the
- * prototype's placeholders (`href="#"`) until their own features land.
+ * Station group (Roster/Schedule/Attendance) wired for FE#5 Task 9; Moderate
+ * (Queue/Users), Insights→Logs, and Custodian→Escalations are wired for the
+ * moderation UI (FE#8). Analytics/Settings/Staff Review/Announcements remain
+ * the prototype's placeholders (`href="#"`) until their own features land.
  */
 import Image from "next/image";
 import Link from "next/link";
@@ -30,11 +31,24 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-export type StaffNavSlug = "roster" | "schedule" | "attendance";
+export type StaffNavSlug =
+  | "roster"
+  | "schedule"
+  | "attendance"
+  | "queue"
+  | "users"
+  | "logs"
+  | "escalations";
 
 interface StaffSidebarProps {
-  /** Which Station-group link is the current page. */
+  /** Which nav link is the current page. */
   active: StaffNavSlug;
+  /**
+   * Live pending-item count for the Queue nav badge (`wc-chip`). Undefined
+   * or 0 renders no badge — the /mod/queue page supplies the real count via
+   * `useModerationControllerGetQueue`; other pages just omit this prop.
+   */
+  queueCount?: number;
 }
 
 const STATION_ITEMS: { slug: StaffNavSlug; href: string; label: string; Icon: typeof Mic2 }[] = [
@@ -97,7 +111,7 @@ function StaffThemeToggle() {
   );
 }
 
-export function StaffSidebar({ active }: StaffSidebarProps) {
+export function StaffSidebar({ active, queueCount }: StaffSidebarProps) {
   return (
     <aside id="staffNav" className="wc-sidebar" aria-label="Staff navigation">
       <Link
@@ -118,14 +132,29 @@ export function StaffSidebar({ active }: StaffSidebarProps) {
       </Link>
 
       <div className="wc-sidebar-group">Moderate</div>
-      <a href="#" data-testid="mod-nav-queue">
+      <Link
+        href="/mod/queue"
+        className={active === "queue" ? "active" : undefined}
+        aria-current={active === "queue" ? "page" : undefined}
+        data-testid="mod-nav-queue"
+      >
         <Inbox className="w-4 h-4" aria-hidden="true" />
         Queue
-      </a>
-      <a href="#" data-testid="mod-nav-users">
+        {!!queueCount && (
+          <span className="wc-chip ml-auto tnum" data-testid="mod-nav-queue-count">
+            {queueCount}
+          </span>
+        )}
+      </Link>
+      <Link
+        href="/mod/users"
+        className={active === "users" ? "active" : undefined}
+        aria-current={active === "users" ? "page" : undefined}
+        data-testid="mod-nav-users"
+      >
         <Users className="w-4 h-4" aria-hidden="true" />
         Users
-      </a>
+      </Link>
 
       <div className="wc-sidebar-group">Station</div>
       {STATION_ITEMS.map(({ slug, href, label, Icon }) => (
@@ -150,10 +179,15 @@ export function StaffSidebar({ active }: StaffSidebarProps) {
         <BarChart3 className="w-4 h-4" aria-hidden="true" />
         Analytics
       </a>
-      <a href="#" data-testid="mod-nav-logs">
+      <Link
+        href="/mod/logs"
+        className={active === "logs" ? "active" : undefined}
+        aria-current={active === "logs" ? "page" : undefined}
+        data-testid="mod-nav-logs"
+      >
         <ScrollText className="w-4 h-4" aria-hidden="true" />
         Logs
-      </a>
+      </Link>
       <a href="#" data-testid="mod-nav-settings">
         <Settings className="w-4 h-4" aria-hidden="true" />
         Settings
@@ -164,10 +198,15 @@ export function StaffSidebar({ active }: StaffSidebarProps) {
         <ShieldCheck className="w-4 h-4" aria-hidden="true" />
         Staff Review
       </a>
-      <a href="#" data-testid="mod-nav-escalations">
+      <Link
+        href="/admin/escalations"
+        className={active === "escalations" ? "active" : undefined}
+        aria-current={active === "escalations" ? "page" : undefined}
+        data-testid="mod-nav-escalations"
+      >
         <Gavel className="w-4 h-4" aria-hidden="true" />
         Escalations
-      </a>
+      </Link>
 
       <div className="wc-sidebar-group">Broadcast PC</div>
       <Link href="/studio" data-testid="mod-nav-studio">

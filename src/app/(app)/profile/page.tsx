@@ -458,7 +458,7 @@ export default function ProfilePage() {
       {/* ── QUICK LINKS ── */}
       <div className="wc-card divide-y">
         <Link
-          href="#"
+          href="/profile/standing"
           className="wc-card-pad flex items-center gap-3 hover:bg-[var(--muted)]"
         >
           <Shield className="w-5 h-5 text-maroon flex-none" aria-hidden="true" />

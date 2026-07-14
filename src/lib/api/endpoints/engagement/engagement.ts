@@ -22,6 +22,7 @@ import type {
 
 import type {
   CreateReactionDto,
+  HideChatMessageResultDto,
   PollResponseDto,
   QueueSubmissionResponseDto,
   ReactionResponseDto,
@@ -446,6 +447,106 @@ export function useReact<TData = Awaited<ReturnType<typeof react>>, TError = unk
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getReactQueryOptions(id,createReactionDto,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getHideChatMessageUrl = (id: string,) => {
+
+
+
+
+  return `/api/chat/${id}/hide`
+}
+
+/**
+ * @summary Soft-hide a chat message
+ */
+export const hideChatMessage = async (id: string, options?: RequestInit): Promise<HideChatMessageResultDto> => {
+
+  return customFetch<HideChatMessageResultDto>(getHideChatMessageUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getHideChatMessageQueryKey = (id: string,) => {
+    return [
+    'PATCH', `/api/chat/${id}/hide`
+    ] as const;
+    }
+
+
+export const getHideChatMessageQueryOptions = <TData = Awaited<ReturnType<typeof hideChatMessage>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof hideChatMessage>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getHideChatMessageQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof hideChatMessage>>> = ({ signal }) => hideChatMessage(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof hideChatMessage>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type HideChatMessageQueryResult = NonNullable<Awaited<ReturnType<typeof hideChatMessage>>>
+export type HideChatMessageQueryError = unknown
+
+
+export function useHideChatMessage<TData = Awaited<ReturnType<typeof hideChatMessage>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof hideChatMessage>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof hideChatMessage>>,
+          TError,
+          Awaited<ReturnType<typeof hideChatMessage>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useHideChatMessage<TData = Awaited<ReturnType<typeof hideChatMessage>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof hideChatMessage>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof hideChatMessage>>,
+          TError,
+          Awaited<ReturnType<typeof hideChatMessage>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useHideChatMessage<TData = Awaited<ReturnType<typeof hideChatMessage>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof hideChatMessage>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Soft-hide a chat message
+ */
+
+export function useHideChatMessage<TData = Awaited<ReturnType<typeof hideChatMessage>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof hideChatMessage>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getHideChatMessageQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

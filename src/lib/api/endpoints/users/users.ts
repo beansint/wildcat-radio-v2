@@ -20,6 +20,14 @@ import type {
   UseQueryResult
 } from '@tanstack/react-query';
 
+import type {
+  ChangeRoleResultDto,
+  ForceRenameResultDto,
+  MeStandingDto,
+  UserSearchResultDto,
+  UsersControllerSearchUsersParams
+} from '../../model';
+
 import { customFetch } from '../../fetcher';
 
 
@@ -238,9 +246,9 @@ export const getUsersControllerGetMeStandingUrl = () => {
 /**
  * @summary Get current user moderation standing
  */
-export const usersControllerGetMeStanding = async ( options?: RequestInit): Promise<void> => {
+export const usersControllerGetMeStanding = async ( options?: RequestInit): Promise<MeStandingDto> => {
 
-  return customFetch<void>(getUsersControllerGetMeStandingUrl(),
+  return customFetch<MeStandingDto>(getUsersControllerGetMeStandingUrl(),
   {
     ...options,
     method: 'GET'
@@ -516,6 +524,313 @@ export function useUsersControllerGetMyConsent<TData = Awaited<ReturnType<typeof
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getUsersControllerGetMyConsentQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getUsersControllerSearchUsersUrl = (params?: UsersControllerSearchUsersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/users?${stringifiedParams}` : `/api/users`
+}
+
+/**
+ * @summary Search/paginate users by handle/email/name and class (moderator)
+ */
+export const usersControllerSearchUsers = async (params?: UsersControllerSearchUsersParams, options?: RequestInit): Promise<UserSearchResultDto> => {
+
+  return customFetch<UserSearchResultDto>(getUsersControllerSearchUsersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getUsersControllerSearchUsersQueryKey = (params?: UsersControllerSearchUsersParams,) => {
+    return [
+    `/api/users`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getUsersControllerSearchUsersQueryOptions = <TData = Awaited<ReturnType<typeof usersControllerSearchUsers>>, TError = unknown>(params?: UsersControllerSearchUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerSearchUsers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getUsersControllerSearchUsersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof usersControllerSearchUsers>>> = ({ signal }) => usersControllerSearchUsers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof usersControllerSearchUsers>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type UsersControllerSearchUsersQueryResult = NonNullable<Awaited<ReturnType<typeof usersControllerSearchUsers>>>
+export type UsersControllerSearchUsersQueryError = unknown
+
+
+export function useUsersControllerSearchUsers<TData = Awaited<ReturnType<typeof usersControllerSearchUsers>>, TError = unknown>(
+ params: undefined |  UsersControllerSearchUsersParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerSearchUsers>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof usersControllerSearchUsers>>,
+          TError,
+          Awaited<ReturnType<typeof usersControllerSearchUsers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUsersControllerSearchUsers<TData = Awaited<ReturnType<typeof usersControllerSearchUsers>>, TError = unknown>(
+ params?: UsersControllerSearchUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerSearchUsers>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof usersControllerSearchUsers>>,
+          TError,
+          Awaited<ReturnType<typeof usersControllerSearchUsers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUsersControllerSearchUsers<TData = Awaited<ReturnType<typeof usersControllerSearchUsers>>, TError = unknown>(
+ params?: UsersControllerSearchUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerSearchUsers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Search/paginate users by handle/email/name and class (moderator)
+ */
+
+export function useUsersControllerSearchUsers<TData = Awaited<ReturnType<typeof usersControllerSearchUsers>>, TError = unknown>(
+ params?: UsersControllerSearchUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerSearchUsers>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getUsersControllerSearchUsersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getUsersControllerForceRenameUrl = (id: string,) => {
+
+
+
+
+  return `/api/users/${id}/force-rename`
+}
+
+/**
+ * @summary Force-rename a user handle (moderator); audited
+ */
+export const usersControllerForceRename = async (id: string, options?: RequestInit): Promise<ForceRenameResultDto> => {
+
+  return customFetch<ForceRenameResultDto>(getUsersControllerForceRenameUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getUsersControllerForceRenameQueryKey = (id: string,) => {
+    return [
+    'POST', `/api/users/${id}/force-rename`
+    ] as const;
+    }
+
+
+export const getUsersControllerForceRenameQueryOptions = <TData = Awaited<ReturnType<typeof usersControllerForceRename>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerForceRename>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getUsersControllerForceRenameQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof usersControllerForceRename>>> = ({ signal }) => usersControllerForceRename(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof usersControllerForceRename>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type UsersControllerForceRenameQueryResult = NonNullable<Awaited<ReturnType<typeof usersControllerForceRename>>>
+export type UsersControllerForceRenameQueryError = unknown
+
+
+export function useUsersControllerForceRename<TData = Awaited<ReturnType<typeof usersControllerForceRename>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerForceRename>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof usersControllerForceRename>>,
+          TError,
+          Awaited<ReturnType<typeof usersControllerForceRename>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUsersControllerForceRename<TData = Awaited<ReturnType<typeof usersControllerForceRename>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerForceRename>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof usersControllerForceRename>>,
+          TError,
+          Awaited<ReturnType<typeof usersControllerForceRename>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUsersControllerForceRename<TData = Awaited<ReturnType<typeof usersControllerForceRename>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerForceRename>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Force-rename a user handle (moderator); audited
+ */
+
+export function useUsersControllerForceRename<TData = Awaited<ReturnType<typeof usersControllerForceRename>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerForceRename>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getUsersControllerForceRenameQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getUsersControllerChangeRoleUrl = (id: string,) => {
+
+
+
+
+  return `/api/users/${id}/role`
+}
+
+/**
+ * @summary Change a user role (custodian only); audited
+ */
+export const usersControllerChangeRole = async (id: string, options?: RequestInit): Promise<ChangeRoleResultDto> => {
+
+  return customFetch<ChangeRoleResultDto>(getUsersControllerChangeRoleUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getUsersControllerChangeRoleQueryKey = (id: string,) => {
+    return [
+    'PATCH', `/api/users/${id}/role`
+    ] as const;
+    }
+
+
+export const getUsersControllerChangeRoleQueryOptions = <TData = Awaited<ReturnType<typeof usersControllerChangeRole>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerChangeRole>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getUsersControllerChangeRoleQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof usersControllerChangeRole>>> = ({ signal }) => usersControllerChangeRole(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof usersControllerChangeRole>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type UsersControllerChangeRoleQueryResult = NonNullable<Awaited<ReturnType<typeof usersControllerChangeRole>>>
+export type UsersControllerChangeRoleQueryError = unknown
+
+
+export function useUsersControllerChangeRole<TData = Awaited<ReturnType<typeof usersControllerChangeRole>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerChangeRole>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof usersControllerChangeRole>>,
+          TError,
+          Awaited<ReturnType<typeof usersControllerChangeRole>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUsersControllerChangeRole<TData = Awaited<ReturnType<typeof usersControllerChangeRole>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerChangeRole>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof usersControllerChangeRole>>,
+          TError,
+          Awaited<ReturnType<typeof usersControllerChangeRole>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUsersControllerChangeRole<TData = Awaited<ReturnType<typeof usersControllerChangeRole>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerChangeRole>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Change a user role (custodian only); audited
+ */
+
+export function useUsersControllerChangeRole<TData = Awaited<ReturnType<typeof usersControllerChangeRole>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerChangeRole>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getUsersControllerChangeRoleQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

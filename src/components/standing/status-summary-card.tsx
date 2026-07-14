@@ -3,7 +3,7 @@
 import { VolumeX, Check } from "lucide-react";
 import type { MeStandingDto, StrikeDto } from "@/lib/api/model";
 import { StatusPill } from "@/components/mod/status-pill";
-import { formatDateTime } from "./format";
+import { formatDateTime, isFuture } from "./format";
 
 interface StatusSummaryCardProps {
   standing: MeStandingDto;
@@ -16,7 +16,9 @@ interface StatusSummaryCardProps {
  * context chip, the big "N of 3 strikes" stat, and the recovery helper copy.
  */
 export function StatusSummaryCard({ standing, activeStrikes }: StatusSummaryCardProps) {
-  const isMuted = !!standing.mutedUntil;
+  // `mutedUntil` isn't nulled once it lapses — an expired mute must read as
+  // not-muted (matches `src/components/mod/users/status.ts`'s `userStatus`).
+  const isMuted = !!standing.mutedUntil && isFuture(standing.mutedUntil);
   const isBanned = !!standing.bannedAt;
 
   // The most recently-issued *active* strike drives the "Strike n · reason"

@@ -26,7 +26,10 @@ export default function StandingPage() {
 
   const strikes = standing?.strikes ?? [];
   const activeStrikes = strikes.filter((s) => isFuture(s.expiresAt));
-  const isMuted = !!standing?.mutedUntil;
+  // `mutedUntil` isn't nulled once it lapses — an expired mute must read as
+  // not-muted, so gate on it still being in the future (matches
+  // `src/components/mod/users/status.ts`'s `userStatus`).
+  const isMuted = !!standing?.mutedUntil && isFuture(standing.mutedUntil);
   const isBanned = !!standing?.bannedAt;
 
   // Most recently-issued active strike — the appeal form attaches to this one.

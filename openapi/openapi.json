@@ -37,12 +37,524 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Public settings (branding/copy) read from the DB"
+            "description": "Public settings (branding/copy) read from the DB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicSettingDto"
+                  }
+                }
+              }
+            }
           }
         },
         "summary": "",
         "tags": [
           "settings"
+        ]
+      }
+    },
+    "/api/settings/{key}": {
+      "put": {
+        "operationId": "updateSetting",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "description": "Dot-namespaced setting key, e.g. toggle.chatFreeze",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The upserted setting row",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Upsert a setting value (moderator)",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/mod/users/{id}/strike": {
+      "post": {
+        "operationId": "ModerationController_strike",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resulting standing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandingDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Issue a strike against a user; system computes the consequence",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/mod/users/{id}/action": {
+      "post": {
+        "operationId": "ModerationController_action",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recorded action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationActionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Direct moderator action (DELETE/WARN/MUTE/BAN/SEVERITY_OVERRIDE)",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/mod/filter": {
+      "get": {
+        "operationId": "ModerationController_listFilter",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Filter entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FilterEntryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List all filter entries",
+        "tags": [
+          "moderation"
+        ]
+      },
+      "post": {
+        "operationId": "ModerationController_addFilter",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Created filter entry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilterEntryDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Add a word/phrase to the content filter (stored normalized)",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/mod/filter/{id}": {
+      "delete": {
+        "operationId": "ModerationController_removeFilter",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        },
+        "summary": "Remove a filter entry",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/mod/reports": {
+      "post": {
+        "operationId": "ModerationController_createReport",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Created report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "File a report against a user or message (any authenticated user)",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/mod/queue": {
+      "get": {
+        "operationId": "ModerationController_getQueue",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Queue contents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Unified mod queue: open reports, watch-flags, appeals, and reinstatement requests",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/mod/reports/{id}/resolve": {
+      "post": {
+        "operationId": "ModerationController_resolveReport",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resolved report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Resolve a report: ACTIONED/DISMISSED, with a required written reason",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/mod/audit": {
+      "get": {
+        "operationId": "ModerationController_getAudit",
+        "parameters": [
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Default 20, max 100",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number, default 1",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "action",
+            "required": false,
+            "in": "query",
+            "description": "Exact or prefix match (e.g. \"mod.action.\")",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ISO date-time, inclusive-end",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ISO date-time, inclusive",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated staff audit log entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffAuditPageDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Paginated, filterable read of the staff audit log",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/mod/logs/broadcast": {
+      "get": {
+        "operationId": "ModerationController_getBroadcastLogs",
+        "parameters": [
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Default 20, max 100",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number, default 1",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "action",
+            "required": false,
+            "in": "query",
+            "description": "Exact or prefix match (e.g. \"attendance.\")",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ISO date-time, inclusive-end",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ISO date-time, inclusive",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated broadcast activity log entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BroadcastActivityPageDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Paginated, filterable read of the broadcast activity log",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/mod/appeals": {
+      "post": {
+        "operationId": "ModerationController_createAppeal",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Created appeal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "File an appeal against a strike or standing (any authenticated user)",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/mod/appeals/{id}/resolve": {
+      "post": {
+        "operationId": "ModerationController_resolveAppeal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resolved appeal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Resolve an appeal: UPHELD/REDUCED/OVERTURNED, with a required written response",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/mod/reinstatement": {
+      "post": {
+        "operationId": "ModerationController_createReinstatement",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Created reinstatement request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReinstatementRequestDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Request reinstatement (any currently banned, authenticated user)",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/mod/reinstatement/{id}/approve": {
+      "post": {
+        "operationId": "ModerationController_approveReinstatement",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Decided reinstatement request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReinstatementRequestDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Approve or deny a reinstatement request (custodian only)",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/admin/escalations": {
+      "get": {
+        "operationId": "AdminController_getEscalations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Escalations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EscalationsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Contested (open) appeals and open reinstatement requests, for custodian oversight",
+        "tags": [
+          "admin"
         ]
       }
     },
@@ -212,7 +724,14 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Mute/ban state and strike history"
+            "description": "Mute/ban state and strike history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeStandingDto"
+                }
+              }
+            }
           }
         },
         "summary": "Get current user moderation standing",
@@ -244,6 +763,130 @@
           }
         },
         "summary": "Get current consent records for the authenticated user",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users": {
+      "get": {
+        "operationId": "UsersController_searchUsers",
+        "parameters": [
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Default 20, max 100",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number, default 1",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "class",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "CAMPUS",
+                "GUEST"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Free-text match against handle/email/name",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated user summaries with active strike count + standing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSearchResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Search/paginate users by handle/email/name and class (moderator)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/{id}/force-rename": {
+      "post": {
+        "operationId": "UsersController_forceRename",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated id + handle",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForceRenameResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Force-rename a user handle (moderator); audited",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/{id}/role": {
+      "patch": {
+        "operationId": "UsersController_changeRole",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated id + role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeRoleResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Change a user role (custodian only); audited",
         "tags": [
           "users"
         ]
@@ -420,6 +1063,38 @@
           }
         },
         "summary": "Send a reaction",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/chat/{id}/hide": {
+      "patch": {
+        "operationId": "hideChatMessage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Chat message id (cuid)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hidden message id + flag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HideChatMessageResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Soft-hide a chat message",
         "tags": [
           "engagement"
         ]
@@ -969,6 +1644,541 @@
   "servers": [],
   "components": {
     "schemas": {
+      "PublicSettingDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Dot-namespaced setting key, e.g. branding.stationName"
+          },
+          "group": {
+            "type": "string",
+            "description": "Derived group, e.g. 'branding' or 'copy'"
+          },
+          "value": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Stored value; any JSON-serializable type"
+          }
+        },
+        "required": [
+          "key",
+          "group",
+          "value"
+        ]
+      },
+      "SettingDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Dot-namespaced setting key, e.g. toggle.chatFreeze"
+          },
+          "group": {
+            "type": "string",
+            "description": "Derived group, e.g. toggle/killswitch/branding/copy"
+          },
+          "value": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Stored value; any JSON-serializable type"
+          },
+          "updatedBy": {
+            "type": "string",
+            "nullable": true,
+            "description": "User id of the last writer"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "key",
+          "group",
+          "value",
+          "updatedBy",
+          "updatedAt"
+        ]
+      },
+      "StandingDto": {
+        "type": "object",
+        "properties": {
+          "strikeId": {
+            "type": "string"
+          },
+          "level": {
+            "type": "number",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "MUTE",
+              "BAN"
+            ]
+          },
+          "mutedUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "bannedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "strikeExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "strikeId",
+          "level",
+          "kind",
+          "mutedUntil",
+          "bannedAt",
+          "strikeExpiresAt"
+        ]
+      },
+      "ModerationActionResultDto": {
+        "type": "object",
+        "properties": {
+          "actionId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "DELETE",
+              "WARN",
+              "MUTE",
+              "BAN",
+              "SEVERITY_OVERRIDE"
+            ]
+          },
+          "mutedUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "bannedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "actionId",
+          "type",
+          "mutedUntil",
+          "bannedAt"
+        ]
+      },
+      "FilterEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "word": {
+            "type": "string",
+            "description": "Normalized form stored for matching"
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "BLOCK",
+              "WATCH"
+            ]
+          },
+          "addedById": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "word",
+          "tier",
+          "addedById",
+          "createdAt"
+        ]
+      },
+      "ReportDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reporterId": {
+            "type": "string",
+            "description": "Real reporter for user reports; the target user for system watch-flags"
+          },
+          "targetUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetMessageId": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "ACTIONED",
+              "DISMISSED"
+            ]
+          },
+          "resolvedById": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "targetHandle": {
+            "type": "string",
+            "nullable": true,
+            "description": "Reported (targetUserId) user handle"
+          },
+          "targetClass": {
+            "type": "string",
+            "nullable": true,
+            "description": "Reported (targetUserId) user listener class"
+          }
+        },
+        "required": [
+          "id",
+          "reporterId",
+          "targetUserId",
+          "targetMessageId",
+          "reason",
+          "status",
+          "resolvedById",
+          "resolvedAt",
+          "createdAt",
+          "targetHandle",
+          "targetClass"
+        ]
+      },
+      "AppealDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "subjectStrikeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "text": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "UPHELD",
+              "REDUCED",
+              "OVERTURNED"
+            ]
+          },
+          "reviewedById": {
+            "type": "string",
+            "nullable": true
+          },
+          "writtenResponse": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "handle": {
+            "type": "string",
+            "nullable": true,
+            "description": "Subject (userId) handle"
+          },
+          "class": {
+            "type": "string",
+            "nullable": true,
+            "description": "Subject (userId) listener class"
+          },
+          "role": {
+            "type": "string",
+            "nullable": true,
+            "description": "Subject (userId) role"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "subjectStrikeId",
+          "text",
+          "status",
+          "reviewedById",
+          "writtenResponse",
+          "createdAt",
+          "resolvedAt",
+          "handle",
+          "class",
+          "role"
+        ]
+      },
+      "ReinstatementRequestDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "APPROVED",
+              "DENIED"
+            ]
+          },
+          "approvedById": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "handle": {
+            "type": "string",
+            "nullable": true,
+            "description": "Subject (userId) handle"
+          },
+          "class": {
+            "type": "string",
+            "nullable": true,
+            "description": "Subject (userId) listener class"
+          },
+          "role": {
+            "type": "string",
+            "nullable": true,
+            "description": "Subject (userId) role"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "text",
+          "status",
+          "approvedById",
+          "createdAt",
+          "handle",
+          "class",
+          "role"
+        ]
+      },
+      "QueueDto": {
+        "type": "object",
+        "properties": {
+          "reports": {
+            "description": "Open user-authored reports (real reporterId)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportDto"
+            }
+          },
+          "watchFlags": {
+            "description": "Open system watch-flags (reason starts 'watch:')",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportDto"
+            }
+          },
+          "appeals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppealDto"
+            }
+          },
+          "reinstatements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReinstatementRequestDto"
+            }
+          }
+        },
+        "required": [
+          "reports",
+          "watchFlags",
+          "appeals",
+          "reinstatements"
+        ]
+      },
+      "StaffAuditEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "entity": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityId": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "actorId",
+          "action",
+          "entity",
+          "entityId",
+          "metadata",
+          "createdAt"
+        ]
+      },
+      "StaffAuditPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffAuditEntryDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "BroadcastActivityEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "episodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "action": {
+            "type": "string"
+          },
+          "rosterId": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "episodeId",
+          "action",
+          "rosterId",
+          "metadata",
+          "createdAt"
+        ]
+      },
+      "BroadcastActivityPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BroadcastActivityEntryDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "EscalationsDto": {
+        "type": "object",
+        "properties": {
+          "appeals": {
+            "description": "Open appeals awaiting custodian oversight",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppealDto"
+            }
+          },
+          "reinstatements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReinstatementRequestDto"
+            }
+          }
+        },
+        "required": [
+          "appeals",
+          "reinstatements"
+        ]
+      },
       "StudioEpisodeDto": {
         "type": "object",
         "properties": {
@@ -1148,6 +2358,196 @@
           "displayName"
         ]
       },
+      "StrikeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "level": {
+            "type": "number",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "issuedById": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "reason",
+          "issuedById",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "MeStandingDto": {
+        "type": "object",
+        "properties": {
+          "mutedUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "muteReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "bannedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "banReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "strikes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StrikeDto"
+            }
+          }
+        },
+        "required": [
+          "mutedUntil",
+          "muteReason",
+          "bannedAt",
+          "banReason",
+          "strikes"
+        ]
+      },
+      "UserSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "class": {
+            "type": "string",
+            "enum": [
+              "CAMPUS",
+              "GUEST"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "CUSTODIAN",
+              "MODERATOR",
+              "LISTENER"
+            ]
+          },
+          "activeStrikeCount": {
+            "type": "number",
+            "description": "Count of strikes with expiresAt > now"
+          },
+          "mutedUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "muteReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "bannedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "banReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "handle",
+          "email",
+          "class",
+          "role",
+          "activeStrikeCount",
+          "mutedUntil",
+          "muteReason",
+          "bannedAt",
+          "banReason"
+        ]
+      },
+      "UserSearchResultDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserSummaryDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "ForceRenameResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "handle"
+        ]
+      },
+      "ChangeRoleResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "CUSTODIAN",
+              "MODERATOR",
+              "LISTENER"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "role"
+        ]
+      },
       "SubmitQueueItemDto": {
         "type": "object",
         "properties": {
@@ -1298,6 +2698,25 @@
         },
         "required": [
           "ok"
+        ]
+      },
+      "HideChatMessageResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Chat message id (cuid)"
+          },
+          "isHidden": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "isHidden"
         ]
       },
       "EngagementUserResponseDto": {

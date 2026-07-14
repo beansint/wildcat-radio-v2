@@ -13,7 +13,356 @@ export const GetHealthResponse = zod.unknown()
 export const GetHealthDbResponse = zod.unknown()
 
 
-export const ListSettingsResponse = zod.unknown()
+export const ListSettingsResponseItem = zod.object({
+  "key": zod.string().describe('Dot-namespaced setting key, e.g. branding.stationName'),
+  "group": zod.string().describe('Derived group, e.g. \'branding\' or \'copy\''),
+  "value": zod.record(zod.string(), zod.unknown()).describe('Stored value; any JSON-serializable type')
+})
+export const ListSettingsResponse = zod.array(ListSettingsResponseItem)
+
+
+/**
+ * @summary Upsert a setting value (moderator)
+ */
+export const UpdateSettingParams = zod.object({
+  "key": zod.string().describe('Dot-namespaced setting key, e.g. toggle.chatFreeze')
+})
+
+export const UpdateSettingResponse = zod.object({
+  "key": zod.string().describe('Dot-namespaced setting key, e.g. toggle.chatFreeze'),
+  "group": zod.string().describe('Derived group, e.g. toggle\/killswitch\/branding\/copy'),
+  "value": zod.record(zod.string(), zod.unknown()).describe('Stored value; any JSON-serializable type'),
+  "updatedBy": zod.string().nullable().describe('User id of the last writer'),
+  "updatedAt": zod.iso.datetime({"offset":true})
+})
+
+
+/**
+ * @summary Issue a strike against a user; system computes the consequence
+ */
+export const ModerationControllerStrikeParams = zod.object({
+  "id": zod.string()
+})
+
+export const ModerationControllerStrikeResponse = zod.object({
+  "strikeId": zod.string(),
+  "level": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]),
+  "kind": zod.enum(['MUTE', 'BAN']),
+  "mutedUntil": zod.iso.datetime({"offset":true}).nullable(),
+  "bannedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "strikeExpiresAt": zod.iso.datetime({"offset":true})
+})
+
+
+/**
+ * @summary Direct moderator action (DELETE/WARN/MUTE/BAN/SEVERITY_OVERRIDE)
+ */
+export const ModerationControllerActionParams = zod.object({
+  "id": zod.string()
+})
+
+export const ModerationControllerActionResponse = zod.object({
+  "actionId": zod.string(),
+  "type": zod.enum(['DELETE', 'WARN', 'MUTE', 'BAN', 'SEVERITY_OVERRIDE']),
+  "mutedUntil": zod.iso.datetime({"offset":true}).nullable(),
+  "bannedAt": zod.iso.datetime({"offset":true}).nullable()
+})
+
+
+/**
+ * @summary List all filter entries
+ */
+export const ModerationControllerListFilterResponseItem = zod.object({
+  "id": zod.string(),
+  "word": zod.string().describe('Normalized form stored for matching'),
+  "tier": zod.enum(['BLOCK', 'WATCH']),
+  "addedById": zod.string(),
+  "createdAt": zod.iso.datetime({"offset":true})
+})
+export const ModerationControllerListFilterResponse = zod.array(ModerationControllerListFilterResponseItem)
+
+
+/**
+ * @summary Add a word/phrase to the content filter (stored normalized)
+ */
+export const ModerationControllerAddFilterResponse = zod.object({
+  "id": zod.string(),
+  "word": zod.string().describe('Normalized form stored for matching'),
+  "tier": zod.enum(['BLOCK', 'WATCH']),
+  "addedById": zod.string(),
+  "createdAt": zod.iso.datetime({"offset":true})
+})
+
+
+/**
+ * @summary Remove a filter entry
+ */
+export const ModerationControllerRemoveFilterParams = zod.object({
+  "id": zod.string()
+})
+
+export const ModerationControllerRemoveFilterResponse = zod.unknown()
+
+
+/**
+ * @summary File a report against a user or message (any authenticated user)
+ */
+export const ModerationControllerCreateReportResponse = zod.object({
+  "id": zod.string(),
+  "reporterId": zod.string().describe('Real reporter for user reports; the target user for system watch-flags'),
+  "targetUserId": zod.string().nullable(),
+  "targetMessageId": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "status": zod.enum(['OPEN', 'ACTIONED', 'DISMISSED']),
+  "resolvedById": zod.string().nullable(),
+  "resolvedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "targetHandle": zod.string().nullable().describe('Reported (targetUserId) user handle'),
+  "targetClass": zod.string().nullable().describe('Reported (targetUserId) user listener class')
+})
+
+
+/**
+ * @summary Unified mod queue: open reports, watch-flags, appeals, and reinstatement requests
+ */
+export const ModerationControllerGetQueueResponse = zod.object({
+  "reports": zod.array(zod.object({
+  "id": zod.string(),
+  "reporterId": zod.string().describe('Real reporter for user reports; the target user for system watch-flags'),
+  "targetUserId": zod.string().nullable(),
+  "targetMessageId": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "status": zod.enum(['OPEN', 'ACTIONED', 'DISMISSED']),
+  "resolvedById": zod.string().nullable(),
+  "resolvedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "targetHandle": zod.string().nullable().describe('Reported (targetUserId) user handle'),
+  "targetClass": zod.string().nullable().describe('Reported (targetUserId) user listener class')
+})).describe('Open user-authored reports (real reporterId)'),
+  "watchFlags": zod.array(zod.object({
+  "id": zod.string(),
+  "reporterId": zod.string().describe('Real reporter for user reports; the target user for system watch-flags'),
+  "targetUserId": zod.string().nullable(),
+  "targetMessageId": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "status": zod.enum(['OPEN', 'ACTIONED', 'DISMISSED']),
+  "resolvedById": zod.string().nullable(),
+  "resolvedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "targetHandle": zod.string().nullable().describe('Reported (targetUserId) user handle'),
+  "targetClass": zod.string().nullable().describe('Reported (targetUserId) user listener class')
+})).describe('Open system watch-flags (reason starts \'watch:\')'),
+  "appeals": zod.array(zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "subjectStrikeId": zod.string().nullable(),
+  "text": zod.string(),
+  "status": zod.enum(['OPEN', 'UPHELD', 'REDUCED', 'OVERTURNED']),
+  "reviewedById": zod.string().nullable(),
+  "writtenResponse": zod.string().nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "resolvedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "handle": zod.string().nullable().describe('Subject (userId) handle'),
+  "class": zod.string().nullable().describe('Subject (userId) listener class'),
+  "role": zod.string().nullable().describe('Subject (userId) role')
+})),
+  "reinstatements": zod.array(zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "text": zod.string(),
+  "status": zod.enum(['OPEN', 'APPROVED', 'DENIED']),
+  "approvedById": zod.string().nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "handle": zod.string().nullable().describe('Subject (userId) handle'),
+  "class": zod.string().nullable().describe('Subject (userId) listener class'),
+  "role": zod.string().nullable().describe('Subject (userId) role')
+}))
+})
+
+
+/**
+ * @summary Resolve a report: ACTIONED/DISMISSED, with a required written reason
+ */
+export const ModerationControllerResolveReportParams = zod.object({
+  "id": zod.string()
+})
+
+export const ModerationControllerResolveReportResponse = zod.object({
+  "id": zod.string(),
+  "reporterId": zod.string().describe('Real reporter for user reports; the target user for system watch-flags'),
+  "targetUserId": zod.string().nullable(),
+  "targetMessageId": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "status": zod.enum(['OPEN', 'ACTIONED', 'DISMISSED']),
+  "resolvedById": zod.string().nullable(),
+  "resolvedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "targetHandle": zod.string().nullable().describe('Reported (targetUserId) user handle'),
+  "targetClass": zod.string().nullable().describe('Reported (targetUserId) user listener class')
+})
+
+
+/**
+ * @summary Paginated, filterable read of the staff audit log
+ */
+export const ModerationControllerGetAuditQueryParams = zod.object({
+  "pageSize": zod.number().optional().describe('Default 20, max 100'),
+  "page": zod.number().optional().describe('1-based page number, default 1'),
+  "action": zod.string().optional().describe('Exact or prefix match (e.g. \"mod.action.\")'),
+  "to": zod.string().optional().describe('ISO date-time, inclusive-end'),
+  "from": zod.string().optional().describe('ISO date-time, inclusive')
+})
+
+export const ModerationControllerGetAuditResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "actorId": zod.string(),
+  "action": zod.string(),
+  "entity": zod.string().nullable(),
+  "entityId": zod.string().nullable(),
+  "metadata": zod.looseObject({
+
+}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true})
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Paginated, filterable read of the broadcast activity log
+ */
+export const ModerationControllerGetBroadcastLogsQueryParams = zod.object({
+  "pageSize": zod.number().optional().describe('Default 20, max 100'),
+  "page": zod.number().optional().describe('1-based page number, default 1'),
+  "action": zod.string().optional().describe('Exact or prefix match (e.g. \"attendance.\")'),
+  "to": zod.string().optional().describe('ISO date-time, inclusive-end'),
+  "from": zod.string().optional().describe('ISO date-time, inclusive')
+})
+
+export const ModerationControllerGetBroadcastLogsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "episodeId": zod.string().nullable(),
+  "action": zod.string(),
+  "rosterId": zod.string().nullable(),
+  "metadata": zod.looseObject({
+
+}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true})
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary File an appeal against a strike or standing (any authenticated user)
+ */
+export const ModerationControllerCreateAppealResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "subjectStrikeId": zod.string().nullable(),
+  "text": zod.string(),
+  "status": zod.enum(['OPEN', 'UPHELD', 'REDUCED', 'OVERTURNED']),
+  "reviewedById": zod.string().nullable(),
+  "writtenResponse": zod.string().nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "resolvedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "handle": zod.string().nullable().describe('Subject (userId) handle'),
+  "class": zod.string().nullable().describe('Subject (userId) listener class'),
+  "role": zod.string().nullable().describe('Subject (userId) role')
+})
+
+
+/**
+ * @summary Resolve an appeal: UPHELD/REDUCED/OVERTURNED, with a required written response
+ */
+export const ModerationControllerResolveAppealParams = zod.object({
+  "id": zod.string()
+})
+
+export const ModerationControllerResolveAppealResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "subjectStrikeId": zod.string().nullable(),
+  "text": zod.string(),
+  "status": zod.enum(['OPEN', 'UPHELD', 'REDUCED', 'OVERTURNED']),
+  "reviewedById": zod.string().nullable(),
+  "writtenResponse": zod.string().nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "resolvedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "handle": zod.string().nullable().describe('Subject (userId) handle'),
+  "class": zod.string().nullable().describe('Subject (userId) listener class'),
+  "role": zod.string().nullable().describe('Subject (userId) role')
+})
+
+
+/**
+ * @summary Request reinstatement (any currently banned, authenticated user)
+ */
+export const ModerationControllerCreateReinstatementResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "text": zod.string(),
+  "status": zod.enum(['OPEN', 'APPROVED', 'DENIED']),
+  "approvedById": zod.string().nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "handle": zod.string().nullable().describe('Subject (userId) handle'),
+  "class": zod.string().nullable().describe('Subject (userId) listener class'),
+  "role": zod.string().nullable().describe('Subject (userId) role')
+})
+
+
+/**
+ * @summary Approve or deny a reinstatement request (custodian only)
+ */
+export const ModerationControllerApproveReinstatementParams = zod.object({
+  "id": zod.string()
+})
+
+export const ModerationControllerApproveReinstatementResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "text": zod.string(),
+  "status": zod.enum(['OPEN', 'APPROVED', 'DENIED']),
+  "approvedById": zod.string().nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "handle": zod.string().nullable().describe('Subject (userId) handle'),
+  "class": zod.string().nullable().describe('Subject (userId) listener class'),
+  "role": zod.string().nullable().describe('Subject (userId) role')
+})
+
+
+/**
+ * @summary Contested (open) appeals and open reinstatement requests, for custodian oversight
+ */
+export const AdminControllerGetEscalationsResponse = zod.object({
+  "appeals": zod.array(zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "subjectStrikeId": zod.string().nullable(),
+  "text": zod.string(),
+  "status": zod.enum(['OPEN', 'UPHELD', 'REDUCED', 'OVERTURNED']),
+  "reviewedById": zod.string().nullable(),
+  "writtenResponse": zod.string().nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "resolvedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "handle": zod.string().nullable().describe('Subject (userId) handle'),
+  "class": zod.string().nullable().describe('Subject (userId) listener class'),
+  "role": zod.string().nullable().describe('Subject (userId) role')
+})).describe('Open appeals awaiting custodian oversight'),
+  "reinstatements": zod.array(zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "text": zod.string(),
+  "status": zod.enum(['OPEN', 'APPROVED', 'DENIED']),
+  "approvedById": zod.string().nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "handle": zod.string().nullable().describe('Subject (userId) handle'),
+  "class": zod.string().nullable().describe('Subject (userId) listener class'),
+  "role": zod.string().nullable().describe('Subject (userId) role')
+}))
+})
 
 
 /**
@@ -110,7 +459,20 @@ export const UsersControllerUpdateMeResponse = zod.unknown()
 /**
  * @summary Get current user moderation standing
  */
-export const UsersControllerGetMeStandingResponse = zod.unknown()
+export const UsersControllerGetMeStandingResponse = zod.object({
+  "mutedUntil": zod.iso.datetime({"offset":true}).nullable(),
+  "muteReason": zod.string().nullable(),
+  "bannedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "banReason": zod.string().nullable(),
+  "strikes": zod.array(zod.object({
+  "id": zod.string(),
+  "level": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]),
+  "reason": zod.string(),
+  "issuedById": zod.string(),
+  "expiresAt": zod.iso.datetime({"offset":true}),
+  "createdAt": zod.iso.datetime({"offset":true})
+}))
+})
 
 
 /**
@@ -123,6 +485,59 @@ export const UsersControllerRecordConsentResponse = zod.unknown()
  * @summary Get current consent records for the authenticated user
  */
 export const UsersControllerGetMyConsentResponse = zod.unknown()
+
+
+/**
+ * @summary Search/paginate users by handle/email/name and class (moderator)
+ */
+export const UsersControllerSearchUsersQueryParams = zod.object({
+  "pageSize": zod.number().optional().describe('Default 20, max 100'),
+  "page": zod.number().optional().describe('1-based page number, default 1'),
+  "class": zod.enum(['CAMPUS', 'GUEST']).optional(),
+  "q": zod.string().optional().describe('Free-text match against handle\/email\/name')
+})
+
+export const UsersControllerSearchUsersResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "handle": zod.string(),
+  "email": zod.string(),
+  "class": zod.enum(['CAMPUS', 'GUEST']),
+  "role": zod.enum(['CUSTODIAN', 'MODERATOR', 'LISTENER']),
+  "activeStrikeCount": zod.number().describe('Count of strikes with expiresAt > now'),
+  "mutedUntil": zod.iso.datetime({"offset":true}).nullable(),
+  "muteReason": zod.string().nullable(),
+  "bannedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "banReason": zod.string().nullable()
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Force-rename a user handle (moderator); audited
+ */
+export const UsersControllerForceRenameParams = zod.object({
+  "id": zod.string()
+})
+
+export const UsersControllerForceRenameResponse = zod.object({
+  "id": zod.string(),
+  "handle": zod.string()
+})
+
+
+/**
+ * @summary Change a user role (custodian only); audited
+ */
+export const UsersControllerChangeRoleParams = zod.object({
+  "id": zod.string()
+})
+
+export const UsersControllerChangeRoleResponse = zod.object({
+  "id": zod.string(),
+  "role": zod.enum(['CUSTODIAN', 'MODERATOR', 'LISTENER'])
+})
 
 
 /**
@@ -217,6 +632,19 @@ export const ReactBody = zod.object({
 
 export const ReactResponse = zod.object({
   "ok": zod.literal(true)
+})
+
+
+/**
+ * @summary Soft-hide a chat message
+ */
+export const HideChatMessageParams = zod.object({
+  "id": zod.string().describe('Chat message id (cuid)')
+})
+
+export const HideChatMessageResponse = zod.object({
+  "id": zod.string().describe('Chat message id (cuid)'),
+  "isHidden": zod.literal(true)
 })
 
 

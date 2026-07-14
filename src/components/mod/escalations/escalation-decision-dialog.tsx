@@ -106,9 +106,19 @@ export function EscalationDecisionDialog({
 
   const busy = resolveAppealMutation.isPending || approveReinstatementMutation.isPending;
   const mutationError = resolveAppealMutation.error ?? approveReinstatementMutation.error;
-  const responseInvalid = showValidation && response.trim().length === 0;
   const outcomeInvalid =
     showValidation && (target.kind === "appeal" ? appealOutcome === null : approveOutcome === null);
+  const responseInvalid = showValidation && response.trim().length === 0;
+  // Single role="alert" region per form (AGENTS.md convention + keeps
+  // getByRole('alert') strict-mode selectors valid) — show the first
+  // applicable message rather than rendering one per field.
+  const alertMessage = outcomeInvalid
+    ? "Choose an outcome before deciding."
+    : responseInvalid
+      ? "A written response is required."
+      : mutationError
+        ? getApiErrorMessage(mutationError)
+        : null;
 
   function handleDecide() {
     setShowValidation(true);
@@ -213,11 +223,6 @@ export function EscalationDecisionDialog({
               </Button>
             </div>
           )}
-          {outcomeInvalid && (
-            <p role="alert" className="text-sm font-semibold text-destructive mt-2">
-              Choose an outcome before deciding.
-            </p>
-          )}
         </div>
 
         <div>
@@ -232,16 +237,11 @@ export function EscalationDecisionDialog({
             value={response}
             onChange={(e) => setResponse(e.target.value)}
           />
-          {responseInvalid && (
-            <p role="alert" className="text-sm font-semibold text-destructive mt-1">
-              A written response is required.
-            </p>
-          )}
         </div>
 
-        {mutationError && (
+        {alertMessage && (
           <div role="alert" className="text-sm font-semibold text-destructive">
-            {getApiErrorMessage(mutationError)}
+            {alertMessage}
           </div>
         )}
 

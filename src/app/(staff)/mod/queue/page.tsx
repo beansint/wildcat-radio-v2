@@ -48,6 +48,7 @@ import {
   AppealCard,
   ReinstatementCard,
   truncatedHandle,
+  UNKNOWN_TARGET_LABEL,
 } from "@/components/mod/queue/queue-card";
 import { AppealDecisionDialog } from "@/components/mod/queue/appeal-decision-dialog";
 
@@ -235,7 +236,6 @@ export default function QueuePage() {
   function runConfirmedAction() {
     if (!confirmState) return;
     const { action, report } = confirmState;
-    const subjectId = report.targetUserId ?? report.reporterId;
     switch (action) {
       case "dismiss":
         resolveReportMutation.mutate({ id: report.id, status: "DISMISSED", reason: CANNED_REASON.dismiss });
@@ -244,29 +244,21 @@ export default function QueuePage() {
         resolveReportMutation.mutate({ id: report.id, status: "DISMISSED", reason: CANNED_REASON.looksFine });
         return;
       case "warn":
-        actionMutation.mutate({
-          id: subjectId,
-          type: "WARN",
-          reason: CANNED_REASON.warn,
-          messageId: report.targetMessageId ?? undefined,
-        });
-        return;
       case "mute":
+      case "ban": {
+        // Second line of defense (the UI already disables Warn/Mute/Ban when
+        // `targetUserId` is null): never let a punitive action fall back to
+        // `reporterId` — that's a different person from the report subject.
+        if (!report.targetUserId) return;
+        const type = action === "warn" ? "WARN" : action === "mute" ? "MUTE" : "BAN";
         actionMutation.mutate({
-          id: subjectId,
-          type: "MUTE",
-          reason: CANNED_REASON.mute,
+          id: report.targetUserId,
+          type,
+          reason: CANNED_REASON[action],
           messageId: report.targetMessageId ?? undefined,
         });
         return;
-      case "ban":
-        actionMutation.mutate({
-          id: subjectId,
-          type: "BAN",
-          reason: CANNED_REASON.ban,
-          messageId: report.targetMessageId ?? undefined,
-        });
-        return;
+      }
     }
   }
 
@@ -329,17 +321,21 @@ export default function QueuePage() {
               <ReportCard
                 key={report.id}
                 report={report}
-                busy={isBusyFor(report.id) || isBusyFor(report.targetUserId ?? report.reporterId)}
-                alert={alertFor(report.id) ?? alertFor(report.targetUserId ?? report.reporterId)}
+                // Note: no `?? report.reporterId` fallback here — the
+                // reporter is a different person from the report subject,
+                // and punitive actions/busy-state must never key off them.
+                busy={isBusyFor(report.id) || (report.targetUserId ? isBusyFor(report.targetUserId) : false)}
+                alert={alertFor(report.id) ?? (report.targetUserId ? alertFor(report.targetUserId) : null)}
                 onDismiss={() => setConfirmState({ action: "dismiss", report })}
                 onWarn={() => setConfirmState({ action: "warn", report })}
-                onStrike={() =>
+                onStrike={() => {
+                  if (!report.targetUserId) return;
                   setStrikeState({
-                    userId: report.targetUserId ?? report.reporterId,
+                    userId: report.targetUserId,
                     handle: report.targetHandle,
                     sourceId: report.id,
-                  })
-                }
+                  });
+                }}
                 onMute={() => setConfirmState({ action: "mute", report })}
                 onBan={() => setConfirmState({ action: "ban", report })}
               />
@@ -396,12 +392,18 @@ export default function QueuePage() {
         <ConfirmDialog
           open
           title={CONFIRM_COPY[confirmState.action].title}
-          description={CONFIRM_COPY[confirmState.action].description(
-            handleLabel(
-              confirmState.report.targetHandle,
-              confirmState.report.targetUserId ?? confirmState.report.reporterId,
-            ),
-          )}
+          description={
+            // Never surface `reporterId` here — for a report with no
+            // resolved target (only reachable via the still-enabled Dismiss
+            // action, since every other action is disabled in this state),
+            // show an explicit unknown-target message instead of the
+            // reporter's identity.
+            confirmState.report.targetUserId
+              ? CONFIRM_COPY[confirmState.action].description(
+                  handleLabel(confirmState.report.targetHandle, confirmState.report.targetUserId),
+                )
+              : `Dismiss this report? ${UNKNOWN_TARGET_LABEL} — no action can be taken against the reported user.`
+          }
           confirmLabel={CONFIRM_COPY[confirmState.action].confirmLabel}
           destructive={CONFIRM_COPY[confirmState.action].destructive}
           pending={resolveReportMutation.isPending || actionMutation.isPending}

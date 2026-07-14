@@ -31,6 +31,15 @@ export function truncatedHandle(id: string): string {
 }
 
 /**
+ * Shown in place of a subject label/action set when a report's
+ * `targetUserId` is null — the backend couldn't resolve who the report is
+ * about. Falling back to `reporterId` in that case would punish (and
+ * de-anonymize) the person who filed the report, so we render this instead
+ * and disable every punitive action (see `ReportCard`).
+ */
+export const UNKNOWN_TARGET_LABEL = "Unknown target";
+
+/**
  * Renders the bold subject label: `@handle` when the DTO resolved one, else
  * a truncated-id fallback (no `@`, so it can't be mistaken for a real handle).
  */
@@ -105,12 +114,18 @@ export interface ReportCardProps {
 }
 
 export function ReportCard({ report, busy, alert, onDismiss, onWarn, onStrike, onMute, onBan }: ReportCardProps) {
-  const subjectId = report.targetUserId ?? report.reporterId;
+  // `reporterId` is a DIFFERENT person from the report's subject — never use
+  // it as a punitive-action target or display fallback. When the backend
+  // couldn't resolve `targetUserId`, show an explicit "unknown target" state
+  // and disable every action except Dismiss (which just clears the report).
+  const hasTarget = !!report.targetUserId;
+  const punitiveDisabled = busy || !hasTarget;
+  const unresolvedHint = hasTarget ? undefined : "Target user could not be resolved.";
   return (
     <CardShell
       chipIcon={<Flag className="w-3.5 h-3.5" aria-hidden="true" />}
       chipLabel="Report"
-      subject={subjectLabel(report.targetHandle, subjectId)}
+      subject={hasTarget ? subjectLabel(report.targetHandle, report.targetUserId as string) : UNKNOWN_TARGET_LABEL}
       klass={report.targetClass}
       time={formatTime(report.createdAt)}
       alert={alert}
@@ -119,16 +134,44 @@ export function ReportCard({ report, busy, alert, onDismiss, onWarn, onStrike, o
           <Button variant="outline" size="sm" disabled={busy} onClick={onDismiss} data-testid="mod-queue-dismiss">
             Dismiss
           </Button>
-          <Button variant="outline" size="sm" disabled={busy} onClick={onWarn} data-testid="mod-queue-warn">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={punitiveDisabled}
+            title={unresolvedHint}
+            onClick={onWarn}
+            data-testid="mod-queue-warn"
+          >
             Warn
           </Button>
-          <Button variant="destructive" size="sm" disabled={busy} onClick={onStrike} data-testid="mod-queue-strike">
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={punitiveDisabled}
+            title={unresolvedHint}
+            onClick={onStrike}
+            data-testid="mod-queue-strike"
+          >
             Strike
           </Button>
-          <Button variant="destructive" size="sm" disabled={busy} onClick={onMute} data-testid="mod-queue-mute">
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={punitiveDisabled}
+            title={unresolvedHint}
+            onClick={onMute}
+            data-testid="mod-queue-mute"
+          >
             Mute
           </Button>
-          <Button variant="destructive" size="sm" disabled={busy} onClick={onBan} data-testid="mod-queue-ban">
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={punitiveDisabled}
+            title={unresolvedHint}
+            onClick={onBan}
+            data-testid="mod-queue-ban"
+          >
             Ban
           </Button>
         </>
@@ -139,6 +182,11 @@ export function ReportCard({ report, busy, alert, onDismiss, onWarn, onStrike, o
         <blockquote className="mt-2 border-l-2 border-border pl-3 text-sm italic wc-muted">
           Flagged message: {report.targetMessageId}
         </blockquote>
+      )}
+      {!hasTarget && (
+        <p className="wc-help mt-2" data-testid="mod-queue-unknown-target">
+          Target user could not be resolved — punitive actions are disabled. You can still dismiss this report.
+        </p>
       )}
     </CardShell>
   );

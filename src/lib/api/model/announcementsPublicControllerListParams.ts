@@ -6,11 +6,13 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface ScheduleShowDto {
-  id: string;
-  name: string;
-  slug: string;
-  start: string;
-  end: string;
-  roster: string[];
-}
+export type AnnouncementsPublicControllerListParams = {
+/**
+ * Default 20, max 100
+ */
+pageSize?: number;
+/**
+ * 1-based page number, default 1
+ */
+page?: number;
+};

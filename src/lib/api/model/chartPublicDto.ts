@@ -5,12 +5,10 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
+import type { ChartEntryDto } from './chartEntryDto.ts';
 
-export interface ScheduleShowDto {
-  id: string;
-  name: string;
-  slug: string;
-  start: string;
-  end: string;
-  roster: string[];
+export interface ChartPublicDto {
+  /** @nullable */
+  weekOf: string | null;
+  entries: ChartEntryDto[];
 }

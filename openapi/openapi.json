@@ -56,7 +56,62 @@
         ]
       }
     },
+    "/api/settings/admin": {
+      "get": {
+        "operationId": "listSettingsAdmin",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Every Setting row",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SettingDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read every setting row, including moderator-only groups",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
     "/api/settings/{key}": {
+      "get": {
+        "operationId": "getSetting",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "description": "Dot-namespaced setting key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The setting row",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read a single setting by key (moderator)",
+        "tags": [
+          "settings"
+        ]
+      },
       "put": {
         "operationId": "updateSetting",
         "parameters": [
@@ -558,355 +613,6 @@
         ]
       }
     },
-    "/api/stream/manifest": {
-      "get": {
-        "operationId": "getStreamManifest",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "Get live stream manifest",
-        "tags": [
-          "stream"
-        ]
-      }
-    },
-    "/api/stream/heartbeat": {
-      "post": {
-        "operationId": "postStreamHeartbeat",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "Studio source heartbeat",
-        "tags": [
-          "stream"
-        ]
-      }
-    },
-    "/api/studio/today": {
-      "get": {
-        "operationId": "getStudioToday",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Studio today view",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StudioTodayDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Get studio today view",
-        "tags": [
-          "studio"
-        ]
-      }
-    },
-    "/api/studio/roster": {
-      "get": {
-        "operationId": "listStudioRoster",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Active roster entries",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StudioRosterEntryDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "summary": "List active roster entries",
-        "tags": [
-          "studio"
-        ]
-      }
-    },
-    "/api/studio/time-in": {
-      "post": {
-        "operationId": "timeInStudio",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "DJ time-in (tap in)",
-        "tags": [
-          "studio"
-        ]
-      }
-    },
-    "/api/studio/time-out": {
-      "post": {
-        "operationId": "timeOutStudio",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "DJ time-out (tap out)",
-        "tags": [
-          "studio"
-        ]
-      }
-    },
-    "/api/episodes/{id}": {
-      "get": {
-        "operationId": "getEpisode",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Episode id (cuid)",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "Get episode by id",
-        "tags": [
-          "episodes"
-        ]
-      }
-    },
-    "/api/users/me": {
-      "get": {
-        "operationId": "UsersController_getMe",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Current user domain projection"
-          }
-        },
-        "summary": "Get current user profile",
-        "tags": [
-          "users"
-        ]
-      },
-      "patch": {
-        "operationId": "UsersController_updateMe",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Updated user profile"
-          }
-        },
-        "summary": "Update current user profile",
-        "tags": [
-          "users"
-        ]
-      }
-    },
-    "/api/users/me/standing": {
-      "get": {
-        "operationId": "UsersController_getMeStanding",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Mute/ban state and strike history",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MeStandingDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Get current user moderation standing",
-        "tags": [
-          "users"
-        ]
-      }
-    },
-    "/api/users/me/consent": {
-      "post": {
-        "operationId": "UsersController_recordConsent",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Consent record"
-          }
-        },
-        "summary": "Grant or withdraw consent for a scope (e.g. DEMOGRAPHICS)",
-        "tags": [
-          "users"
-        ]
-      },
-      "get": {
-        "operationId": "UsersController_getMyConsent",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Array of consent records"
-          }
-        },
-        "summary": "Get current consent records for the authenticated user",
-        "tags": [
-          "users"
-        ]
-      }
-    },
-    "/api/users": {
-      "get": {
-        "operationId": "UsersController_searchUsers",
-        "parameters": [
-          {
-            "name": "pageSize",
-            "required": false,
-            "in": "query",
-            "description": "Default 20, max 100",
-            "schema": {
-              "type": "number"
-            }
-          },
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "description": "1-based page number, default 1",
-            "schema": {
-              "type": "number"
-            }
-          },
-          {
-            "name": "class",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "enum": [
-                "CAMPUS",
-                "GUEST"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "q",
-            "required": false,
-            "in": "query",
-            "description": "Free-text match against handle/email/name",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Paginated user summaries with active strike count + standing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserSearchResultDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Search/paginate users by handle/email/name and class (moderator)",
-        "tags": [
-          "users"
-        ]
-      }
-    },
-    "/api/users/{id}/force-rename": {
-      "post": {
-        "operationId": "UsersController_forceRename",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated id + handle",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForceRenameResultDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Force-rename a user handle (moderator); audited",
-        "tags": [
-          "users"
-        ]
-      }
-    },
-    "/api/users/{id}/role": {
-      "patch": {
-        "operationId": "UsersController_changeRole",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated id + role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChangeRoleResultDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Change a user role (custodian only); audited",
-        "tags": [
-          "users"
-        ]
-      }
-    },
-    "/api/analytics/age-bucket": {
-      "post": {
-        "operationId": "AnalyticsController_recordAgeBucket",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "{ ok: true, alreadyContributed: boolean }"
-          }
-        },
-        "summary": "Record anonymous age-bucket contribution (L33/L27; PII-safe aggregate counter)",
-        "tags": [
-          "analytics"
-        ]
-      }
-    },
     "/api/episodes/{id}/queue": {
       "post": {
         "operationId": "submitQueueItem",
@@ -1354,6 +1060,355 @@
         ]
       }
     },
+    "/api/stream/manifest": {
+      "get": {
+        "operationId": "getStreamManifest",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get live stream manifest",
+        "tags": [
+          "stream"
+        ]
+      }
+    },
+    "/api/stream/heartbeat": {
+      "post": {
+        "operationId": "postStreamHeartbeat",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Studio source heartbeat",
+        "tags": [
+          "stream"
+        ]
+      }
+    },
+    "/api/studio/today": {
+      "get": {
+        "operationId": "getStudioToday",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Studio today view",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudioTodayDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get studio today view",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/roster": {
+      "get": {
+        "operationId": "listStudioRoster",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Active roster entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StudioRosterEntryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List active roster entries",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/time-in": {
+      "post": {
+        "operationId": "timeInStudio",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "DJ time-in (tap in)",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/time-out": {
+      "post": {
+        "operationId": "timeOutStudio",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "DJ time-out (tap out)",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/episodes/{id}": {
+      "get": {
+        "operationId": "getEpisode",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Episode id (cuid)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get episode by id",
+        "tags": [
+          "episodes"
+        ]
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "operationId": "UsersController_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current user domain projection"
+          }
+        },
+        "summary": "Get current user profile",
+        "tags": [
+          "users"
+        ]
+      },
+      "patch": {
+        "operationId": "UsersController_updateMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Updated user profile"
+          }
+        },
+        "summary": "Update current user profile",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/me/standing": {
+      "get": {
+        "operationId": "UsersController_getMeStanding",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Mute/ban state and strike history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeStandingDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get current user moderation standing",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/me/consent": {
+      "post": {
+        "operationId": "UsersController_recordConsent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Consent record"
+          }
+        },
+        "summary": "Grant or withdraw consent for a scope (e.g. DEMOGRAPHICS)",
+        "tags": [
+          "users"
+        ]
+      },
+      "get": {
+        "operationId": "UsersController_getMyConsent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Array of consent records"
+          }
+        },
+        "summary": "Get current consent records for the authenticated user",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users": {
+      "get": {
+        "operationId": "UsersController_searchUsers",
+        "parameters": [
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Default 20, max 100",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number, default 1",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "class",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "CAMPUS",
+                "GUEST"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Free-text match against handle/email/name",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated user summaries with active strike count + standing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSearchResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Search/paginate users by handle/email/name and class (moderator)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/{id}/force-rename": {
+      "post": {
+        "operationId": "UsersController_forceRename",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated id + handle",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForceRenameResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Force-rename a user handle (moderator); audited",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/{id}/role": {
+      "patch": {
+        "operationId": "UsersController_changeRole",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated id + role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeRoleResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Change a user role (custodian only); audited",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/analytics/age-bucket": {
+      "post": {
+        "operationId": "AnalyticsController_recordAgeBucket",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "{ ok: true, alreadyContributed: boolean }"
+          }
+        },
+        "summary": "Record anonymous age-bucket contribution (L33/L27; PII-safe aggregate counter)",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
     "/api/roster": {
       "get": {
         "operationId": "RosterController_list",
@@ -1439,9 +1494,9 @@
         ]
       }
     },
-    "/api/shows": {
+    "/api/shows/admin": {
       "get": {
-        "operationId": "ShowsController_list",
+        "operationId": "listShowsAdmin",
         "parameters": [],
         "responses": {
           "200": {
@@ -1458,11 +1513,13 @@
             }
           }
         },
-        "summary": "List shows with roster and cadence",
+        "summary": "Staff list of shows with roster and cadence (moderator)",
         "tags": [
           "shows"
         ]
-      },
+      }
+    },
+    "/api/shows": {
       "post": {
         "operationId": "ShowsController_create",
         "parameters": [],
@@ -1481,6 +1538,29 @@
         "summary": "Create a show",
         "tags": [
           "shows"
+        ]
+      },
+      "get": {
+        "operationId": "listShowsPublic",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Public show list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShowPublicListItemDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Public list of every show, ordered by name asc",
+        "tags": [
+          "shows-public"
         ]
       }
     },
@@ -1539,7 +1619,7 @@
     },
     "/api/schedule": {
       "get": {
-        "operationId": "ScheduleController_getWeeklySchedule",
+        "operationId": "getWeeklySchedule",
         "parameters": [],
         "responses": {
           "200": {
@@ -1556,6 +1636,68 @@
         "summary": "Get public weekly schedule grid",
         "tags": [
           "schedule"
+        ]
+      }
+    },
+    "/api/shows/{slug}": {
+      "get": {
+        "operationId": "getShowPublic",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public show page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowPublicDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Public show page by slug — name/description/coverImage/theme/tags + redacted roster",
+        "tags": [
+          "shows-public"
+        ]
+      }
+    },
+    "/api/shows/{slug}/episodes": {
+      "get": {
+        "operationId": "getShowEpisodes",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Upcoming + recent episodes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowEpisodesDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Public upcoming/recent episodes for a show by slug",
+        "tags": [
+          "shows-public"
         ]
       }
     },
@@ -1630,6 +1772,576 @@
         "summary": "Correct an attendance record (time in/out, note)",
         "tags": [
           "attendance"
+        ]
+      }
+    },
+    "/api/announcements/admin": {
+      "get": {
+        "operationId": "AnnouncementsController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter rows to one status. Tab counts stay whole-table regardless.",
+            "schema": {
+              "enum": [
+                "DRAFT",
+                "PENDING_REVIEW",
+                "PUBLISHED",
+                "SCHEDULED",
+                "ARCHIVED",
+                "REJECTED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Default 20, max 100",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number, default 1",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated staff announcements",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffPageDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Paginated staff list of all announcements, any status",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/announcements/admin/{id}": {
+      "get": {
+        "operationId": "AnnouncementsController_getOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Announcement (staff view)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Staff detail read of a single announcement, fully attributed",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/announcements": {
+      "post": {
+        "operationId": "AnnouncementsController_create",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Created announcement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a new announcement in DRAFT status",
+        "tags": [
+          "announcements"
+        ]
+      },
+      "get": {
+        "operationId": "AnnouncementsPublicController_list",
+        "parameters": [
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Default 20, max 100",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number, default 1",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated public announcements",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementPublicPageDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Public paginated list of PUBLISHED announcements — pinned first, then publishedAt desc",
+        "tags": [
+          "announcements-public"
+        ]
+      }
+    },
+    "/api/announcements/{id}": {
+      "patch": {
+        "operationId": "AnnouncementsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated announcement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Edit title/content/scheduledFor/expiresAt",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/announcements/{id}/submit": {
+      "post": {
+        "operationId": "AnnouncementsController_submit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submitted announcement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "DRAFT -> PENDING_REVIEW",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/announcements/{id}/review": {
+      "post": {
+        "operationId": "AnnouncementsController_review",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reviewed announcement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PENDING_REVIEW -> PUBLISHED | SCHEDULED | REJECTED",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/announcements/{id}/archive": {
+      "post": {
+        "operationId": "AnnouncementsController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archived announcement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Any non-ARCHIVED status -> ARCHIVED (idempotent discard/retire)",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/announcements/{id}/feature": {
+      "post": {
+        "operationId": "AnnouncementsController_feature",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Featured/unfeatured announcement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Feature (single mod, no second approver) — optional body.featured (default true)",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/announcements/{id}/unfeature": {
+      "post": {
+        "operationId": "AnnouncementsController_unfeature",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unfeatured announcement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Clear featuredBy/featuredAt (rank-gated, not restricted to the original featurer)",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/announcements/{id}/pin": {
+      "post": {
+        "operationId": "AnnouncementsController_pin",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pinned/unpinned announcement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Pin a PUBLISHED announcement (cap of 2, race-safe) — optional body.pinned (default true)",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/announcements/{id}/unpin": {
+      "post": {
+        "operationId": "AnnouncementsController_unpin",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unpinned announcement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Unpin, freeing a pin slot",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/announcements/{id}/photo": {
+      "post": {
+        "operationId": "AnnouncementsController_requestPhotoUpload",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Presigned upload URL + object key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementPhotoUploadUrlDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Request a short-TTL presigned R2 upload URL for a new announcement photo (max 4/announcement)",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/announcements/{id}/photo/confirm": {
+      "post": {
+        "operationId": "AnnouncementsController_confirmPhotoUpload",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Announcement with the new photo attached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Confirm a presigned upload landed in R2 (HeadObject-verified) and persist the AnnouncementPhoto row",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/announcements/{ref}": {
+      "get": {
+        "operationId": "AnnouncementsPublicController_getOne",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "description": "`<slug>-<publicId>` or a bare cuid",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Announcement (public view)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementPublicDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Public single PUBLISHED announcement by ref — resolves the trailing publicId of a `slug-publicId` address (AC-C9/AC-C10), falling back to a bare cuid (the pre-Slice-C contract). A stale slug still resolves; the response always carries the canonical slug/publicId. 404 (not 403) if unknown or not published, so existence is never leaked.",
+        "tags": [
+          "announcements-public"
+        ]
+      }
+    },
+    "/api/djs": {
+      "get": {
+        "operationId": "listDjsPublic",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Public DJ list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DjPublicListItemDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Public list of active DJs, ordered by displayName asc",
+        "tags": [
+          "djs-public"
+        ]
+      }
+    },
+    "/api/djs/{id}": {
+      "get": {
+        "operationId": "getDjPublic",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public DJ profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DjPublicDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Public DJ profile from RosterEntry — displayName/photoUrl/bio/activeShows, never linkedAccountId",
+        "tags": [
+          "djs-public"
+        ]
+      }
+    },
+    "/api/charts/current": {
+      "get": {
+        "operationId": "ChartsPublicController_getCurrent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current chart snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChartPublicDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Latest weekly \"Most Requested\" chart — empty-state safe (200, entries: []) when none exists yet",
+        "tags": [
+          "charts-public"
         ]
       }
     }
@@ -2179,375 +2891,6 @@
           "reinstatements"
         ]
       },
-      "StudioEpisodeDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "startedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "endedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "showId": {
-            "type": "string",
-            "nullable": true
-          },
-          "unscheduled": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "status",
-          "startedAt",
-          "endedAt",
-          "showId",
-          "unscheduled"
-        ]
-      },
-      "StudioAttendeeDto": {
-        "type": "object",
-        "properties": {
-          "rosterId": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "timeIn": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          }
-        },
-        "required": [
-          "rosterId",
-          "displayName",
-          "timeIn"
-        ]
-      },
-      "StudioSlotRosterEntryDto": {
-        "type": "object",
-        "properties": {
-          "rosterId": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "timedIn": {
-            "type": "boolean"
-          },
-          "timeIn": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "timeOut": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          }
-        },
-        "required": [
-          "rosterId",
-          "displayName",
-          "timedIn",
-          "timeIn",
-          "timeOut"
-        ]
-      },
-      "StudioTodayShowDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "showId": {
-            "type": "string",
-            "nullable": true
-          },
-          "scheduledFor": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "status": {
-            "type": "string"
-          },
-          "showName": {
-            "type": "string",
-            "nullable": true
-          },
-          "djs": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "showId",
-          "scheduledFor",
-          "status",
-          "showName",
-          "djs"
-        ]
-      },
-      "StudioTodayDto": {
-        "type": "object",
-        "properties": {
-          "episode": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/StudioEpisodeDto"
-              }
-            ]
-          },
-          "attendees": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StudioAttendeeDto"
-            }
-          },
-          "slotRoster": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StudioSlotRosterEntryDto"
-            }
-          },
-          "todayShows": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StudioTodayShowDto"
-            }
-          }
-        },
-        "required": [
-          "episode",
-          "attendees",
-          "slotRoster",
-          "todayShows"
-        ]
-      },
-      "StudioRosterEntryDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "displayName"
-        ]
-      },
-      "StrikeDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "level": {
-            "type": "number",
-            "enum": [
-              1,
-              2,
-              3
-            ]
-          },
-          "reason": {
-            "type": "string"
-          },
-          "issuedById": {
-            "type": "string"
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "id",
-          "level",
-          "reason",
-          "issuedById",
-          "expiresAt",
-          "createdAt"
-        ]
-      },
-      "MeStandingDto": {
-        "type": "object",
-        "properties": {
-          "mutedUntil": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "muteReason": {
-            "type": "string",
-            "nullable": true
-          },
-          "bannedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "banReason": {
-            "type": "string",
-            "nullable": true
-          },
-          "strikes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StrikeDto"
-            }
-          }
-        },
-        "required": [
-          "mutedUntil",
-          "muteReason",
-          "bannedAt",
-          "banReason",
-          "strikes"
-        ]
-      },
-      "UserSummaryDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "handle": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "class": {
-            "type": "string",
-            "enum": [
-              "CAMPUS",
-              "GUEST"
-            ]
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "CUSTODIAN",
-              "MODERATOR",
-              "LISTENER"
-            ]
-          },
-          "activeStrikeCount": {
-            "type": "number",
-            "description": "Count of strikes with expiresAt > now"
-          },
-          "mutedUntil": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "muteReason": {
-            "type": "string",
-            "nullable": true
-          },
-          "bannedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "banReason": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "handle",
-          "email",
-          "class",
-          "role",
-          "activeStrikeCount",
-          "mutedUntil",
-          "muteReason",
-          "bannedAt",
-          "banReason"
-        ]
-      },
-      "UserSearchResultDto": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/UserSummaryDto"
-            }
-          },
-          "total": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "items",
-          "total"
-        ]
-      },
-      "ForceRenameResultDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "handle": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "handle"
-        ]
-      },
-      "ChangeRoleResultDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "CUSTODIAN",
-              "MODERATOR",
-              "LISTENER"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "role"
-        ]
-      },
       "SubmitQueueItemDto": {
         "type": "object",
         "properties": {
@@ -3057,6 +3400,375 @@
           "ok"
         ]
       },
+      "StudioEpisodeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "showId": {
+            "type": "string",
+            "nullable": true
+          },
+          "unscheduled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "startedAt",
+          "endedAt",
+          "showId",
+          "unscheduled"
+        ]
+      },
+      "StudioAttendeeDto": {
+        "type": "object",
+        "properties": {
+          "rosterId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "timeIn": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "rosterId",
+          "displayName",
+          "timeIn"
+        ]
+      },
+      "StudioSlotRosterEntryDto": {
+        "type": "object",
+        "properties": {
+          "rosterId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "timedIn": {
+            "type": "boolean"
+          },
+          "timeIn": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "timeOut": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "rosterId",
+          "displayName",
+          "timedIn",
+          "timeIn",
+          "timeOut"
+        ]
+      },
+      "StudioTodayShowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "showId": {
+            "type": "string",
+            "nullable": true
+          },
+          "scheduledFor": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "showName": {
+            "type": "string",
+            "nullable": true
+          },
+          "djs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "showId",
+          "scheduledFor",
+          "status",
+          "showName",
+          "djs"
+        ]
+      },
+      "StudioTodayDto": {
+        "type": "object",
+        "properties": {
+          "episode": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StudioEpisodeDto"
+              }
+            ]
+          },
+          "attendees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudioAttendeeDto"
+            }
+          },
+          "slotRoster": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudioSlotRosterEntryDto"
+            }
+          },
+          "todayShows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudioTodayShowDto"
+            }
+          }
+        },
+        "required": [
+          "episode",
+          "attendees",
+          "slotRoster",
+          "todayShows"
+        ]
+      },
+      "StudioRosterEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName"
+        ]
+      },
+      "StrikeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "level": {
+            "type": "number",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "issuedById": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "reason",
+          "issuedById",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "MeStandingDto": {
+        "type": "object",
+        "properties": {
+          "mutedUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "muteReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "bannedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "banReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "strikes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StrikeDto"
+            }
+          }
+        },
+        "required": [
+          "mutedUntil",
+          "muteReason",
+          "bannedAt",
+          "banReason",
+          "strikes"
+        ]
+      },
+      "UserSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "class": {
+            "type": "string",
+            "enum": [
+              "CAMPUS",
+              "GUEST"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "CUSTODIAN",
+              "MODERATOR",
+              "LISTENER"
+            ]
+          },
+          "activeStrikeCount": {
+            "type": "number",
+            "description": "Count of strikes with expiresAt > now"
+          },
+          "mutedUntil": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "muteReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "bannedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "banReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "handle",
+          "email",
+          "class",
+          "role",
+          "activeStrikeCount",
+          "mutedUntil",
+          "muteReason",
+          "bannedAt",
+          "banReason"
+        ]
+      },
+      "UserSearchResultDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserSummaryDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "ForceRenameResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "handle"
+        ]
+      },
+      "ChangeRoleResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "CUSTODIAN",
+              "MODERATOR",
+              "LISTENER"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "role"
+        ]
+      },
       "RosterEntryDto": {
         "type": "object",
         "properties": {
@@ -3161,6 +3873,9 @@
           "name": {
             "type": "string"
           },
+          "slug": {
+            "type": "string"
+          },
           "start": {
             "type": "string"
           },
@@ -3177,6 +3892,7 @@
         "required": [
           "id",
           "name",
+          "slug",
           "start",
           "end",
           "roster"
@@ -3212,6 +3928,165 @@
         },
         "required": [
           "days"
+        ]
+      },
+      "ShowPublicListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "coverImage": {
+            "type": "string",
+            "nullable": true
+          },
+          "theme": {
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "description",
+          "coverImage",
+          "theme",
+          "tags"
+        ]
+      },
+      "PublicRosterRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "photoUrl"
+        ]
+      },
+      "ShowPublicDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "coverImage": {
+            "type": "string",
+            "nullable": true
+          },
+          "theme": {
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "roster": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicRosterRefDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "description",
+          "coverImage",
+          "theme",
+          "tags",
+          "roster"
+        ]
+      },
+      "EpisodeRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "scheduledFor": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "scheduledFor",
+          "startedAt",
+          "endedAt"
+        ]
+      },
+      "ShowEpisodesDto": {
+        "type": "object",
+        "properties": {
+          "upcoming": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EpisodeRefDto"
+            }
+          },
+          "recent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EpisodeRefDto"
+            }
+          }
+        },
+        "required": [
+          "upcoming",
+          "recent"
         ]
       },
       "AttendanceRowDto": {
@@ -3278,6 +4153,397 @@
           "status",
           "lateMinutes",
           "note"
+        ]
+      },
+      "ResolvedActorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "handle": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "handle"
+        ]
+      },
+      "AnnouncementStaffDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "description": "Derived from title; not unique alone — decorative, regenerated on title edit"
+          },
+          "publicId": {
+            "type": "string",
+            "description": "8-char immutable unique id — never regenerated"
+          },
+          "content": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PENDING_REVIEW",
+              "PUBLISHED",
+              "SCHEDULED",
+              "ARCHIVED",
+              "REJECTED"
+            ]
+          },
+          "isPinned": {
+            "type": "boolean"
+          },
+          "featuredAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "scheduledFor": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastEditedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResolvedActorDto"
+              }
+            ]
+          },
+          "reviewedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResolvedActorDto"
+              }
+            ]
+          },
+          "publishedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResolvedActorDto"
+              }
+            ]
+          },
+          "featuredBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResolvedActorDto"
+              }
+            ]
+          },
+          "lastEditedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResolvedActorDto"
+              }
+            ]
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "slug",
+          "publicId",
+          "content",
+          "status",
+          "isPinned",
+          "featuredAt",
+          "scheduledFor",
+          "expiresAt",
+          "rejectionReason",
+          "publishedAt",
+          "createdAt",
+          "updatedAt",
+          "lastEditedAt",
+          "createdBy",
+          "reviewedBy",
+          "publishedBy",
+          "featuredBy",
+          "lastEditedBy",
+          "photos"
+        ]
+      },
+      "AnnouncementStaffPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnouncementStaffDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "countsByStatus": {
+            "type": "object",
+            "description": "Whole-table row count per status, e.g. {\"DRAFT\": 3, \"PUBLISHED\": 12}",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "pinnedCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "countsByStatus",
+          "pinnedCount"
+        ]
+      },
+      "AnnouncementPhotoUploadUrlDto": {
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uploadUrl",
+          "key"
+        ]
+      },
+      "AnnouncementPublicDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "description": "Derived from title; not unique alone — decorative, regenerated on title edit"
+          },
+          "publicId": {
+            "type": "string",
+            "description": "8-char immutable unique id — never regenerated"
+          },
+          "content": {
+            "type": "string"
+          },
+          "isPinned": {
+            "type": "boolean"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "slug",
+          "publicId",
+          "content",
+          "isPinned",
+          "publishedAt",
+          "photos"
+        ]
+      },
+      "AnnouncementPublicPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnouncementPublicDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ]
+      },
+      "DjPublicListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "photoUrl"
+        ]
+      },
+      "DjActiveShowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug"
+        ]
+      },
+      "DjPublicDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "activeShows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DjActiveShowDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "photoUrl",
+          "bio",
+          "activeShows"
+        ]
+      },
+      "ChartEntryDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "title",
+          "count"
+        ]
+      },
+      "ChartPublicDto": {
+        "type": "object",
+        "properties": {
+          "weekOf": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChartEntryDto"
+            }
+          }
+        },
+        "required": [
+          "weekOf",
+          "entries"
         ]
       }
     }

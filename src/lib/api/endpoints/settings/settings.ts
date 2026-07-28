@@ -126,6 +126,206 @@ export function useListSettings<TData = Awaited<ReturnType<typeof listSettings>>
 
 
 
+export const getListSettingsAdminUrl = () => {
+
+
+
+
+  return `/api/settings/admin`
+}
+
+/**
+ * @summary Read every setting row, including moderator-only groups
+ */
+export const listSettingsAdmin = async ( options?: RequestInit): Promise<SettingDto[]> => {
+
+  return customFetch<SettingDto[]>(getListSettingsAdminUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSettingsAdminQueryKey = () => {
+    return [
+    `/api/settings/admin`
+    ] as const;
+    }
+
+
+export const getListSettingsAdminQueryOptions = <TData = Awaited<ReturnType<typeof listSettingsAdmin>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSettingsAdmin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSettingsAdminQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSettingsAdmin>>> = ({ signal }) => listSettingsAdmin({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSettingsAdmin>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListSettingsAdminQueryResult = NonNullable<Awaited<ReturnType<typeof listSettingsAdmin>>>
+export type ListSettingsAdminQueryError = unknown
+
+
+export function useListSettingsAdmin<TData = Awaited<ReturnType<typeof listSettingsAdmin>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSettingsAdmin>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSettingsAdmin>>,
+          TError,
+          Awaited<ReturnType<typeof listSettingsAdmin>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSettingsAdmin<TData = Awaited<ReturnType<typeof listSettingsAdmin>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSettingsAdmin>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSettingsAdmin>>,
+          TError,
+          Awaited<ReturnType<typeof listSettingsAdmin>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSettingsAdmin<TData = Awaited<ReturnType<typeof listSettingsAdmin>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSettingsAdmin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Read every setting row, including moderator-only groups
+ */
+
+export function useListSettingsAdmin<TData = Awaited<ReturnType<typeof listSettingsAdmin>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSettingsAdmin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListSettingsAdminQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getGetSettingUrl = (key: string,) => {
+
+
+
+
+  return `/api/settings/${key}`
+}
+
+/**
+ * @summary Read a single setting by key (moderator)
+ */
+export const getSetting = async (key: string, options?: RequestInit): Promise<SettingDto> => {
+
+  return customFetch<SettingDto>(getGetSettingUrl(key),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSettingQueryKey = (key: string,) => {
+    return [
+    `/api/settings/${key}`
+    ] as const;
+    }
+
+
+export const getGetSettingQueryOptions = <TData = Awaited<ReturnType<typeof getSetting>>, TError = unknown>(key: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSetting>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSettingQueryKey(key);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSetting>>> = ({ signal }) => getSetting(key, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: key !== null && key !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSetting>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSettingQueryResult = NonNullable<Awaited<ReturnType<typeof getSetting>>>
+export type GetSettingQueryError = unknown
+
+
+export function useGetSetting<TData = Awaited<ReturnType<typeof getSetting>>, TError = unknown>(
+ key: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSetting>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSetting>>,
+          TError,
+          Awaited<ReturnType<typeof getSetting>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSetting<TData = Awaited<ReturnType<typeof getSetting>>, TError = unknown>(
+ key: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSetting>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSetting>>,
+          TError,
+          Awaited<ReturnType<typeof getSetting>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSetting<TData = Awaited<ReturnType<typeof getSetting>>, TError = unknown>(
+ key: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSetting>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Read a single setting by key (moderator)
+ */
+
+export function useGetSetting<TData = Awaited<ReturnType<typeof getSetting>>, TError = unknown>(
+ key: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSetting>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSettingQueryOptions(key,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 export const getUpdateSettingUrl = (key: string,) => {
 
 

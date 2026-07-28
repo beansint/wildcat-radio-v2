@@ -14,7 +14,7 @@
  */
 import { CalendarDays } from "lucide-react";
 import {
-  useScheduleControllerGetWeeklySchedule,
+  useGetWeeklySchedule,
 } from "@/lib/api/endpoints/schedule/schedule";
 import { toDaypartGrid, WEEKDAYS, type ScheduleDto } from "@/lib/schedule/grid";
 import type { Weekday } from "@/lib/mod/types";
@@ -31,7 +31,7 @@ const DAY_HEADER: Record<Weekday, string> = {
 };
 
 export default function PublicSchedulePage() {
-  const scheduleQuery = useScheduleControllerGetWeeklySchedule<ScheduleDto>();
+  const scheduleQuery = useGetWeeklySchedule<ScheduleDto>();
   const schedule = scheduleQuery.data;
   const grid = schedule ? toDaypartGrid(schedule) : null;
 

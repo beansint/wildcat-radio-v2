@@ -3,6 +3,7 @@ import { BrandPattern } from "@/components/brand/brand-pattern";
 import { Footer } from "@/components/layout/footer";
 import { LiveStatusCard } from "@/components/stream/live-status-card";
 import { FeaturedAnnouncement } from "@/components/landing/featured-announcement";
+import { HeroTagline } from "@/components/landing/hero-tagline";
 import { NowNext } from "@/components/landing/now-next";
 import { MostRequested } from "@/components/landing/most-requested";
 import { ShowsGrid } from "@/components/landing/shows-grid";
@@ -28,13 +29,10 @@ export default function LandingPage() {
                   width={280}
                   height={112}
                   className="h-20 md:h-28 w-auto mb-5 drop-shadow"
-                  style={{ width: "auto" }}
+                  style={{ width: "auto", height: "auto" }}
                   priority
                 />
-                <p className="text-white/85 max-w-md text-lg">
-                  The campus radio station of the Cebu Institute of Technology -
-                  University. Tune in, request a song, join the room.
-                </p>
+                <HeroTagline />
               </div>
 
               {/* Right: live status card */}

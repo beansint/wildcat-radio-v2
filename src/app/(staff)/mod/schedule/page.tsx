@@ -12,7 +12,7 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { useShowsControllerList, getShowsControllerListQueryKey } from "@/lib/api/endpoints/shows/shows";
+import { useListShowsAdmin, getListShowsAdminQueryKey } from "@/lib/api/endpoints/shows/shows";
 import { useRosterControllerList } from "@/lib/api/endpoints/roster/roster";
 import type { ShowDto, RosterEntryDto } from "@/lib/api/model";
 import { buildScheduleFromShows, toDaypartGrid, WEEKDAYS } from "@/lib/schedule/grid";
@@ -40,7 +40,7 @@ export default function SchedulePage() {
   const queryClient = useQueryClient();
   const [dialogState, setDialogState] = useState<DialogState>({ mode: "closed" });
 
-  const showsQuery = useShowsControllerList<ShowDto[]>();
+  const showsQuery = useListShowsAdmin<ShowDto[]>();
   const rosterQuery = useRosterControllerList<RosterEntryDto[]>({ includeArchived: false });
   const roster = rosterQuery.data ?? [];
   const shows = useMemo(() => showsQuery.data ?? [], [showsQuery.data]);
@@ -60,7 +60,7 @@ export default function SchedulePage() {
   }, [shows]);
 
   function invalidate() {
-    queryClient.invalidateQueries({ queryKey: getShowsControllerListQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListShowsAdminQueryKey() });
   }
 
   return (

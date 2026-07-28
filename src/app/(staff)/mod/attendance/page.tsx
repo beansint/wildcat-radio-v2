@@ -13,7 +13,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import { useAttendanceControllerList, getAttendanceControllerListQueryKey } from "@/lib/api/endpoints/attendance/attendance";
-import { useShowsControllerList } from "@/lib/api/endpoints/shows/shows";
+import { useListShowsAdmin } from "@/lib/api/endpoints/shows/shows";
 import type { AttendanceRowDto, ShowDto } from "@/lib/api/model";
 import { AttendanceRowDtoStatus } from "@/lib/api/model";
 import { DataTable, type DataTableColumn } from "@/components/mod/data-table";
@@ -70,7 +70,7 @@ export default function AttendancePage() {
   const [showId, setShowId] = useState<string>(ALL_SHOWS);
   const [editRow, setEditRow] = useState<AttendanceRowDto | null>(null);
 
-  const showsQuery = useShowsControllerList<ShowDto[]>();
+  const showsQuery = useListShowsAdmin<ShowDto[]>();
   const shows = showsQuery.data ?? [];
 
   const attendanceQuery = useAttendanceControllerList<AttendanceRowDto[]>({

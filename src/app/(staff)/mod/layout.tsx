@@ -18,18 +18,18 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession, type SessionUser } from "@/lib/auth/client";
-import { StaffSidebar } from "@/components/layout/staff-sidebar";
+import { StaffSidebar, type StaffNavSlug } from "@/components/layout/staff-sidebar";
 
 const STAFF_ROLES = new Set(["MODERATOR", "CUSTODIAN"]);
 
-function activeSlugFromPathname(
-  pathname: string,
-): "roster" | "schedule" | "attendance" | "queue" | "users" | "logs" {
+function activeSlugFromPathname(pathname: string): StaffNavSlug {
   if (pathname.startsWith("/mod/schedule")) return "schedule";
   if (pathname.startsWith("/mod/attendance")) return "attendance";
   if (pathname.startsWith("/mod/queue")) return "queue";
   if (pathname.startsWith("/mod/users")) return "users";
   if (pathname.startsWith("/mod/logs")) return "logs";
+  if (pathname.startsWith("/mod/announcements")) return "announcements";
+  if (pathname.startsWith("/mod/settings")) return "settings";
   return "roster";
 }
 

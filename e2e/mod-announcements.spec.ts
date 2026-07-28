@@ -324,9 +324,9 @@ test('ANN-I-04: photo panel reflects persisted photos, not a client tally', asyn
   const row = page.getByTestId('mod-ann-row').filter({ hasText: created.title as string });
   await row.click();
   await expect(page.getByTestId('mod-ann-photo-count')).toBeVisible({ timeout: 10_000 });
-  // With zero confirmed photos (no real R2 round trip — gated, see
-  // ANN-E-06b), the honest assertion here is "0 of 4", not "2 of 4"; the
-  // full persisted-photos-from-DTO case requires the gated upload.
+  // This fixture uploads nothing, so "0 of 4" is the correct count — the
+  // point being that it reflects persisted server state rather than a client
+  // tally. The populated case is ANN-E-06b's full R2 round trip.
   await expect(page.getByTestId('mod-ann-photo-count')).toContainText('0 of 4');
 });
 
@@ -516,21 +516,18 @@ test('ANN-E-06: photo upload — presign + confirm halves, exact contentType/siz
  *   Response to preflight request doesn't pass access control check:
  *   No 'Access-Control-Allow-Origin' header is present on the requested resource.
  *
- * The `wildcat-radio` R2 bucket has no CORS configuration, so the presign ->
- * browser-PUT -> confirm design cannot complete from ANY browser, in dev or in
- * production. Both halves either side of the hop work: the presign request and
- * the confirm request are covered by ANN-E-06 and the backend's own e2e, and the
- * UI surfaces the failure humanely ("Failed to fetch" in its single alert
- * region) rather than hanging or claiming success.
+ * RESOLVED. The `wildcat-radio` bucket shipped with a GET/HEAD-only CORS rule,
+ * so the presign -> browser-PUT -> confirm design could not complete from ANY
+ * browser, in dev or in production. `infra/dev/r2-cors.mjs` now applies a
+ * second rule allowing PUT from the app origins (explicitly listed, never `*`
+ * for a write) with ETag exposed, and this test runs un-skipped.
  *
- * To unblock: set a CORS policy on the bucket allowing PUT from the app origins
- * with the `content-type` and `content-length` headers exposed. Then delete this
- * `.skip` — the body below is complete and correct, and is also the only test
- * that would catch the uploader sending a `{type, size}` descriptor instead of
- * the real File (R2 signs an exact Content-Length, so the bucket, not our API,
- * is what rejects that). That bug was real and is already fixed.
+ * It is also the only test that catches the uploader sending a `{type, size}`
+ * descriptor instead of the real File — R2 signs an exact Content-Length, so
+ * the bucket, not our API, is what rejects that. That bug was real, and this
+ * case is what keeps it fixed.
  */
-test.skip('ANN-E-06b: full R2 round trip — browser PUT to the presigned URL, photo persists and renders publicly', async ({
+test('ANN-E-06b: full R2 round trip — browser PUT to the presigned URL, photo persists and renders publicly', async ({
   page,
   browser,
 }) => {

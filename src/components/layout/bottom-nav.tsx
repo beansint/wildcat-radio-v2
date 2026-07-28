@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { href: '/',              label: 'Home',     Icon: Home },
   { href: '/listen',        label: 'Listen',   Icon: Radio },
   { href: '/schedule',      label: 'Schedule', Icon: CalendarDays },
-  { href: '#',              label: 'News',     Icon: Megaphone },
+  { href: '/announcements', label: 'News',     Icon: Megaphone },
   { href: '/profile',       label: 'You',      Icon: User },
 ] as const;
 

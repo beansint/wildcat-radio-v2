@@ -7,8 +7,9 @@
  *
  * Station group (Roster/Schedule/Attendance) wired for FE#5 Task 9; Moderate
  * (Queue/Users), Insights→Logs, and Custodian→Escalations are wired for the
- * moderation UI (FE#8). Analytics/Settings/Staff Review/Announcements remain
- * the prototype's placeholders (`href="#"`) until their own features land.
+ * moderation UI (FE#8); Announcements and Settings for the content UI (FE#9).
+ * Analytics and Staff Review remain the prototype's placeholders (`href="#"`)
+ * until their own features land.
  */
 import Image from "next/image";
 import Link from "next/link";
@@ -38,7 +39,9 @@ export type StaffNavSlug =
   | "queue"
   | "users"
   | "logs"
-  | "escalations";
+  | "escalations"
+  | "announcements"
+  | "settings";
 
 interface StaffSidebarProps {
   /** Which nav link is the current page. */
@@ -169,10 +172,15 @@ export function StaffSidebar({ active, queueCount }: StaffSidebarProps) {
           {label}
         </Link>
       ))}
-      <a href="#" data-testid="mod-nav-announcements">
+      <Link
+        href="/mod/announcements"
+        className={active === "announcements" ? "active" : undefined}
+        aria-current={active === "announcements" ? "page" : undefined}
+        data-testid="mod-nav-announcements"
+      >
         <Megaphone className="w-4 h-4" aria-hidden="true" />
         Announcements
-      </a>
+      </Link>
 
       <div className="wc-sidebar-group">Insights</div>
       <a href="#" data-testid="mod-nav-analytics">
@@ -188,10 +196,15 @@ export function StaffSidebar({ active, queueCount }: StaffSidebarProps) {
         <ScrollText className="w-4 h-4" aria-hidden="true" />
         Logs
       </Link>
-      <a href="#" data-testid="mod-nav-settings">
+      <Link
+        href="/mod/settings"
+        className={active === "settings" ? "active" : undefined}
+        aria-current={active === "settings" ? "page" : undefined}
+        data-testid="mod-nav-settings"
+      >
         <Settings className="w-4 h-4" aria-hidden="true" />
         Settings
-      </a>
+      </Link>
 
       <div className="wc-sidebar-group">Custodian</div>
       <a href="#" data-testid="mod-nav-staff-review">

@@ -22,6 +22,35 @@ export const ListSettingsResponse = zod.array(ListSettingsResponseItem)
 
 
 /**
+ * @summary Read every setting row, including moderator-only groups
+ */
+export const ListSettingsAdminResponseItem = zod.object({
+  "key": zod.string().describe('Dot-namespaced setting key, e.g. toggle.chatFreeze'),
+  "group": zod.string().describe('Derived group, e.g. toggle\/killswitch\/branding\/copy'),
+  "value": zod.record(zod.string(), zod.unknown()).describe('Stored value; any JSON-serializable type'),
+  "updatedBy": zod.string().nullable().describe('User id of the last writer'),
+  "updatedAt": zod.iso.datetime({"offset":true})
+})
+export const ListSettingsAdminResponse = zod.array(ListSettingsAdminResponseItem)
+
+
+/**
+ * @summary Read a single setting by key (moderator)
+ */
+export const GetSettingParams = zod.object({
+  "key": zod.string().describe('Dot-namespaced setting key')
+})
+
+export const GetSettingResponse = zod.object({
+  "key": zod.string().describe('Dot-namespaced setting key, e.g. toggle.chatFreeze'),
+  "group": zod.string().describe('Derived group, e.g. toggle\/killswitch\/branding\/copy'),
+  "value": zod.record(zod.string(), zod.unknown()).describe('Stored value; any JSON-serializable type'),
+  "updatedBy": zod.string().nullable().describe('User id of the last writer'),
+  "updatedAt": zod.iso.datetime({"offset":true})
+})
+
+
+/**
  * @summary Upsert a setting value (moderator)
  */
 export const UpdateSettingParams = zod.object({
@@ -366,187 +395,6 @@ export const AdminControllerGetEscalationsResponse = zod.object({
 
 
 /**
- * @summary Get live stream manifest
- */
-export const GetStreamManifestResponse = zod.unknown()
-
-
-/**
- * @summary Studio source heartbeat
- */
-export const PostStreamHeartbeatResponse = zod.unknown()
-
-
-/**
- * @summary Get studio today view
- */
-export const GetStudioTodayResponse = zod.object({
-  "episode": zod.object({
-  "id": zod.string(),
-  "status": zod.string(),
-  "startedAt": zod.iso.datetime({"offset":true}).nullable(),
-  "endedAt": zod.iso.datetime({"offset":true}).nullable(),
-  "showId": zod.string().nullable(),
-  "unscheduled": zod.boolean()
-}).nullable(),
-  "attendees": zod.array(zod.object({
-  "rosterId": zod.string(),
-  "displayName": zod.string(),
-  "timeIn": zod.iso.datetime({"offset":true}).nullable()
-})),
-  "slotRoster": zod.array(zod.object({
-  "rosterId": zod.string(),
-  "displayName": zod.string(),
-  "timedIn": zod.boolean(),
-  "timeIn": zod.iso.datetime({"offset":true}).nullable(),
-  "timeOut": zod.iso.datetime({"offset":true}).nullable()
-})),
-  "todayShows": zod.array(zod.object({
-  "id": zod.string(),
-  "showId": zod.string().nullable(),
-  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
-  "status": zod.string(),
-  "showName": zod.string().nullable(),
-  "djs": zod.array(zod.string())
-}))
-})
-
-
-/**
- * @summary List active roster entries
- */
-export const ListStudioRosterResponseItem = zod.object({
-  "id": zod.string(),
-  "displayName": zod.string()
-})
-export const ListStudioRosterResponse = zod.array(ListStudioRosterResponseItem)
-
-
-/**
- * @summary DJ time-in (tap in)
- */
-export const TimeInStudioResponse = zod.unknown()
-
-
-/**
- * @summary DJ time-out (tap out)
- */
-export const TimeOutStudioResponse = zod.unknown()
-
-
-/**
- * @summary Get episode by id
- */
-export const GetEpisodeParams = zod.object({
-  "id": zod.string().describe('Episode id (cuid)')
-})
-
-export const GetEpisodeResponse = zod.unknown()
-
-
-/**
- * @summary Get current user profile
- */
-export const UsersControllerGetMeResponse = zod.unknown()
-
-
-/**
- * @summary Update current user profile
- */
-export const UsersControllerUpdateMeResponse = zod.unknown()
-
-
-/**
- * @summary Get current user moderation standing
- */
-export const UsersControllerGetMeStandingResponse = zod.object({
-  "mutedUntil": zod.iso.datetime({"offset":true}).nullable(),
-  "muteReason": zod.string().nullable(),
-  "bannedAt": zod.iso.datetime({"offset":true}).nullable(),
-  "banReason": zod.string().nullable(),
-  "strikes": zod.array(zod.object({
-  "id": zod.string(),
-  "level": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]),
-  "reason": zod.string(),
-  "issuedById": zod.string(),
-  "expiresAt": zod.iso.datetime({"offset":true}),
-  "createdAt": zod.iso.datetime({"offset":true})
-}))
-})
-
-
-/**
- * @summary Grant or withdraw consent for a scope (e.g. DEMOGRAPHICS)
- */
-export const UsersControllerRecordConsentResponse = zod.unknown()
-
-
-/**
- * @summary Get current consent records for the authenticated user
- */
-export const UsersControllerGetMyConsentResponse = zod.unknown()
-
-
-/**
- * @summary Search/paginate users by handle/email/name and class (moderator)
- */
-export const UsersControllerSearchUsersQueryParams = zod.object({
-  "pageSize": zod.number().optional().describe('Default 20, max 100'),
-  "page": zod.number().optional().describe('1-based page number, default 1'),
-  "class": zod.enum(['CAMPUS', 'GUEST']).optional(),
-  "q": zod.string().optional().describe('Free-text match against handle\/email\/name')
-})
-
-export const UsersControllerSearchUsersResponse = zod.object({
-  "items": zod.array(zod.object({
-  "id": zod.string(),
-  "handle": zod.string(),
-  "email": zod.string(),
-  "class": zod.enum(['CAMPUS', 'GUEST']),
-  "role": zod.enum(['CUSTODIAN', 'MODERATOR', 'LISTENER']),
-  "activeStrikeCount": zod.number().describe('Count of strikes with expiresAt > now'),
-  "mutedUntil": zod.iso.datetime({"offset":true}).nullable(),
-  "muteReason": zod.string().nullable(),
-  "bannedAt": zod.iso.datetime({"offset":true}).nullable(),
-  "banReason": zod.string().nullable()
-})),
-  "total": zod.number()
-})
-
-
-/**
- * @summary Force-rename a user handle (moderator); audited
- */
-export const UsersControllerForceRenameParams = zod.object({
-  "id": zod.string()
-})
-
-export const UsersControllerForceRenameResponse = zod.object({
-  "id": zod.string(),
-  "handle": zod.string()
-})
-
-
-/**
- * @summary Change a user role (custodian only); audited
- */
-export const UsersControllerChangeRoleParams = zod.object({
-  "id": zod.string()
-})
-
-export const UsersControllerChangeRoleResponse = zod.object({
-  "id": zod.string(),
-  "role": zod.enum(['CUSTODIAN', 'MODERATOR', 'LISTENER'])
-})
-
-
-/**
- * @summary Record anonymous age-bucket contribution (L33/L27; PII-safe aggregate counter)
- */
-export const AnalyticsControllerRecordAgeBucketResponse = zod.unknown()
-
-
-/**
  * @summary Submit to the show queue
  */
 export const SubmitQueueItemParams = zod.object({
@@ -816,6 +664,187 @@ export const ClearStationSessionResponse = zod.object({
 
 
 /**
+ * @summary Get live stream manifest
+ */
+export const GetStreamManifestResponse = zod.unknown()
+
+
+/**
+ * @summary Studio source heartbeat
+ */
+export const PostStreamHeartbeatResponse = zod.unknown()
+
+
+/**
+ * @summary Get studio today view
+ */
+export const GetStudioTodayResponse = zod.object({
+  "episode": zod.object({
+  "id": zod.string(),
+  "status": zod.string(),
+  "startedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "endedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "showId": zod.string().nullable(),
+  "unscheduled": zod.boolean()
+}).nullable(),
+  "attendees": zod.array(zod.object({
+  "rosterId": zod.string(),
+  "displayName": zod.string(),
+  "timeIn": zod.iso.datetime({"offset":true}).nullable()
+})),
+  "slotRoster": zod.array(zod.object({
+  "rosterId": zod.string(),
+  "displayName": zod.string(),
+  "timedIn": zod.boolean(),
+  "timeIn": zod.iso.datetime({"offset":true}).nullable(),
+  "timeOut": zod.iso.datetime({"offset":true}).nullable()
+})),
+  "todayShows": zod.array(zod.object({
+  "id": zod.string(),
+  "showId": zod.string().nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "status": zod.string(),
+  "showName": zod.string().nullable(),
+  "djs": zod.array(zod.string())
+}))
+})
+
+
+/**
+ * @summary List active roster entries
+ */
+export const ListStudioRosterResponseItem = zod.object({
+  "id": zod.string(),
+  "displayName": zod.string()
+})
+export const ListStudioRosterResponse = zod.array(ListStudioRosterResponseItem)
+
+
+/**
+ * @summary DJ time-in (tap in)
+ */
+export const TimeInStudioResponse = zod.unknown()
+
+
+/**
+ * @summary DJ time-out (tap out)
+ */
+export const TimeOutStudioResponse = zod.unknown()
+
+
+/**
+ * @summary Get episode by id
+ */
+export const GetEpisodeParams = zod.object({
+  "id": zod.string().describe('Episode id (cuid)')
+})
+
+export const GetEpisodeResponse = zod.unknown()
+
+
+/**
+ * @summary Get current user profile
+ */
+export const UsersControllerGetMeResponse = zod.unknown()
+
+
+/**
+ * @summary Update current user profile
+ */
+export const UsersControllerUpdateMeResponse = zod.unknown()
+
+
+/**
+ * @summary Get current user moderation standing
+ */
+export const UsersControllerGetMeStandingResponse = zod.object({
+  "mutedUntil": zod.iso.datetime({"offset":true}).nullable(),
+  "muteReason": zod.string().nullable(),
+  "bannedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "banReason": zod.string().nullable(),
+  "strikes": zod.array(zod.object({
+  "id": zod.string(),
+  "level": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]),
+  "reason": zod.string(),
+  "issuedById": zod.string(),
+  "expiresAt": zod.iso.datetime({"offset":true}),
+  "createdAt": zod.iso.datetime({"offset":true})
+}))
+})
+
+
+/**
+ * @summary Grant or withdraw consent for a scope (e.g. DEMOGRAPHICS)
+ */
+export const UsersControllerRecordConsentResponse = zod.unknown()
+
+
+/**
+ * @summary Get current consent records for the authenticated user
+ */
+export const UsersControllerGetMyConsentResponse = zod.unknown()
+
+
+/**
+ * @summary Search/paginate users by handle/email/name and class (moderator)
+ */
+export const UsersControllerSearchUsersQueryParams = zod.object({
+  "pageSize": zod.number().optional().describe('Default 20, max 100'),
+  "page": zod.number().optional().describe('1-based page number, default 1'),
+  "class": zod.enum(['CAMPUS', 'GUEST']).optional(),
+  "q": zod.string().optional().describe('Free-text match against handle\/email\/name')
+})
+
+export const UsersControllerSearchUsersResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "handle": zod.string(),
+  "email": zod.string(),
+  "class": zod.enum(['CAMPUS', 'GUEST']),
+  "role": zod.enum(['CUSTODIAN', 'MODERATOR', 'LISTENER']),
+  "activeStrikeCount": zod.number().describe('Count of strikes with expiresAt > now'),
+  "mutedUntil": zod.iso.datetime({"offset":true}).nullable(),
+  "muteReason": zod.string().nullable(),
+  "bannedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "banReason": zod.string().nullable()
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Force-rename a user handle (moderator); audited
+ */
+export const UsersControllerForceRenameParams = zod.object({
+  "id": zod.string()
+})
+
+export const UsersControllerForceRenameResponse = zod.object({
+  "id": zod.string(),
+  "handle": zod.string()
+})
+
+
+/**
+ * @summary Change a user role (custodian only); audited
+ */
+export const UsersControllerChangeRoleParams = zod.object({
+  "id": zod.string()
+})
+
+export const UsersControllerChangeRoleResponse = zod.object({
+  "id": zod.string(),
+  "role": zod.enum(['CUSTODIAN', 'MODERATOR', 'LISTENER'])
+})
+
+
+/**
+ * @summary Record anonymous age-bucket contribution (L33/L27; PII-safe aggregate counter)
+ */
+export const AnalyticsControllerRecordAgeBucketResponse = zod.unknown()
+
+
+/**
  * @summary List roster entries (DJs)
  */
 export const RosterControllerListQueryParams = zod.object({
@@ -864,9 +893,9 @@ export const RosterControllerUpdateResponse = zod.object({
 
 
 /**
- * @summary List shows with roster and cadence
+ * @summary Staff list of shows with roster and cadence (moderator)
  */
-export const ShowsControllerListResponseItem = zod.object({
+export const ListShowsAdminResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "slug": zod.string(),
@@ -879,7 +908,7 @@ export const ShowsControllerListResponseItem = zod.object({
   "displayName": zod.string()
 }))
 })
-export const ShowsControllerListResponse = zod.array(ShowsControllerListResponseItem)
+export const ListShowsAdminResponse = zod.array(ListShowsAdminResponseItem)
 
 
 /**
@@ -898,6 +927,21 @@ export const ShowsControllerCreateResponse = zod.object({
   "displayName": zod.string()
 }))
 })
+
+
+/**
+ * @summary Public list of every show, ordered by name asc
+ */
+export const ListShowsPublicResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string().nullable(),
+  "coverImage": zod.string().nullable(),
+  "theme": zod.string().nullable(),
+  "tags": zod.array(zod.string())
+})
+export const ListShowsPublicResponse = zod.array(ListShowsPublicResponseItem)
 
 
 /**
@@ -935,16 +979,63 @@ export const ShowsControllerRemoveResponse = zod.void()
 /**
  * @summary Get public weekly schedule grid
  */
-export const ScheduleControllerGetWeeklyScheduleResponse = zod.object({
+export const GetWeeklyScheduleResponse = zod.object({
   "days": zod.array(zod.object({
   "day": zod.string(),
   "shows": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "slug": zod.string(),
   "start": zod.string(),
   "end": zod.string(),
   "roster": zod.array(zod.string())
 }))
+}))
+})
+
+
+/**
+ * @summary Public show page by slug — name/description/coverImage/theme/tags + redacted roster
+ */
+export const GetShowPublicParams = zod.object({
+  "slug": zod.string()
+})
+
+export const GetShowPublicResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string().nullable(),
+  "coverImage": zod.string().nullable(),
+  "theme": zod.string().nullable(),
+  "tags": zod.array(zod.string()),
+  "roster": zod.array(zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "photoUrl": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Public upcoming/recent episodes for a show by slug
+ */
+export const GetShowEpisodesParams = zod.object({
+  "slug": zod.string()
+})
+
+export const GetShowEpisodesResponse = zod.object({
+  "upcoming": zod.array(zod.object({
+  "id": zod.string(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "startedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "endedAt": zod.iso.datetime({"offset":true}).nullable()
+})),
+  "recent": zod.array(zod.object({
+  "id": zod.string(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "startedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "endedAt": zod.iso.datetime({"offset":true}).nullable()
 }))
 })
 
@@ -992,4 +1083,731 @@ export const AttendanceControllerCorrectResponse = zod.object({
   "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT', 'AGREED_OVERTIME']),
   "lateMinutes": zod.number(),
   "note": zod.string().nullable()
+})
+
+
+/**
+ * @summary Paginated staff list of all announcements, any status
+ */
+export const AnnouncementsControllerListQueryParams = zod.object({
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']).optional().describe('Filter rows to one status. Tab counts stay whole-table regardless.'),
+  "pageSize": zod.number().optional().describe('Default 20, max 100'),
+  "page": zod.number().optional().describe('1-based page number, default 1')
+})
+
+export const AnnouncementsControllerListResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})),
+  "total": zod.number(),
+  "countsByStatus": zod.record(zod.string(), zod.number()).describe('Whole-table row count per status, e.g. {\"DRAFT\": 3, \"PUBLISHED\": 12}'),
+  "pinnedCount": zod.number()
+})
+
+
+/**
+ * @summary Staff detail read of a single announcement, fully attributed
+ */
+export const AnnouncementsControllerGetOneParams = zod.object({
+  "id": zod.string()
+})
+
+export const AnnouncementsControllerGetOneResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Create a new announcement in DRAFT status
+ */
+export const AnnouncementsControllerCreateResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Public paginated list of PUBLISHED announcements — pinned first, then publishedAt desc
+ */
+export const AnnouncementsPublicControllerListQueryParams = zod.object({
+  "pageSize": zod.number().optional().describe('Default 20, max 100'),
+  "page": zod.number().optional().describe('1-based page number, default 1')
+})
+
+export const AnnouncementsPublicControllerListResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "isPinned": zod.boolean(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "photos": zod.array(zod.string())
+})),
+  "total": zod.number(),
+  "page": zod.number(),
+  "pageSize": zod.number()
+})
+
+
+/**
+ * @summary Edit title/content/scheduledFor/expiresAt
+ */
+export const AnnouncementsControllerUpdateParams = zod.object({
+  "id": zod.string()
+})
+
+export const AnnouncementsControllerUpdateResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary DRAFT -> PENDING_REVIEW
+ */
+export const AnnouncementsControllerSubmitParams = zod.object({
+  "id": zod.string()
+})
+
+export const AnnouncementsControllerSubmitResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary PENDING_REVIEW -> PUBLISHED | SCHEDULED | REJECTED
+ */
+export const AnnouncementsControllerReviewParams = zod.object({
+  "id": zod.string()
+})
+
+export const AnnouncementsControllerReviewResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Any non-ARCHIVED status -> ARCHIVED (idempotent discard/retire)
+ */
+export const AnnouncementsControllerArchiveParams = zod.object({
+  "id": zod.string()
+})
+
+export const AnnouncementsControllerArchiveResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Feature (single mod, no second approver) — optional body.featured (default true)
+ */
+export const AnnouncementsControllerFeatureParams = zod.object({
+  "id": zod.string()
+})
+
+export const AnnouncementsControllerFeatureResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Clear featuredBy/featuredAt (rank-gated, not restricted to the original featurer)
+ */
+export const AnnouncementsControllerUnfeatureParams = zod.object({
+  "id": zod.string()
+})
+
+export const AnnouncementsControllerUnfeatureResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Pin a PUBLISHED announcement (cap of 2, race-safe) — optional body.pinned (default true)
+ */
+export const AnnouncementsControllerPinParams = zod.object({
+  "id": zod.string()
+})
+
+export const AnnouncementsControllerPinResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Unpin, freeing a pin slot
+ */
+export const AnnouncementsControllerUnpinParams = zod.object({
+  "id": zod.string()
+})
+
+export const AnnouncementsControllerUnpinResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Request a short-TTL presigned R2 upload URL for a new announcement photo (max 4/announcement)
+ */
+export const AnnouncementsControllerRequestPhotoUploadParams = zod.object({
+  "id": zod.string()
+})
+
+export const AnnouncementsControllerRequestPhotoUploadResponse = zod.object({
+  "uploadUrl": zod.string(),
+  "key": zod.string()
+})
+
+
+/**
+ * @summary Confirm a presigned upload landed in R2 (HeadObject-verified) and persist the AnnouncementPhoto row
+ */
+export const AnnouncementsControllerConfirmPhotoUploadParams = zod.object({
+  "id": zod.string()
+})
+
+export const AnnouncementsControllerConfirmPhotoUploadResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Public single PUBLISHED announcement by ref — resolves the trailing publicId of a `slug-publicId` address (AC-C9/AC-C10), falling back to a bare cuid (the pre-Slice-C contract). A stale slug still resolves; the response always carries the canonical slug/publicId. 404 (not 403) if unknown or not published, so existence is never leaked.
+ */
+export const AnnouncementsPublicControllerGetOneParams = zod.object({
+  "ref": zod.string().describe('`<slug>-<publicId>` or a bare cuid')
+})
+
+export const AnnouncementsPublicControllerGetOneResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "isPinned": zod.boolean(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Public list of active DJs, ordered by displayName asc
+ */
+export const ListDjsPublicResponseItem = zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "photoUrl": zod.string().nullable()
+})
+export const ListDjsPublicResponse = zod.array(ListDjsPublicResponseItem)
+
+
+/**
+ * @summary Public DJ profile from RosterEntry — displayName/photoUrl/bio/activeShows, never linkedAccountId
+ */
+export const GetDjPublicParams = zod.object({
+  "id": zod.string()
+})
+
+export const GetDjPublicResponse = zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "photoUrl": zod.string().nullable(),
+  "bio": zod.string().nullable(),
+  "activeShows": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string()
+}))
+})
+
+
+/**
+ * @summary Latest weekly "Most Requested" chart — empty-state safe (200, entries: []) when none exists yet
+ */
+export const ChartsPublicControllerGetCurrentResponse = zod.object({
+  "weekOf": zod.iso.datetime({"offset":true}).nullable(),
+  "entries": zod.array(zod.object({
+  "title": zod.string(),
+  "count": zod.number()
+}))
 })

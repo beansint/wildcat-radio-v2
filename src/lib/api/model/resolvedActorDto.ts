@@ -6,11 +6,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface ScheduleShowDto {
+export interface ResolvedActorDto {
   id: string;
-  name: string;
-  slug: string;
-  start: string;
-  end: string;
-  roster: string[];
+  /** @nullable */
+  name: string | null;
+  /** @nullable */
+  handle: string | null;
 }

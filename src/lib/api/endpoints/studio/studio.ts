@@ -44,406 +44,6 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 
-export const getGetStudioTodayUrl = () => {
-
-
-
-
-  return `/api/studio/today`
-}
-
-/**
- * @summary Get studio today view
- */
-export const getStudioToday = async ( options?: RequestInit): Promise<StudioTodayDto> => {
-
-  return customFetch<StudioTodayDto>(getGetStudioTodayUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetStudioTodayQueryKey = () => {
-    return [
-    `/api/studio/today`
-    ] as const;
-    }
-
-
-export const getGetStudioTodayQueryOptions = <TData = Awaited<ReturnType<typeof getStudioToday>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioToday>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetStudioTodayQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudioToday>>> = ({ signal }) => getStudioToday({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStudioToday>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetStudioTodayQueryResult = NonNullable<Awaited<ReturnType<typeof getStudioToday>>>
-export type GetStudioTodayQueryError = unknown
-
-
-export function useGetStudioToday<TData = Awaited<ReturnType<typeof getStudioToday>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioToday>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getStudioToday>>,
-          TError,
-          Awaited<ReturnType<typeof getStudioToday>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStudioToday<TData = Awaited<ReturnType<typeof getStudioToday>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioToday>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getStudioToday>>,
-          TError,
-          Awaited<ReturnType<typeof getStudioToday>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStudioToday<TData = Awaited<ReturnType<typeof getStudioToday>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioToday>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Get studio today view
- */
-
-export function useGetStudioToday<TData = Awaited<ReturnType<typeof getStudioToday>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioToday>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetStudioTodayQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
-export const getListStudioRosterUrl = () => {
-
-
-
-
-  return `/api/studio/roster`
-}
-
-/**
- * @summary List active roster entries
- */
-export const listStudioRoster = async ( options?: RequestInit): Promise<StudioRosterEntryDto[]> => {
-
-  return customFetch<StudioRosterEntryDto[]>(getListStudioRosterUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getListStudioRosterQueryKey = () => {
-    return [
-    `/api/studio/roster`
-    ] as const;
-    }
-
-
-export const getListStudioRosterQueryOptions = <TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getListStudioRosterQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStudioRoster>>> = ({ signal }) => listStudioRoster({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListStudioRosterQueryResult = NonNullable<Awaited<ReturnType<typeof listStudioRoster>>>
-export type ListStudioRosterQueryError = unknown
-
-
-export function useListStudioRoster<TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listStudioRoster>>,
-          TError,
-          Awaited<ReturnType<typeof listStudioRoster>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStudioRoster<TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listStudioRoster>>,
-          TError,
-          Awaited<ReturnType<typeof listStudioRoster>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListStudioRoster<TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary List active roster entries
- */
-
-export function useListStudioRoster<TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getListStudioRosterQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
-export const getTimeInStudioUrl = () => {
-
-
-
-
-  return `/api/studio/time-in`
-}
-
-/**
- * @summary DJ time-in (tap in)
- */
-export const timeInStudio = async ( options?: RequestInit): Promise<void> => {
-
-  return customFetch<void>(getTimeInStudioUrl(),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-
-export const getTimeInStudioQueryKey = () => {
-    return [
-    'POST', `/api/studio/time-in`
-    ] as const;
-    }
-
-
-export const getTimeInStudioQueryOptions = <TData = Awaited<ReturnType<typeof timeInStudio>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeInStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getTimeInStudioQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof timeInStudio>>> = ({ signal }) => timeInStudio({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof timeInStudio>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type TimeInStudioQueryResult = NonNullable<Awaited<ReturnType<typeof timeInStudio>>>
-export type TimeInStudioQueryError = unknown
-
-
-export function useTimeInStudio<TData = Awaited<ReturnType<typeof timeInStudio>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeInStudio>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof timeInStudio>>,
-          TError,
-          Awaited<ReturnType<typeof timeInStudio>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useTimeInStudio<TData = Awaited<ReturnType<typeof timeInStudio>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeInStudio>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof timeInStudio>>,
-          TError,
-          Awaited<ReturnType<typeof timeInStudio>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useTimeInStudio<TData = Awaited<ReturnType<typeof timeInStudio>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeInStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary DJ time-in (tap in)
- */
-
-export function useTimeInStudio<TData = Awaited<ReturnType<typeof timeInStudio>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeInStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getTimeInStudioQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
-export const getTimeOutStudioUrl = () => {
-
-
-
-
-  return `/api/studio/time-out`
-}
-
-/**
- * @summary DJ time-out (tap out)
- */
-export const timeOutStudio = async ( options?: RequestInit): Promise<void> => {
-
-  return customFetch<void>(getTimeOutStudioUrl(),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-
-export const getTimeOutStudioQueryKey = () => {
-    return [
-    'POST', `/api/studio/time-out`
-    ] as const;
-    }
-
-
-export const getTimeOutStudioQueryOptions = <TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getTimeOutStudioQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof timeOutStudio>>> = ({ signal }) => timeOutStudio({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type TimeOutStudioQueryResult = NonNullable<Awaited<ReturnType<typeof timeOutStudio>>>
-export type TimeOutStudioQueryError = unknown
-
-
-export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof timeOutStudio>>,
-          TError,
-          Awaited<ReturnType<typeof timeOutStudio>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof timeOutStudio>>,
-          TError,
-          Awaited<ReturnType<typeof timeOutStudio>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary DJ time-out (tap out)
- */
-
-export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getTimeOutStudioQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
 export const getGetStudioQueueUrl = () => {
 
 
@@ -1340,6 +940,406 @@ export function useClearStationSession<TData = Awaited<ReturnType<typeof clearSt
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getClearStationSessionQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getGetStudioTodayUrl = () => {
+
+
+
+
+  return `/api/studio/today`
+}
+
+/**
+ * @summary Get studio today view
+ */
+export const getStudioToday = async ( options?: RequestInit): Promise<StudioTodayDto> => {
+
+  return customFetch<StudioTodayDto>(getGetStudioTodayUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStudioTodayQueryKey = () => {
+    return [
+    `/api/studio/today`
+    ] as const;
+    }
+
+
+export const getGetStudioTodayQueryOptions = <TData = Awaited<ReturnType<typeof getStudioToday>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioToday>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStudioTodayQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudioToday>>> = ({ signal }) => getStudioToday({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStudioToday>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetStudioTodayQueryResult = NonNullable<Awaited<ReturnType<typeof getStudioToday>>>
+export type GetStudioTodayQueryError = unknown
+
+
+export function useGetStudioToday<TData = Awaited<ReturnType<typeof getStudioToday>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioToday>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStudioToday>>,
+          TError,
+          Awaited<ReturnType<typeof getStudioToday>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetStudioToday<TData = Awaited<ReturnType<typeof getStudioToday>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioToday>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStudioToday>>,
+          TError,
+          Awaited<ReturnType<typeof getStudioToday>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetStudioToday<TData = Awaited<ReturnType<typeof getStudioToday>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioToday>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get studio today view
+ */
+
+export function useGetStudioToday<TData = Awaited<ReturnType<typeof getStudioToday>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudioToday>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetStudioTodayQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getListStudioRosterUrl = () => {
+
+
+
+
+  return `/api/studio/roster`
+}
+
+/**
+ * @summary List active roster entries
+ */
+export const listStudioRoster = async ( options?: RequestInit): Promise<StudioRosterEntryDto[]> => {
+
+  return customFetch<StudioRosterEntryDto[]>(getListStudioRosterUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStudioRosterQueryKey = () => {
+    return [
+    `/api/studio/roster`
+    ] as const;
+    }
+
+
+export const getListStudioRosterQueryOptions = <TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStudioRosterQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStudioRoster>>> = ({ signal }) => listStudioRoster({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListStudioRosterQueryResult = NonNullable<Awaited<ReturnType<typeof listStudioRoster>>>
+export type ListStudioRosterQueryError = unknown
+
+
+export function useListStudioRoster<TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listStudioRoster>>,
+          TError,
+          Awaited<ReturnType<typeof listStudioRoster>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListStudioRoster<TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listStudioRoster>>,
+          TError,
+          Awaited<ReturnType<typeof listStudioRoster>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListStudioRoster<TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List active roster entries
+ */
+
+export function useListStudioRoster<TData = Awaited<ReturnType<typeof listStudioRoster>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStudioRoster>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListStudioRosterQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getTimeInStudioUrl = () => {
+
+
+
+
+  return `/api/studio/time-in`
+}
+
+/**
+ * @summary DJ time-in (tap in)
+ */
+export const timeInStudio = async ( options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getTimeInStudioUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getTimeInStudioQueryKey = () => {
+    return [
+    'POST', `/api/studio/time-in`
+    ] as const;
+    }
+
+
+export const getTimeInStudioQueryOptions = <TData = Awaited<ReturnType<typeof timeInStudio>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeInStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getTimeInStudioQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof timeInStudio>>> = ({ signal }) => timeInStudio({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof timeInStudio>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type TimeInStudioQueryResult = NonNullable<Awaited<ReturnType<typeof timeInStudio>>>
+export type TimeInStudioQueryError = unknown
+
+
+export function useTimeInStudio<TData = Awaited<ReturnType<typeof timeInStudio>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeInStudio>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof timeInStudio>>,
+          TError,
+          Awaited<ReturnType<typeof timeInStudio>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useTimeInStudio<TData = Awaited<ReturnType<typeof timeInStudio>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeInStudio>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof timeInStudio>>,
+          TError,
+          Awaited<ReturnType<typeof timeInStudio>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useTimeInStudio<TData = Awaited<ReturnType<typeof timeInStudio>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeInStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary DJ time-in (tap in)
+ */
+
+export function useTimeInStudio<TData = Awaited<ReturnType<typeof timeInStudio>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeInStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getTimeInStudioQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getTimeOutStudioUrl = () => {
+
+
+
+
+  return `/api/studio/time-out`
+}
+
+/**
+ * @summary DJ time-out (tap out)
+ */
+export const timeOutStudio = async ( options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getTimeOutStudioUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getTimeOutStudioQueryKey = () => {
+    return [
+    'POST', `/api/studio/time-out`
+    ] as const;
+    }
+
+
+export const getTimeOutStudioQueryOptions = <TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getTimeOutStudioQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof timeOutStudio>>> = ({ signal }) => timeOutStudio({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type TimeOutStudioQueryResult = NonNullable<Awaited<ReturnType<typeof timeOutStudio>>>
+export type TimeOutStudioQueryError = unknown
+
+
+export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof timeOutStudio>>,
+          TError,
+          Awaited<ReturnType<typeof timeOutStudio>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof timeOutStudio>>,
+          TError,
+          Awaited<ReturnType<typeof timeOutStudio>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary DJ time-out (tap out)
+ */
+
+export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getTimeOutStudioQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

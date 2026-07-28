@@ -6,11 +6,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface ScheduleShowDto {
+export interface DjActiveShowDto {
   id: string;
   name: string;
   slug: string;
-  start: string;
-  end: string;
-  roster: string[];
 }

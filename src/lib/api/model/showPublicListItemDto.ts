@@ -6,11 +6,15 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface ScheduleShowDto {
+export interface ShowPublicListItemDto {
   id: string;
   name: string;
   slug: string;
-  start: string;
-  end: string;
-  roster: string[];
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  coverImage: string | null;
+  /** @nullable */
+  theme: string | null;
+  tags: string[];
 }

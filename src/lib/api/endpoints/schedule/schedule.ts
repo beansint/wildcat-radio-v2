@@ -31,7 +31,7 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 
-export const getScheduleControllerGetWeeklyScheduleUrl = () => {
+export const getGetWeeklyScheduleUrl = () => {
 
 
 
@@ -42,9 +42,9 @@ export const getScheduleControllerGetWeeklyScheduleUrl = () => {
 /**
  * @summary Get public weekly schedule grid
  */
-export const scheduleControllerGetWeeklySchedule = async ( options?: RequestInit): Promise<ScheduleDto> => {
+export const getWeeklySchedule = async ( options?: RequestInit): Promise<ScheduleDto> => {
 
-  return customFetch<ScheduleDto>(getScheduleControllerGetWeeklyScheduleUrl(),
+  return customFetch<ScheduleDto>(getGetWeeklyScheduleUrl(),
   {
     ...options,
     method: 'GET'
@@ -57,69 +57,69 @@ export const scheduleControllerGetWeeklySchedule = async ( options?: RequestInit
 
 
 
-export const getScheduleControllerGetWeeklyScheduleQueryKey = () => {
+export const getGetWeeklyScheduleQueryKey = () => {
     return [
     `/api/schedule`
     ] as const;
     }
 
 
-export const getScheduleControllerGetWeeklyScheduleQueryOptions = <TData = Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetWeeklyScheduleQueryOptions = <TData = Awaited<ReturnType<typeof getWeeklySchedule>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getWeeklySchedule>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getScheduleControllerGetWeeklyScheduleQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetWeeklyScheduleQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>> = ({ signal }) => scheduleControllerGetWeeklySchedule({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWeeklySchedule>>> = ({ signal }) => getWeeklySchedule({ signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWeeklySchedule>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type ScheduleControllerGetWeeklyScheduleQueryResult = NonNullable<Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>>
-export type ScheduleControllerGetWeeklyScheduleQueryError = unknown
+export type GetWeeklyScheduleQueryResult = NonNullable<Awaited<ReturnType<typeof getWeeklySchedule>>>
+export type GetWeeklyScheduleQueryError = unknown
 
 
-export function useScheduleControllerGetWeeklySchedule<TData = Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>, TError, TData>> & Pick<
+export function useGetWeeklySchedule<TData = Awaited<ReturnType<typeof getWeeklySchedule>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getWeeklySchedule>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>,
+          Awaited<ReturnType<typeof getWeeklySchedule>>,
           TError,
-          Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>
+          Awaited<ReturnType<typeof getWeeklySchedule>>
         > , 'initialData'
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useScheduleControllerGetWeeklySchedule<TData = Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>, TError, TData>> & Pick<
+export function useGetWeeklySchedule<TData = Awaited<ReturnType<typeof getWeeklySchedule>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getWeeklySchedule>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>,
+          Awaited<ReturnType<typeof getWeeklySchedule>>,
           TError,
-          Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>
+          Awaited<ReturnType<typeof getWeeklySchedule>>
         > , 'initialData'
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useScheduleControllerGetWeeklySchedule<TData = Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export function useGetWeeklySchedule<TData = Awaited<ReturnType<typeof getWeeklySchedule>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getWeeklySchedule>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary Get public weekly schedule grid
  */
 
-export function useScheduleControllerGetWeeklySchedule<TData = Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scheduleControllerGetWeeklySchedule>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export function useGetWeeklySchedule<TData = Awaited<ReturnType<typeof getWeeklySchedule>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getWeeklySchedule>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getScheduleControllerGetWeeklyScheduleQueryOptions(options)
+  const queryOptions = getGetWeeklyScheduleQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

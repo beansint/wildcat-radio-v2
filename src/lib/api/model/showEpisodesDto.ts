@@ -5,12 +5,9 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
+import type { EpisodeRefDto } from './episodeRefDto.ts';
 
-export interface ScheduleShowDto {
-  id: string;
-  name: string;
-  slug: string;
-  start: string;
-  end: string;
-  roster: string[];
+export interface ShowEpisodesDto {
+  upcoming: EpisodeRefDto[];
+  recent: EpisodeRefDto[];
 }

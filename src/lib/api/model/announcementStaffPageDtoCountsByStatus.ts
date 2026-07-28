@@ -6,11 +6,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface ScheduleShowDto {
-  id: string;
-  name: string;
-  slug: string;
-  start: string;
-  end: string;
-  roster: string[];
-}
+/**
+ * Whole-table row count per status, e.g. {"DRAFT": 3, "PUBLISHED": 12}
+ */
+export type AnnouncementStaffPageDtoCountsByStatus = {[key: string]: number};

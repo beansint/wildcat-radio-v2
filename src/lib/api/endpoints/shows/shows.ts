@@ -31,20 +31,20 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 
-export const getShowsControllerListUrl = () => {
+export const getListShowsAdminUrl = () => {
 
 
 
 
-  return `/api/shows`
+  return `/api/shows/admin`
 }
 
 /**
- * @summary List shows with roster and cadence
+ * @summary Staff list of shows with roster and cadence (moderator)
  */
-export const showsControllerList = async ( options?: RequestInit): Promise<ShowDto[]> => {
+export const listShowsAdmin = async ( options?: RequestInit): Promise<ShowDto[]> => {
 
-  return customFetch<ShowDto[]>(getShowsControllerListUrl(),
+  return customFetch<ShowDto[]>(getListShowsAdminUrl(),
   {
     ...options,
     method: 'GET'
@@ -57,69 +57,69 @@ export const showsControllerList = async ( options?: RequestInit): Promise<ShowD
 
 
 
-export const getShowsControllerListQueryKey = () => {
+export const getListShowsAdminQueryKey = () => {
     return [
-    `/api/shows`
+    `/api/shows/admin`
     ] as const;
     }
 
 
-export const getShowsControllerListQueryOptions = <TData = Awaited<ReturnType<typeof showsControllerList>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof showsControllerList>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getListShowsAdminQueryOptions = <TData = Awaited<ReturnType<typeof listShowsAdmin>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listShowsAdmin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getShowsControllerListQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListShowsAdminQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof showsControllerList>>> = ({ signal }) => showsControllerList({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listShowsAdmin>>> = ({ signal }) => listShowsAdmin({ signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof showsControllerList>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listShowsAdmin>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type ShowsControllerListQueryResult = NonNullable<Awaited<ReturnType<typeof showsControllerList>>>
-export type ShowsControllerListQueryError = unknown
+export type ListShowsAdminQueryResult = NonNullable<Awaited<ReturnType<typeof listShowsAdmin>>>
+export type ListShowsAdminQueryError = unknown
 
 
-export function useShowsControllerList<TData = Awaited<ReturnType<typeof showsControllerList>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof showsControllerList>>, TError, TData>> & Pick<
+export function useListShowsAdmin<TData = Awaited<ReturnType<typeof listShowsAdmin>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listShowsAdmin>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof showsControllerList>>,
+          Awaited<ReturnType<typeof listShowsAdmin>>,
           TError,
-          Awaited<ReturnType<typeof showsControllerList>>
+          Awaited<ReturnType<typeof listShowsAdmin>>
         > , 'initialData'
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useShowsControllerList<TData = Awaited<ReturnType<typeof showsControllerList>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof showsControllerList>>, TError, TData>> & Pick<
+export function useListShowsAdmin<TData = Awaited<ReturnType<typeof listShowsAdmin>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listShowsAdmin>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof showsControllerList>>,
+          Awaited<ReturnType<typeof listShowsAdmin>>,
           TError,
-          Awaited<ReturnType<typeof showsControllerList>>
+          Awaited<ReturnType<typeof listShowsAdmin>>
         > , 'initialData'
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useShowsControllerList<TData = Awaited<ReturnType<typeof showsControllerList>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof showsControllerList>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export function useListShowsAdmin<TData = Awaited<ReturnType<typeof listShowsAdmin>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listShowsAdmin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary List shows with roster and cadence
+ * @summary Staff list of shows with roster and cadence (moderator)
  */
 
-export function useShowsControllerList<TData = Awaited<ReturnType<typeof showsControllerList>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof showsControllerList>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export function useListShowsAdmin<TData = Awaited<ReturnType<typeof listShowsAdmin>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listShowsAdmin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getShowsControllerListQueryOptions(options)
+  const queryOptions = getListShowsAdminQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

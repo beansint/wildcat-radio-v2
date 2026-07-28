@@ -1,15 +1,14 @@
 /**
- * Plain-assertion unit test for the pure schedule grid builder (Task 12).
+ * Unit test for the pure schedule grid builder (Task 12).
  *
- * No test runner (jest/vitest) is configured in this workspace yet
- * (`package.json` has no test script and neither package is installed), so
- * this file intentionally avoids `describe`/`it`/`expect` globals and is
- * runnable directly: `node --experimental-strip-types src/lib/schedule/grid.spec.ts`
- * (or plain `node` on a Node version new enough to strip types unflagged).
- * It is also included in `tsc --noEmit` like any other `.ts` file.
+ * Originally written with bare top-level `node:assert` blocks because the repo
+ * had no test runner. FE#9 added Vitest (`pnpm test:unit`), so the same
+ * assertions now live inside real `it()` cases and are picked up by the runner
+ * instead of only executing as an import side effect.
  */
+import { describe, it } from "vitest";
 import assert from "node:assert/strict";
-import { toDaypartGrid, buildScheduleFromShows, daypartLabel, type ScheduleDto } from "./grid.ts";
+import { toDaypartGrid, buildScheduleFromShows, daypartLabel, type ScheduleDto } from "./grid";
 
 function scheduleWith(monShow: { id: string; name: string; start: string; end: string; roster: string[] }): ScheduleDto {
   return {
@@ -25,25 +24,23 @@ function scheduleWith(monShow: { id: string; name: string; start: string; end: s
   };
 }
 
-// A MON 13:00-16:00 show lands in the "1-4 PM" row under MON.
-{
+describe("toDaypartGrid", () => {
+it("buckets a MON 13:00-16:00 show into the 1-4 PM row under MON", () => {
   const schedule = scheduleWith({ id: "s1", name: "Afternoon Vibes", start: "13:00", end: "16:00", roster: ["DJ Mara"] });
   const grid = toDaypartGrid(schedule);
   assert.equal(grid.rows.length, 1, "expected exactly one daypart row");
   assert.equal(grid.rows[0].label, "1–4 PM");
   assert.equal(grid.rows[0].cells.MON?.name, "Afternoon Vibes");
   assert.equal(grid.rows[0].cells.TUE, null);
-}
+});
 
-// daypartLabel crosses AM/PM correctly.
-{
+it("labels dayparts across the AM/PM boundary", () => {
   assert.equal(daypartLabel("06:00", "09:00"), "6–9 AM");
   assert.equal(daypartLabel("20:00", "22:00"), "8–10 PM");
   assert.equal(daypartLabel("11:00", "13:00"), "11 AM–1 PM");
-}
+});
 
-// Multiple distinct time slots produce sorted, independent rows.
-{
+it("produces sorted, independent rows for distinct time slots", () => {
   const schedule: ScheduleDto = {
     days: [
       { day: "MON", shows: [
@@ -62,11 +59,13 @@ function scheduleWith(monShow: { id: string; name: string; start: string; end: s
   assert.equal(grid.rows.length, 2);
   assert.equal(grid.rows[0].start, "06:00");
   assert.equal(grid.rows[1].start, "13:00");
-}
+});
+});
 
 // buildScheduleFromShows mirrors the backend: WEEKLY shows bucket into every
 // listed day, ONE_TIME shows are excluded entirely.
-{
+describe("buildScheduleFromShows", () => {
+it("buckets WEEKLY shows into every listed day and drops ONE_TIME shows", () => {
   const built = buildScheduleFromShows([
     {
       id: "s2",
@@ -96,6 +95,5 @@ function scheduleWith(monShow: { id: string; name: string; start: string; end: s
   assert.equal(grid.rows.length, 1);
   assert.equal(grid.rows[0].cells.WED?.name, "Afternoon Vibes");
   assert.equal(grid.rows[0].cells.SAT, null);
-}
-
-console.log("grid.spec.ts: all assertions passed");
+});
+});

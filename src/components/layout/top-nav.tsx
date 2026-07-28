@@ -10,10 +10,10 @@ const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/listen", label: "Listen" },
   { href: "/schedule", label: "Schedule" },
-  { href: "#", label: "Shows" },
-  { href: "#", label: "DJs" },
-  { href: "#", label: "Charts" },
-  { href: "#", label: "News" },
+  { href: "/shows", label: "Shows" },
+  { href: "/djs", label: "DJs" },
+  { href: "/charts", label: "Charts" },
+  { href: "/announcements", label: "News" },
 ] as const;
 
 interface TopNavProps {

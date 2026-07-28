@@ -22,10 +22,10 @@ const NAV_ITEMS = [
   { href: "/", label: "Home", Icon: Home },
   { href: "/listen", label: "Listen", Icon: Radio },
   { href: "/schedule", label: "Schedule", Icon: CalendarDays },
-  { href: "#", label: "Shows", Icon: Disc3 },
-  { href: "#", label: "DJs", Icon: Mic2 },
-  { href: "#", label: "Charts", Icon: BarChart3 },
-  { href: "#", label: "News", Icon: Megaphone },
+  { href: "/shows", label: "Shows", Icon: Disc3 },
+  { href: "/djs", label: "DJs", Icon: Mic2 },
+  { href: "/charts", label: "Charts", Icon: BarChart3 },
+  { href: "/announcements", label: "News", Icon: Megaphone },
 ] as const;
 
 interface MobileDrawerProps {

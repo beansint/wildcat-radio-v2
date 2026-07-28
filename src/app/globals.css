@@ -432,7 +432,14 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
    `py-*` utilities on `.wc-container` sections are not reset to 0. The shorthand
    `padding: 0 1rem` was overriding `py-8`/`md:py-14` at equal specificity (source
    order), collapsing every section's vertical rhythm. */
-.wc-container { max-width: 1180px; margin: 0 auto; padding-inline: 1rem; }
+/* NOTE: `width: 100%` matters even though block elements are already full-width.
+   `<body>` is `flex flex-col`, so a `.wc-container` used as a direct child is a
+   flex item — and `margin: 0 auto` on a flex item suppresses the default stretch,
+   leaving the box to shrink-to-fit its content. A container holding wide cards
+   looked correct by accident; the announcement detail page, whose content is a
+   short paragraph, collapsed to 535px. `width: 100%` makes the container fill its
+   line and lets `max-width` do the constraining, as intended. */
+.wc-container { width: 100%; max-width: 1180px; margin: 0 auto; padding-inline: 1rem; }
 .wc-stack > * + * { margin-top: 1rem; }
 .wc-muted { color: var(--muted-foreground); }
 

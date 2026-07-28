@@ -6,8 +6,17 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
+  // Every spec drives the SAME live backend and Neon dev database, and some of
+  // the invariants under test are global rather than per-row — the announcement
+  // pin cap ("at most N pinned station-wide") is the clearest example. Running
+  // spec files concurrently makes those tests fight each other over shared
+  // state and fail on a correct implementation, so the suite is serial.
+  workers: 1,
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
+    // 3011 is this project's frontend port (backend runs on 3010) — the old
+    // 3000 default predates that split and silently sent every spec using a
+    // relative `goto()` at a server that isn't running.
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3011',
     headless: true,
     // audio autoplay after a click is allowed; this guarantees it in headless CI too.
     launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] },

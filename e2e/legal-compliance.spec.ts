@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, request as pwRequest, test, type APIRequestContext } from '@playwright/test';
 import { appAlerts, attachConsoleGuard } from './_console';
 import { API_BASE, WEB_BASE, apiLoginAs, loginAs } from './_fixtures';
@@ -15,6 +16,8 @@ let listenerApi: APIRequestContext;
 let anonApi: APIRequestContext;
 
 const PASSWORD = 'TestPass123!';
+/** Every throwaway this run creates, so none are left on the shared dev DB. */
+const throwaways: string[] = [];
 const suffix = () => `fe11${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
 test.beforeAll(async () => {
@@ -23,12 +26,30 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  // Erase (anonymise) every throwaway through the product's own route — there
+  // is no hard-delete, which is exactly the behaviour under test.
+  for (const email of throwaways) {
+    const ctx = await pwRequest.newContext({ baseURL: API_BASE });
+    try {
+      const signIn = await ctx.post('/api/auth/sign-in/email', {
+        headers: { Origin: WEB_BASE },
+        data: { email, password: PASSWORD },
+      });
+      if (signIn.ok()) await ctx.delete('/api/me/data');
+    } catch {
+      // Already erased by its own case.
+    } finally {
+      await ctx.dispose();
+    }
+  }
   await listenerApi.dispose();
   await anonApi.dispose();
 });
 
 /** Register a disposable account and sign the browser in as it. */
 async function registerThrowaway(page: import('@playwright/test').Page) {
+  // Tracked and erased in afterAll — only one case erases its own account, so
+  // without this every run would leak four permanent rows onto a shared DB.
   const id = suffix();
   const email = `e2e_${id}@example.com`;
   const res = await anonApi.post('/api/auth/sign-up/email', {
@@ -42,6 +63,7 @@ async function registerThrowaway(page: import('@playwright/test').Page) {
   await page.locator('input[type=password]').fill(PASSWORD);
   await page.locator('button[type=submit]').click();
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20_000 });
+  throwaways.push(email);
   return email;
 }
 
@@ -63,6 +85,9 @@ test.describe('@contract', () => {
     for (const route of ['/api/me/data/export', '/api/consent']) {
       expect((await anonApi.get(route)).status(), route).toBe(401);
     }
+    // The destructive route was the one omitted, which is the wrong one to
+    // leave untested.
+    expect((await anonApi.delete('/api/me/data')).status()).toBe(401);
   });
 
   test('LC-C-03: attribution is public and carries no internal clearance evidence', async () => {
@@ -104,6 +129,9 @@ test('LC-E-02: terms render, and both are reachable from any public page', async
 
   await page.getByTestId('footer-terms').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeVisible();
+  // Both documents are drafts, so both must carry the warning — not just the
+  // one the other case happens to check.
+  await expect(page.getByTestId('legal-placeholder-banner')).toBeVisible();
 });
 
 test('LC-E-03: the attribution surface lists credits or says there are none', async ({ page }) => {
@@ -123,7 +151,7 @@ test('LC-E-03: the attribution surface lists credits or says there are none', as
 test('LC-E-04: golden path — grant, see the evidence, withdraw', async ({ page }) => {
   const guard = attachConsoleGuard(page);
   await registerThrowaway(page);
-  await page.goto(`${WEB_BASE}/privacy`);
+  await page.goto(`${WEB_BASE}/my-data`);
 
   const toggle = page.getByTestId('privacy-consent-toggle');
   await expect(toggle).toBeEnabled({ timeout: 15_000 });
@@ -145,23 +173,39 @@ test('LC-E-04: golden path — grant, see the evidence, withdraw', async ({ page
   await expect(page.getByTestId('privacy-status')).toContainText(/will not be counted/i);
   await expect(toggle).toHaveAttribute('data-state', 'unchecked');
 
+  // The withdrawal is itself evidence and must remain visible — the record is
+  // never deleted, and the person it concerns should be able to see it.
+  await expect(page.getByTestId('privacy-consent-history')).toContainText(/withdrawn/i);
+
   guard.assertClean();
 });
 
 test('LC-E-05: the export downloads the caller’s own data', async ({ page }) => {
-  await registerThrowaway(page);
-  await page.goto(`${WEB_BASE}/privacy`);
+  const email = await registerThrowaway(page);
+  await page.goto(`${WEB_BASE}/my-data`);
 
   const download = page.waitForEvent('download', { timeout: 20_000 });
   await page.getByTestId('privacy-export').click();
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/wildcat-radio-my-data-\d{4}-\d{2}-\d{2}\.json/);
-  await expect(page.getByTestId('privacy-status')).toContainText(/downloaded/i);
+
+  // Open it. The previous version asserted only that a download fired, so an
+  // export returning `{}` — or somebody else's rows — would have passed a test
+  // named "downloads the caller's own data".
+  const path = await file.path();
+  const parsed = JSON.parse(readFileSync(path, 'utf8'));
+  expect(parsed.profile.email).toBe(email);
+  expect(parsed).toHaveProperty('consents');
+  expect(parsed).toHaveProperty('moderation');
+  // Standing is what a sanctioned subject most wants under the access right.
+  expect(parsed.profile).toHaveProperty('bannedAt');
+
+  await expect(page.getByTestId('privacy-status')).toContainText(/ready/i);
 });
 
 test('LC-E-06: edge — erasure is gated behind typing the confirmation exactly', async ({ page }) => {
   await registerThrowaway(page);
-  await page.goto(`${WEB_BASE}/privacy`);
+  await page.goto(`${WEB_BASE}/my-data`);
 
   // The control must be reachable: it sits at the bottom of the page behind a
   // fixed bottom nav and player, and with too little padding it was
@@ -186,7 +230,7 @@ test('LC-E-06: edge — erasure is gated behind typing the confirmation exactly'
 
 test('LC-E-07: erasure signs the account out and it cannot sign back in', async ({ page }) => {
   const email = await registerThrowaway(page);
-  await page.goto(`${WEB_BASE}/privacy`);
+  await page.goto(`${WEB_BASE}/my-data`);
 
   await page.getByTestId('privacy-erase-open').click();
   await page.getByTestId('privacy-erase-confirm').fill('DELETE');
@@ -205,22 +249,44 @@ test('LC-E-07: erasure signs the account out and it cannot sign back in', async 
 });
 
 test('LC-E-08: RBAC — the rights centre needs a session', async ({ page }) => {
-  await page.goto(`${WEB_BASE}/privacy`);
-  // The (app) group guards client-side, so the assertion is that the content
-  // never mounts.
+  await page.goto(`${WEB_BASE}/my-data`);
+  // Assert the POSITIVE. `toHaveCount(0)` right after goto is satisfied on the
+  // first poll — before hydration, before the session query resolves — so it
+  // passed against a guard that did not exist.
+  await page.waitForURL(/\/login/, { timeout: 20_000 });
   await expect(page.getByTestId('privacy-consent-toggle')).toHaveCount(0);
+});
+
+test('LC-E-08b: /privacy takes an anonymous visitor to the notice, not a login form', async ({
+  page,
+}) => {
+  // It is the most-guessed privacy URL; landing on a sign-in form there is a
+  // trap on a compliance surface.
+  await page.goto(`${WEB_BASE}/privacy`);
+  await page.waitForURL(`${WEB_BASE}/legal/privacy`, { timeout: 20_000 });
+  await expect(page.getByRole('heading', { level: 1, name: 'Privacy Notice' })).toBeVisible();
 });
 
 test('LC-E-09: a11y — one alert region, labelled controls, reachable by keyboard', async ({
   page,
 }) => {
   await registerThrowaway(page);
-  await page.goto(`${WEB_BASE}/privacy`);
+  await page.goto(`${WEB_BASE}/my-data`);
   await expect(page.getByTestId('privacy-consent-toggle')).toBeVisible({ timeout: 15_000 });
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
-  // Never more than one app alert at a time (the convention's per-page rule).
-  await expect(appAlerts(page)).toHaveCount(0);
+
+  // Provoke a real failure — asserting "no alerts" on a page where nothing has
+  // gone wrong tests nothing. Fail the consent write and the page must surface
+  // exactly one alert.
+  await page.route('**/api/consent', (route) =>
+    route.request().method() === 'POST'
+      ? route.fulfill({ status: 500, body: '{"message":"boom"}' })
+      : route.continue(),
+  );
+  await page.getByTestId('privacy-consent-toggle').click();
+  await expect(appAlerts(page)).toHaveCount(1);
+  await page.unroute('**/api/consent');
 
   // The consent switch is labelled, so a screen reader says what it toggles.
   const label = page.locator('label[for="privacy-consent"]');

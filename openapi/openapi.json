@@ -1409,6 +1409,212 @@
         ]
       }
     },
+    "/api/analytics/overview": {
+      "get": {
+        "operationId": "getAnalyticsOverview",
+        "parameters": [
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, exclusive. Default: now.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, inclusive. Default: 30 days ago.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Period overview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsOverviewDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Headline audience figures for a period",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/shows": {
+      "get": {
+        "operationId": "getAnalyticsShows",
+        "parameters": [
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, exclusive. Default: now.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, inclusive. Default: 30 days ago.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Show ranking",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AnalyticsShowRankDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Show ranking with trend against the preceding window",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/dayparts": {
+      "get": {
+        "operationId": "getAnalyticsDayparts",
+        "parameters": [
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, exclusive. Default: now.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, inclusive. Default: 30 days ago.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daypart grid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AnalyticsDaypartDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Weekday x hour heatmap; empty slots are omitted",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/media-kit/export": {
+      "get": {
+        "operationId": "exportMediaKit",
+        "parameters": [
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, exclusive. Default: now.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, inclusive. Default: 30 days ago.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "csv",
+                "pdf"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report file download"
+          }
+        },
+        "summary": "Aggregate media-kit report as CSV or PDF (min-bucket suppressed)",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/episodes/{id}": {
+      "get": {
+        "operationId": "getAnalyticsEpisode",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Episode analytics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsEpisodeDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "One episode's stored snapshot, including its retention curve",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
     "/api/roster": {
       "get": {
         "operationId": "RosterController_list",
@@ -3767,6 +3973,216 @@
         "required": [
           "id",
           "role"
+        ]
+      },
+      "AnalyticsOverviewDto": {
+        "type": "object",
+        "properties": {
+          "peakConcurrent": {
+            "type": "number",
+            "description": "Highest concurrent listeners in any episode in range"
+          },
+          "cumulativeEpisodeReach": {
+            "type": "number",
+            "description": "Sum of each episode's unique listeners. Counts a repeat listener once per episode."
+          },
+          "totalListeningHours": {
+            "type": "number",
+            "description": "Total listening hours across the period"
+          },
+          "averageEngagementPerEpisode": {
+            "type": "number",
+            "description": "Mean engagement actions per episode"
+          },
+          "episodeCount": {
+            "type": "number",
+            "description": "Episodes with a snapshot in range"
+          }
+        },
+        "required": [
+          "peakConcurrent",
+          "cumulativeEpisodeReach",
+          "totalListeningHours",
+          "averageEngagementPerEpisode",
+          "episodeCount"
+        ]
+      },
+      "AnalyticsShowRankDto": {
+        "type": "object",
+        "properties": {
+          "showId": {
+            "type": "string",
+            "nullable": true,
+            "description": "null for the synthetic Unscheduled row"
+          },
+          "name": {
+            "type": "string"
+          },
+          "theme": {
+            "type": "string",
+            "nullable": true
+          },
+          "episodeCount": {
+            "type": "number"
+          },
+          "avgConcurrent": {
+            "type": "number"
+          },
+          "avgTlh": {
+            "type": "number"
+          },
+          "avgEngagement": {
+            "type": "number"
+          },
+          "trend": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down",
+              "flat"
+            ],
+            "description": "Against the immediately preceding window of equal length"
+          }
+        },
+        "required": [
+          "showId",
+          "name",
+          "theme",
+          "episodeCount",
+          "avgConcurrent",
+          "avgTlh",
+          "avgEngagement",
+          "trend"
+        ]
+      },
+      "AnalyticsDaypartDto": {
+        "type": "object",
+        "properties": {
+          "weekday": {
+            "type": "number",
+            "description": "0 = Sunday, station-local"
+          },
+          "hour": {
+            "type": "number",
+            "description": "0-23, station-local"
+          },
+          "avgConcurrent": {
+            "type": "number"
+          },
+          "episodeCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "weekday",
+          "hour",
+          "avgConcurrent",
+          "episodeCount"
+        ]
+      },
+      "AnalyticsRetentionPointDto": {
+        "type": "object",
+        "properties": {
+          "minute": {
+            "type": "number",
+            "description": "Minutes into the episode, 0-based"
+          },
+          "activeCount": {
+            "type": "number"
+          },
+          "pctOfPeak": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "minute",
+          "activeCount",
+          "pctOfPeak"
+        ]
+      },
+      "AnalyticsEngagementDto": {
+        "type": "object",
+        "properties": {
+          "chatMessages": {
+            "type": "number",
+            "description": "Listener chat only — booth output excluded"
+          },
+          "requestsReceived": {
+            "type": "number"
+          },
+          "requestsHandled": {
+            "type": "number"
+          },
+          "pollVotes": {
+            "type": "number"
+          },
+          "reactions": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "chatMessages",
+          "requestsReceived",
+          "requestsHandled",
+          "pollVotes",
+          "reactions"
+        ]
+      },
+      "AnalyticsEpisodeDto": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string"
+          },
+          "showName": {
+            "type": "string",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "endedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "peak": {
+            "type": "number"
+          },
+          "average": {
+            "type": "number"
+          },
+          "reach": {
+            "type": "number"
+          },
+          "tlh": {
+            "type": "number"
+          },
+          "tsl": {
+            "type": "number"
+          },
+          "retention": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsRetentionPointDto"
+            }
+          },
+          "engagement": {
+            "$ref": "#/components/schemas/AnalyticsEngagementDto"
+          }
+        },
+        "required": [
+          "episodeId",
+          "showName",
+          "startedAt",
+          "endedAt",
+          "peak",
+          "average",
+          "reach",
+          "tlh",
+          "tsl",
+          "retention",
+          "engagement"
         ]
       },
       "RosterEntryDto": {

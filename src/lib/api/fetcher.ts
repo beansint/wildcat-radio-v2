@@ -1,5 +1,12 @@
+/**
+ * The API origin. Exported because a file download cannot go through
+ * `customFetch` — that helper parses every response as JSON, and the media-kit
+ * export returns a CSV or PDF blob.
+ */
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
 export const customFetch = async <T>(url: string, options?: RequestInit): Promise<T> => {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+  const base = API_BASE_URL;
   const hasBody = options?.body != null;
   const response = await fetch(`${base}${url}`, {
     credentials: 'include',

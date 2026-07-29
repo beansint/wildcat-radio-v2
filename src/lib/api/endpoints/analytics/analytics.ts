@@ -20,6 +20,17 @@ import type {
   UseQueryResult
 } from '@tanstack/react-query';
 
+import type {
+  AnalyticsDaypartDto,
+  AnalyticsEpisodeDto,
+  AnalyticsOverviewDto,
+  AnalyticsShowRankDto,
+  ExportMediaKitParams,
+  GetAnalyticsDaypartsParams,
+  GetAnalyticsOverviewParams,
+  GetAnalyticsShowsParams
+} from '../../model';
+
 import { customFetch } from '../../fetcher';
 
 
@@ -116,6 +127,534 @@ export function useAnalyticsControllerRecordAgeBucket<TData = Awaited<ReturnType
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getAnalyticsControllerRecordAgeBucketQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getGetAnalyticsOverviewUrl = (params?: GetAnalyticsOverviewParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/analytics/overview?${stringifiedParams}` : `/api/analytics/overview`
+}
+
+/**
+ * @summary Headline audience figures for a period
+ */
+export const getAnalyticsOverview = async (params?: GetAnalyticsOverviewParams, options?: RequestInit): Promise<AnalyticsOverviewDto> => {
+
+  return customFetch<AnalyticsOverviewDto>(getGetAnalyticsOverviewUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAnalyticsOverviewQueryKey = (params?: GetAnalyticsOverviewParams,) => {
+    return [
+    `/api/analytics/overview`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAnalyticsOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getAnalyticsOverview>>, TError = unknown>(params?: GetAnalyticsOverviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsOverview>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAnalyticsOverviewQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAnalyticsOverview>>> = ({ signal }) => getAnalyticsOverview(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsOverview>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAnalyticsOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getAnalyticsOverview>>>
+export type GetAnalyticsOverviewQueryError = unknown
+
+
+export function useGetAnalyticsOverview<TData = Awaited<ReturnType<typeof getAnalyticsOverview>>, TError = unknown>(
+ params: undefined |  GetAnalyticsOverviewParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsOverview>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnalyticsOverview>>,
+          TError,
+          Awaited<ReturnType<typeof getAnalyticsOverview>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnalyticsOverview<TData = Awaited<ReturnType<typeof getAnalyticsOverview>>, TError = unknown>(
+ params?: GetAnalyticsOverviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsOverview>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnalyticsOverview>>,
+          TError,
+          Awaited<ReturnType<typeof getAnalyticsOverview>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnalyticsOverview<TData = Awaited<ReturnType<typeof getAnalyticsOverview>>, TError = unknown>(
+ params?: GetAnalyticsOverviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsOverview>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Headline audience figures for a period
+ */
+
+export function useGetAnalyticsOverview<TData = Awaited<ReturnType<typeof getAnalyticsOverview>>, TError = unknown>(
+ params?: GetAnalyticsOverviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsOverview>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAnalyticsOverviewQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getGetAnalyticsShowsUrl = (params?: GetAnalyticsShowsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/analytics/shows?${stringifiedParams}` : `/api/analytics/shows`
+}
+
+/**
+ * @summary Show ranking with trend against the preceding window
+ */
+export const getAnalyticsShows = async (params?: GetAnalyticsShowsParams, options?: RequestInit): Promise<AnalyticsShowRankDto[]> => {
+
+  return customFetch<AnalyticsShowRankDto[]>(getGetAnalyticsShowsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAnalyticsShowsQueryKey = (params?: GetAnalyticsShowsParams,) => {
+    return [
+    `/api/analytics/shows`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAnalyticsShowsQueryOptions = <TData = Awaited<ReturnType<typeof getAnalyticsShows>>, TError = unknown>(params?: GetAnalyticsShowsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsShows>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAnalyticsShowsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAnalyticsShows>>> = ({ signal }) => getAnalyticsShows(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsShows>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAnalyticsShowsQueryResult = NonNullable<Awaited<ReturnType<typeof getAnalyticsShows>>>
+export type GetAnalyticsShowsQueryError = unknown
+
+
+export function useGetAnalyticsShows<TData = Awaited<ReturnType<typeof getAnalyticsShows>>, TError = unknown>(
+ params: undefined |  GetAnalyticsShowsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsShows>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnalyticsShows>>,
+          TError,
+          Awaited<ReturnType<typeof getAnalyticsShows>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnalyticsShows<TData = Awaited<ReturnType<typeof getAnalyticsShows>>, TError = unknown>(
+ params?: GetAnalyticsShowsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsShows>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnalyticsShows>>,
+          TError,
+          Awaited<ReturnType<typeof getAnalyticsShows>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnalyticsShows<TData = Awaited<ReturnType<typeof getAnalyticsShows>>, TError = unknown>(
+ params?: GetAnalyticsShowsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsShows>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Show ranking with trend against the preceding window
+ */
+
+export function useGetAnalyticsShows<TData = Awaited<ReturnType<typeof getAnalyticsShows>>, TError = unknown>(
+ params?: GetAnalyticsShowsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsShows>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAnalyticsShowsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getGetAnalyticsDaypartsUrl = (params?: GetAnalyticsDaypartsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/analytics/dayparts?${stringifiedParams}` : `/api/analytics/dayparts`
+}
+
+/**
+ * @summary Weekday x hour heatmap; empty slots are omitted
+ */
+export const getAnalyticsDayparts = async (params?: GetAnalyticsDaypartsParams, options?: RequestInit): Promise<AnalyticsDaypartDto[]> => {
+
+  return customFetch<AnalyticsDaypartDto[]>(getGetAnalyticsDaypartsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAnalyticsDaypartsQueryKey = (params?: GetAnalyticsDaypartsParams,) => {
+    return [
+    `/api/analytics/dayparts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAnalyticsDaypartsQueryOptions = <TData = Awaited<ReturnType<typeof getAnalyticsDayparts>>, TError = unknown>(params?: GetAnalyticsDaypartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsDayparts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAnalyticsDaypartsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAnalyticsDayparts>>> = ({ signal }) => getAnalyticsDayparts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsDayparts>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAnalyticsDaypartsQueryResult = NonNullable<Awaited<ReturnType<typeof getAnalyticsDayparts>>>
+export type GetAnalyticsDaypartsQueryError = unknown
+
+
+export function useGetAnalyticsDayparts<TData = Awaited<ReturnType<typeof getAnalyticsDayparts>>, TError = unknown>(
+ params: undefined |  GetAnalyticsDaypartsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsDayparts>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnalyticsDayparts>>,
+          TError,
+          Awaited<ReturnType<typeof getAnalyticsDayparts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnalyticsDayparts<TData = Awaited<ReturnType<typeof getAnalyticsDayparts>>, TError = unknown>(
+ params?: GetAnalyticsDaypartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsDayparts>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnalyticsDayparts>>,
+          TError,
+          Awaited<ReturnType<typeof getAnalyticsDayparts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnalyticsDayparts<TData = Awaited<ReturnType<typeof getAnalyticsDayparts>>, TError = unknown>(
+ params?: GetAnalyticsDaypartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsDayparts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Weekday x hour heatmap; empty slots are omitted
+ */
+
+export function useGetAnalyticsDayparts<TData = Awaited<ReturnType<typeof getAnalyticsDayparts>>, TError = unknown>(
+ params?: GetAnalyticsDaypartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsDayparts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAnalyticsDaypartsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getExportMediaKitUrl = (params: ExportMediaKitParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/analytics/media-kit/export?${stringifiedParams}` : `/api/analytics/media-kit/export`
+}
+
+/**
+ * @summary Aggregate media-kit report as CSV or PDF (min-bucket suppressed)
+ */
+export const exportMediaKit = async (params: ExportMediaKitParams, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getExportMediaKitUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportMediaKitQueryKey = (params?: ExportMediaKitParams,) => {
+    return [
+    `/api/analytics/media-kit/export`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExportMediaKitQueryOptions = <TData = Awaited<ReturnType<typeof exportMediaKit>>, TError = unknown>(params: ExportMediaKitParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportMediaKit>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportMediaKitQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportMediaKit>>> = ({ signal }) => exportMediaKit(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportMediaKit>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ExportMediaKitQueryResult = NonNullable<Awaited<ReturnType<typeof exportMediaKit>>>
+export type ExportMediaKitQueryError = unknown
+
+
+export function useExportMediaKit<TData = Awaited<ReturnType<typeof exportMediaKit>>, TError = unknown>(
+ params: ExportMediaKitParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportMediaKit>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof exportMediaKit>>,
+          TError,
+          Awaited<ReturnType<typeof exportMediaKit>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useExportMediaKit<TData = Awaited<ReturnType<typeof exportMediaKit>>, TError = unknown>(
+ params: ExportMediaKitParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportMediaKit>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof exportMediaKit>>,
+          TError,
+          Awaited<ReturnType<typeof exportMediaKit>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useExportMediaKit<TData = Awaited<ReturnType<typeof exportMediaKit>>, TError = unknown>(
+ params: ExportMediaKitParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportMediaKit>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Aggregate media-kit report as CSV or PDF (min-bucket suppressed)
+ */
+
+export function useExportMediaKit<TData = Awaited<ReturnType<typeof exportMediaKit>>, TError = unknown>(
+ params: ExportMediaKitParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportMediaKit>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getExportMediaKitQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getGetAnalyticsEpisodeUrl = (id: string,) => {
+
+
+
+
+  return `/api/analytics/episodes/${id}`
+}
+
+/**
+ * @summary One episode's stored snapshot, including its retention curve
+ */
+export const getAnalyticsEpisode = async (id: string, options?: RequestInit): Promise<AnalyticsEpisodeDto> => {
+
+  return customFetch<AnalyticsEpisodeDto>(getGetAnalyticsEpisodeUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAnalyticsEpisodeQueryKey = (id: string,) => {
+    return [
+    `/api/analytics/episodes/${id}`
+    ] as const;
+    }
+
+
+export const getGetAnalyticsEpisodeQueryOptions = <TData = Awaited<ReturnType<typeof getAnalyticsEpisode>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsEpisode>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAnalyticsEpisodeQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAnalyticsEpisode>>> = ({ signal }) => getAnalyticsEpisode(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsEpisode>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAnalyticsEpisodeQueryResult = NonNullable<Awaited<ReturnType<typeof getAnalyticsEpisode>>>
+export type GetAnalyticsEpisodeQueryError = unknown
+
+
+export function useGetAnalyticsEpisode<TData = Awaited<ReturnType<typeof getAnalyticsEpisode>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsEpisode>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnalyticsEpisode>>,
+          TError,
+          Awaited<ReturnType<typeof getAnalyticsEpisode>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnalyticsEpisode<TData = Awaited<ReturnType<typeof getAnalyticsEpisode>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsEpisode>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnalyticsEpisode>>,
+          TError,
+          Awaited<ReturnType<typeof getAnalyticsEpisode>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnalyticsEpisode<TData = Awaited<ReturnType<typeof getAnalyticsEpisode>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsEpisode>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary One episode's stored snapshot, including its retention curve
+ */
+
+export function useGetAnalyticsEpisode<TData = Awaited<ReturnType<typeof getAnalyticsEpisode>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsEpisode>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAnalyticsEpisodeQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

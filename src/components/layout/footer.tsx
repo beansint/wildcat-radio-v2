@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 /** Minimal Facebook icon (inline SVG — lucide-react 1.x doesn't ship Facebook). */
 function FacebookIcon({ className }: { className?: string }) {
@@ -34,6 +35,21 @@ export function Footer() {
           />
           <span>Wildcat Radio · CIT-U Campus Radio</span>
         </div>
+        {/* Legal links live here because this is where people look for them.
+            The footer is rendered by the public shell rather than by a single
+            page, so a privacy notice is reachable from every public surface —
+            a notice nobody can find is not much of a notice. */}
+        <nav aria-label="Legal" className="flex flex-wrap items-center gap-4">
+          <Link href="/legal/privacy" className="hover:text-white" data-testid="footer-privacy">
+            Privacy
+          </Link>
+          <Link href="/legal/terms" className="hover:text-white" data-testid="footer-terms">
+            Terms
+          </Link>
+          <Link href="/attribution" className="hover:text-white" data-testid="footer-attribution">
+            Music credits
+          </Link>
+        </nav>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-2">
             <FacebookIcon className="w-4 h-4" />

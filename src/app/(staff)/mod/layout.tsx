@@ -27,6 +27,7 @@ function activeSlugFromPathname(pathname: string): StaffNavSlug {
   if (pathname.startsWith("/mod/attendance")) return "attendance";
   if (pathname.startsWith("/mod/queue")) return "queue";
   if (pathname.startsWith("/mod/users")) return "users";
+  if (pathname.startsWith("/mod/analytics")) return "analytics";
   if (pathname.startsWith("/mod/logs")) return "logs";
   if (pathname.startsWith("/mod/announcements")) return "announcements";
   if (pathname.startsWith("/mod/settings")) return "settings";

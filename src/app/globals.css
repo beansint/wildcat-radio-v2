@@ -51,6 +51,14 @@
   --shadow-md: 0 4px 14px rgba(21,20,20,.08), 0 2px 4px rgba(21,20,20,.05);
   --shadow-lg: 0 14px 38px rgba(21,20,20,.14);
   --canvas:    #faf9f7;
+
+  /* Data-visualisation series (M6 analytics). Taken from the prototype's
+     theme.css so a chart drawn here matches the design basis exactly. Series 1
+     is the brand maroon and series 2 the gold-ochre, which is also the pairing
+     the retention curve legend describes as solid/dashed. */
+  --chart-1: #820001;
+  --chart-2: #da9101;
+  --chart-3: #151414;
 }
 
 .dark {
@@ -87,6 +95,13 @@
   --shadow-md: 0 6px 20px rgba(0,0,0,.45);
   --shadow-lg: 0 18px 44px rgba(0,0,0,.55);
   --canvas:    #100f0f;
+
+  /* Staff dark mode: the maroon is too dark to read as a line on a near-black
+     canvas, so series 1 lifts to the lighter brand red. The gold already
+     carries. */
+  --chart-1: #e05252;
+  --chart-2: #ffdf01;
+  --chart-3: #d6d3d1;
 }
 
 /* -------------------------------------------------------- Tailwind 4 @theme */
@@ -119,6 +134,9 @@
   --color-popover-foreground:     var(--popover-foreground);
   --color-brand-maroon:           var(--brand-maroon);
   --color-live-foreground:        var(--live-foreground);
+  --color-chart-1:                var(--chart-1);
+  --color-chart-2:                var(--chart-2);
+  --color-chart-3:                var(--chart-3);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -583,4 +601,45 @@ body.wc-staff-page .wc-player { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
+}
+
+/* ------------------------------------------------ Analytics charts (M6/FE#10)
+   Lifted from the design basis' own self-contained <style> block
+   (docs/frontend-design-basis-prototype/mod/analytics.html) so the heatmap and
+   the chart chrome match it exactly. The heatmap is a CSS grid rather than a
+   charting-library component on purpose: a library renders it worse, and this
+   is what the prototype specifies. */
+.wc-heat {
+  display: grid;
+  grid-template-columns: auto repeat(7, 1fr);
+  gap: 4px;
+}
+.wc-heat .cell {
+  aspect-ratio: 1.6 / 1;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: #fff;
+  min-height: 30px;
+}
+.wc-heat .rowlab,
+.wc-heat .collab {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  display: grid;
+  place-items: center;
+}
+/* Recharts draws its own grid and axes; these align them with the prototype's
+   hand-drawn SVG rather than leaving the library's defaults. */
+.wc-chart .recharts-cartesian-grid line,
+.wc-chart .recharts-cartesian-axis-line,
+.wc-chart .recharts-cartesian-axis-tick-line {
+  stroke: var(--border);
+}
+.wc-chart .recharts-cartesian-axis-tick-value {
+  fill: var(--muted-foreground);
+  font-size: 10px;
 }

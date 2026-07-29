@@ -12,7 +12,8 @@
 | Privacy Notice | `/legal/privacy` | `(public)` |
 | Terms of Service | `/legal/terms` | `(public)` |
 | Music credits | `/attribution` | `(public)` |
-| Your data (rights centre) | `/privacy` | `(app)` — needs a session |
+| Your data (rights centre) | `/my-data` | `(app)` — needs a session |
+| `/privacy` | redirects to `/legal/privacy` | `(public)` |
 
 Footer links to all three public surfaces, and the footer is now rendered by `PublicShell` rather
 than by the landing page alone.
@@ -52,5 +53,18 @@ than by the landing page alone.
   unclickable. Found by driving the page, not by reading it.
 - **The consent switch is disabled while its query is in flight.** Worth stating because it is also
   why a keyboard test must wait for *enabled* rather than *visible*.
-- **`/privacy` is the rights centre and `/legal/privacy` is the notice.** Two different things, and
-  the rights centre links to the notice rather than duplicating it.
+- **`/privacy` redirects to the notice; the rights centre is `/my-data`.** `/privacy` is the URL
+  people guess for a privacy policy, and having it be a signed-in page meant an anonymous visitor
+  typing it got a **login form** — a trap on a compliance surface.
+- **The legal notices are server-rendered.** Client-only fetching left the documents out of the SSR
+  HTML (invisible to crawlers, reader modes and no-JS) and tied the availability of the one document
+  that must always be readable to API uptime, with no retry.
+- **The DPO address is shown as pending, not as a mailto.** It is a reserved `.example` domain that
+  can never receive mail; presenting it as reachable would send a rights request into a black hole.
+- **The consent copy names the campus/guest split too.** The same consent releases `class` into the
+  published aggregate, and consent has to describe the processing it actually authorises.
+- **The attribution page says "registered", not "plays".** The registry is not linked to playout, so
+  claiming every track aired is clean would assert a control the system does not have.
+- **A failed erasure says we could not confirm, not that it failed.** Erasure revokes the session, so
+  a dropped response and a real failure are indistinguishable from the browser — and telling someone
+  an irreversible action failed when it may have succeeded is the worse error.

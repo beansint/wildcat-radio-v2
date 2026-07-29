@@ -22,9 +22,14 @@ export default function AttributionPage() {
     <div className="pb-16">
       <section className="wc-container py-6 md:py-8">
         <h1 className="text-2xl font-extrabold">Music credits</h1>
+        {/* Deliberately "registered", not "plays". The registry is not linked
+            to playout — nothing joins a track to an episode — so this list is
+            complete only insofar as staff have recorded each track. Claiming
+            the stronger thing would be asserting a control the system does not
+            have, on the page whose job is to be accurate about licensing. */}
         <p className="wc-muted">
-          Wildcat Radio plays clean-source music only. Tracks under a Creative Commons licence are
-          credited here, as those licences require.
+          Wildcat Radio&apos;s policy is to play clean-source music only. Tracks the station has
+          registered under a Creative Commons licence are credited here, as those licences require.
         </p>
       </section>
 

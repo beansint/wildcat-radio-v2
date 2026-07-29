@@ -1,6 +1,5 @@
 import Image from "next/image";
 import { BrandPattern } from "@/components/brand/brand-pattern";
-import { Footer } from "@/components/layout/footer";
 import { LiveStatusCard } from "@/components/stream/live-status-card";
 import { FeaturedAnnouncement } from "@/components/landing/featured-announcement";
 import { HeroTagline } from "@/components/landing/hero-tagline";
@@ -54,7 +53,6 @@ export default function LandingPage() {
         <ShowsGrid />
       </main>
 
-      <Footer />
     </>
   );
 }

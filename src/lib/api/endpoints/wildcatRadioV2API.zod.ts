@@ -944,6 +944,150 @@ export const GetAnalyticsEpisodeResponse = zod.object({
 
 
 /**
+ * @summary Versioned Terms of Service or Privacy Notice
+ */
+export const GetLegalNoticeParams = zod.object({
+  "document": zod.enum(['tos', 'privacy'])
+})
+
+export const GetLegalNoticeResponse = zod.object({
+  "key": zod.string(),
+  "version": zod.string(),
+  "effectiveDate": zod.string(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "isPlaceholder": zod.boolean().describe('True while the text is unreviewed placeholder pending counsel. A client must not present a placeholder document as binding terms.')
+})
+
+
+/**
+ * @summary The caller’s consent history
+ */
+export const ListMyConsentsResponseItem = zod.object({
+  "id": zod.string(),
+  "scope": zod.enum(['DEMOGRAPHICS']),
+  "noticeVersion": zod.string().describe('The version of the notice actually served at grant time'),
+  "grantedAt": zod.string(),
+  "withdrawnAt": zod.string().nullable().describe('Set on withdrawal; the row is never deleted')
+})
+export const ListMyConsentsResponse = zod.array(ListMyConsentsResponseItem)
+
+
+/**
+ * @summary Grant consent for a scope, evidenced with the served notice version
+ */
+export const GrantConsentResponse = zod.object({
+  "id": zod.string(),
+  "scope": zod.enum(['DEMOGRAPHICS']),
+  "noticeVersion": zod.string().describe('The version of the notice actually served at grant time'),
+  "grantedAt": zod.string(),
+  "withdrawnAt": zod.string().nullable().describe('Set on withdrawal; the row is never deleted')
+})
+
+
+/**
+ * @summary Withdraw consent — the record is kept as evidence, never deleted
+ */
+export const WithdrawConsentParams = zod.object({
+  "scope": zod.enum(['DEMOGRAPHICS'])
+})
+
+export const WithdrawConsentResponse = zod.object({
+  "id": zod.string(),
+  "scope": zod.enum(['DEMOGRAPHICS']),
+  "noticeVersion": zod.string().describe('The version of the notice actually served at grant time'),
+  "grantedAt": zod.string(),
+  "withdrawnAt": zod.string().nullable().describe('Set on withdrawal; the row is never deleted')
+})
+
+
+/**
+ * @summary Everything the station holds that identifies the caller (access + portability)
+ */
+export const ExportMyDataResponse = zod.unknown()
+
+
+/**
+ * @summary Correct the caller’s own profile fields
+ */
+export const CorrectMyDataResponse = zod.unknown()
+
+
+/**
+ * @summary Erase the caller’s account (anonymisation — see the privacy notice)
+ */
+export const EraseMyDataResponse = zod.unknown()
+
+
+/**
+ * @summary Public CC-BY credits — never exposes internal clearance evidence
+ */
+export const GetMusicAttributionResponseItem = zod.object({
+  "title": zod.string(),
+  "artist": zod.string().nullable(),
+  "attribution": zod.string()
+})
+export const GetMusicAttributionResponse = zod.array(GetMusicAttributionResponseItem)
+
+
+/**
+ * @summary The clean-source registry
+ */
+export const ListMusicSourcesResponseItem = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "artist": zod.string().nullable(),
+  "source": zod.enum(['CC', 'PUBLIC_DOMAIN', 'ROYALTY_FREE', 'ORIGINAL_STUDENT']),
+  "attribution": zod.string().nullable(),
+  "clearanceProof": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+export const ListMusicSourcesResponse = zod.array(ListMusicSourcesResponseItem)
+
+
+/**
+ * @summary Register a clean source
+ */
+export const CreateMusicSourceResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "artist": zod.string().nullable(),
+  "source": zod.enum(['CC', 'PUBLIC_DOMAIN', 'ROYALTY_FREE', 'ORIGINAL_STUDENT']),
+  "attribution": zod.string().nullable(),
+  "clearanceProof": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Amend a registry entry
+ */
+export const UpdateMusicSourceParams = zod.object({
+  "id": zod.string()
+})
+
+export const UpdateMusicSourceResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "artist": zod.string().nullable(),
+  "source": zod.enum(['CC', 'PUBLIC_DOMAIN', 'ROYALTY_FREE', 'ORIGINAL_STUDENT']),
+  "attribution": zod.string().nullable(),
+  "clearanceProof": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Remove a registry entry
+ */
+export const DeleteMusicSourceParams = zod.object({
+  "id": zod.string()
+})
+
+export const DeleteMusicSourceResponse = zod.unknown()
+
+
+/**
  * @summary List roster entries (DJs)
  */
 export const RosterControllerListQueryParams = zod.object({

@@ -1615,6 +1615,286 @@
         ]
       }
     },
+    "/api/legal/{document}": {
+      "get": {
+        "operationId": "getLegalNotice",
+        "parameters": [
+          {
+            "name": "document",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "tos",
+                "privacy"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Legal notice",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalNoticeDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Versioned Terms of Service or Privacy Notice",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/consent": {
+      "get": {
+        "operationId": "listMyConsents",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Consent records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConsentRecordDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "The caller’s consent history",
+        "tags": [
+          "compliance"
+        ]
+      },
+      "post": {
+        "operationId": "grantConsent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Consent record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentRecordDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Grant consent for a scope, evidenced with the served notice version",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/consent/{scope}": {
+      "delete": {
+        "operationId": "withdrawConsent",
+        "parameters": [
+          {
+            "name": "scope",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "DEMOGRAPHICS"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Withdrawn consent record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentRecordDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Withdraw consent — the record is kept as evidence, never deleted",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/me/data/export": {
+      "get": {
+        "operationId": "exportMyData",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The caller’s data"
+          }
+        },
+        "summary": "Everything the station holds that identifies the caller (access + portability)",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/me/data": {
+      "patch": {
+        "operationId": "correctMyData",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Corrected fields"
+          }
+        },
+        "summary": "Correct the caller’s own profile fields",
+        "tags": [
+          "compliance"
+        ]
+      },
+      "delete": {
+        "operationId": "eraseMyData",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "{ ok, alreadyErased }"
+          }
+        },
+        "summary": "Erase the caller’s account (anonymisation — see the privacy notice)",
+        "tags": [
+          "compliance"
+        ]
+      }
+    },
+    "/api/music-sources/attribution": {
+      "get": {
+        "operationId": "getMusicAttribution",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Credits",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MusicAttributionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Public CC-BY credits — never exposes internal clearance evidence",
+        "tags": [
+          "music-sources"
+        ]
+      }
+    },
+    "/api/music-sources": {
+      "get": {
+        "operationId": "listMusicSources",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Music sources",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MusicSourceDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "The clean-source registry",
+        "tags": [
+          "music-sources"
+        ]
+      },
+      "post": {
+        "operationId": "createMusicSource",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Created source",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MusicSourceDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Register a clean source",
+        "tags": [
+          "music-sources"
+        ]
+      }
+    },
+    "/api/music-sources/{id}": {
+      "patch": {
+        "operationId": "updateMusicSource",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated source",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MusicSourceDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Amend a registry entry",
+        "tags": [
+          "music-sources"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteMusicSource",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ ok: true }"
+          }
+        },
+        "summary": "Remove a registry entry",
+        "tags": [
+          "music-sources"
+        ]
+      }
+    },
     "/api/roster": {
       "get": {
         "operationId": "RosterController_list",
@@ -4183,6 +4463,135 @@
           "tsl",
           "retention",
           "engagement"
+        ]
+      },
+      "LegalNoticeDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "effectiveDate": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "isPlaceholder": {
+            "type": "boolean",
+            "description": "True while the text is unreviewed placeholder pending counsel. A client must not present a placeholder document as binding terms."
+          }
+        },
+        "required": [
+          "key",
+          "version",
+          "effectiveDate",
+          "title",
+          "body",
+          "isPlaceholder"
+        ]
+      },
+      "ConsentRecordDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "DEMOGRAPHICS"
+            ]
+          },
+          "noticeVersion": {
+            "type": "string",
+            "description": "The version of the notice actually served at grant time"
+          },
+          "grantedAt": {
+            "type": "string"
+          },
+          "withdrawnAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "Set on withdrawal; the row is never deleted"
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "noticeVersion",
+          "grantedAt",
+          "withdrawnAt"
+        ]
+      },
+      "MusicAttributionDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "artist": {
+            "type": "string",
+            "nullable": true
+          },
+          "attribution": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "artist",
+          "attribution"
+        ]
+      },
+      "MusicSourceDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "artist": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "CC",
+              "PUBLIC_DOMAIN",
+              "ROYALTY_FREE",
+              "ORIGINAL_STUDENT"
+            ]
+          },
+          "attribution": {
+            "type": "string",
+            "nullable": true
+          },
+          "clearanceProof": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "artist",
+          "source",
+          "attribution",
+          "clearanceProof",
+          "createdAt"
         ]
       },
       "RosterEntryDto": {

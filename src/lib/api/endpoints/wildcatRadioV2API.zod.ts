@@ -845,6 +845,105 @@ export const AnalyticsControllerRecordAgeBucketResponse = zod.unknown()
 
 
 /**
+ * @summary Headline audience figures for a period
+ */
+export const GetAnalyticsOverviewQueryParams = zod.object({
+  "to": zod.string().optional().describe('ISO date, exclusive. Default: now.'),
+  "from": zod.string().optional().describe('ISO date, inclusive. Default: 30 days ago.')
+})
+
+export const GetAnalyticsOverviewResponse = zod.object({
+  "peakConcurrent": zod.number().describe('Highest concurrent listeners in any episode in range'),
+  "cumulativeEpisodeReach": zod.number().describe('Sum of each episode\'s unique listeners. Counts a repeat listener once per episode.'),
+  "totalListeningHours": zod.number().describe('Total listening hours across the period'),
+  "averageEngagementPerEpisode": zod.number().describe('Mean engagement actions per episode'),
+  "episodeCount": zod.number().describe('Episodes with a snapshot in range')
+})
+
+
+/**
+ * @summary Show ranking with trend against the preceding window
+ */
+export const GetAnalyticsShowsQueryParams = zod.object({
+  "to": zod.string().optional().describe('ISO date, exclusive. Default: now.'),
+  "from": zod.string().optional().describe('ISO date, inclusive. Default: 30 days ago.')
+})
+
+export const GetAnalyticsShowsResponseItem = zod.object({
+  "showId": zod.string().nullable().describe('null for the synthetic Unscheduled row'),
+  "name": zod.string(),
+  "theme": zod.string().nullable(),
+  "episodeCount": zod.number(),
+  "avgConcurrent": zod.number(),
+  "avgTlh": zod.number(),
+  "avgEngagement": zod.number(),
+  "trend": zod.enum(['up', 'down', 'flat']).describe('Against the immediately preceding window of equal length')
+})
+export const GetAnalyticsShowsResponse = zod.array(GetAnalyticsShowsResponseItem)
+
+
+/**
+ * @summary Weekday x hour heatmap; empty slots are omitted
+ */
+export const GetAnalyticsDaypartsQueryParams = zod.object({
+  "to": zod.string().optional().describe('ISO date, exclusive. Default: now.'),
+  "from": zod.string().optional().describe('ISO date, inclusive. Default: 30 days ago.')
+})
+
+export const GetAnalyticsDaypartsResponseItem = zod.object({
+  "weekday": zod.number().describe('0 = Sunday, station-local'),
+  "hour": zod.number().describe('0-23, station-local'),
+  "avgConcurrent": zod.number(),
+  "episodeCount": zod.number()
+})
+export const GetAnalyticsDaypartsResponse = zod.array(GetAnalyticsDaypartsResponseItem)
+
+
+/**
+ * @summary Aggregate media-kit report as CSV or PDF (min-bucket suppressed)
+ */
+export const ExportMediaKitQueryParams = zod.object({
+  "to": zod.string().optional().describe('ISO date, exclusive. Default: now.'),
+  "from": zod.string().optional().describe('ISO date, inclusive. Default: 30 days ago.'),
+  "format": zod.enum(['csv', 'pdf'])
+})
+
+export const ExportMediaKitResponse = zod.unknown()
+
+
+/**
+ * @summary One episode's stored snapshot, including its retention curve
+ */
+export const GetAnalyticsEpisodeParams = zod.object({
+  "id": zod.string()
+})
+
+export const GetAnalyticsEpisodeResponse = zod.object({
+  "episodeId": zod.string(),
+  "showName": zod.string().nullable(),
+  "startedAt": zod.string().nullable(),
+  "endedAt": zod.string().nullable(),
+  "peak": zod.number(),
+  "average": zod.number(),
+  "reach": zod.number(),
+  "tlh": zod.number(),
+  "tsl": zod.number(),
+  "retention": zod.array(zod.object({
+  "minute": zod.number().describe('Minutes into the episode, 0-based'),
+  "activeCount": zod.number(),
+  "pctOfPeak": zod.number()
+})),
+  "engagement": zod.object({
+  "chatMessages": zod.number().describe('Listener chat only — booth output excluded'),
+  "requestsReceived": zod.number(),
+  "requestsHandled": zod.number(),
+  "pollVotes": zod.number(),
+  "reactions": zod.number()
+})
+})
+
+
+/**
  * @summary List roster entries (DJs)
  */
 export const RosterControllerListQueryParams = zod.object({

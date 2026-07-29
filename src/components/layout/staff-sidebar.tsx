@@ -8,8 +8,8 @@
  * Station group (Roster/Schedule/Attendance) wired for FE#5 Task 9; Moderate
  * (Queue/Users), Insights→Logs, and Custodian→Escalations are wired for the
  * moderation UI (FE#8); Announcements and Settings for the content UI (FE#9).
- * Analytics and Staff Review remain the prototype's placeholders (`href="#"`)
- * until their own features land.
+ * Analytics is wired for the curation dashboard (FE#10); Staff Review remains
+ * the prototype's placeholder (`href="#"`) until its own feature lands.
  */
 import Image from "next/image";
 import Link from "next/link";
@@ -38,6 +38,7 @@ export type StaffNavSlug =
   | "attendance"
   | "queue"
   | "users"
+  | "analytics"
   | "logs"
   | "escalations"
   | "announcements"
@@ -183,10 +184,14 @@ export function StaffSidebar({ active, queueCount }: StaffSidebarProps) {
       </Link>
 
       <div className="wc-sidebar-group">Insights</div>
-      <a href="#" data-testid="mod-nav-analytics">
+      <Link
+        href="/mod/analytics"
+        className={active === "analytics" ? "active" : undefined}
+        data-testid="mod-nav-analytics"
+      >
         <BarChart3 className="w-4 h-4" aria-hidden="true" />
         Analytics
-      </a>
+      </Link>
       <Link
         href="/mod/logs"
         className={active === "logs" ? "active" : undefined}

@@ -267,7 +267,7 @@ export function AppealCard({ appeal, busy, alert, onUphold, onReduce, onOverturn
       <p className="text-sm wc-muted">
         Appealing {appeal.subjectStrikeId ? `strike ${appeal.subjectStrikeId}` : "a moderation action"}.
       </p>
-      <blockquote className="mt-2 border-l-2 border-border pl-3 text-sm italic">"{appeal.text}"</blockquote>
+      <blockquote className="mt-2 border-l-2 border-border pl-3 text-sm italic">&ldquo;{appeal.text}&rdquo;</blockquote>
       <p className="wc-help mt-2">A written response is required on every appeal decision.</p>
     </CardShell>
   );

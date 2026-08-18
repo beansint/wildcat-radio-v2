@@ -5,7 +5,7 @@
  *
  * - isPending → render skeleton chrome + spinner (no layout shift)
  * - !data     → redirect to /login?next=<current pathname> (useRouter.replace)
- * - data      → render TopNav + MobileDrawer + BottomNav + children
+ * - data      → render TopNav + MobileDrawer + children
  *
  * NOTE: This is a UX gate only — real data protection is the Nest session guard
  * on the backend. Middleware cannot read our cross-origin httpOnly cookie so the
@@ -16,7 +16,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useSession } from '@/lib/auth/client';
 import { TopNav } from '@/components/layout/top-nav';
 import { MobileDrawer } from '@/components/layout/mobile-drawer';
-import { BottomNav } from '@/components/layout/bottom-nav';
+import { Footer } from '@/components/layout/footer';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { data, isPending } = useSession();
@@ -53,10 +53,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      {/* FE#49 — skip-to-content: first Tab stop, visually hidden until
+          focused. Targets the #main-content wrapper below. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:font-semibold focus:text-primary-foreground focus:shadow-lg"
+      >
+        Skip to content
+      </a>
       <TopNav onMenu={() => setOpen(true)} />
       <MobileDrawer open={open} onClose={() => setOpen(false)} />
-      {children}
-      <BottomNav />
+      <div id="main-content" tabIndex={-1}>
+        {children}
+      </div>
+      {/* FE#43 — the footer sits after each page's own padded content, so it
+          needs its own clearance from the position:fixed GlobalPlayer. */}
+      <div className="pb-[72px] md:pb-14">
+        <Footer />
+      </div>
     </>
   );
 }

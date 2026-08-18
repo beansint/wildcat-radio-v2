@@ -89,7 +89,10 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
           </span>
         </Link>
 
-        {/* Nav list */}
+        {/* Nav list.
+            FE#49: .sn-item is 43px tall (globals.css padding .62rem .7rem,
+            reserved this run) — bumped to the 44px floor with inline style;
+            see report for the exact rule to change centrally. */}
         <nav className="sn-list">
           {NAV_ITEMS.map(({ href, label, Icon }) => (
             <Link
@@ -109,7 +112,9 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
         <div className="sn-foot">
           {!isPending && (
             user ? (
-              /* Logged-in: profile link + sign out */
+              /* Logged-in: profile link + sign out.
+                 FE#49: bumped below-44px touch targets with inline style —
+                 see report for the globals.css / Button size="sm" rules. */
               <>
                 <Link
                   href="/profile"

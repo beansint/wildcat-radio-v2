@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { API_BASE, WEB_BASE } from './_fixtures';
 
-const BASE = 'http://localhost:3000';
+// FE#55 — was a hardcoded `http://localhost:3000` (and `:3001` for the API), both
+// stale: the stack runs on 3011/3010. Relative `goto()`s were silently hitting a
+// dead server. Read the shared fixture bases so one env override moves every spec.
+const BASE = WEB_BASE;
 
 // AC-2 golden: sign in → session-aware nav shows avatar → sign out → nav shows Sign in
 test('AC-2 golden: login shows avatar in nav; sign out restores Sign in', async ({ page }) => {
@@ -11,7 +15,9 @@ test('AC-2 golden: login shows avatar in nav; sign out restores Sign in', async 
   await page.getByTestId('auth-submit').click();
 
   // After login: should land on / or the ?next= page
-  await page.waitForURL(/^http:\/\/localhost:3000(\/)?$/, { timeout: 10_000 });
+  await page.waitForURL((url) => url.href === BASE || url.href === `${BASE}/`, {
+    timeout: 10_000,
+  });
 
   // Nav should now show a profile avatar link (aria-label contains "profile")
   // .first() because profile link exists in both top-nav avatar and mobile-drawer
@@ -19,7 +25,7 @@ test('AC-2 golden: login shows avatar in nav; sign out restores Sign in', async 
   await expect(avatarLink).toBeVisible({ timeout: 6_000 });
 
   // Sign out: call the Better Auth sign-out endpoint directly to avoid GlobalPlayer click-intercept
-  await page.request.post(`http://localhost:3001/api/auth/sign-out`, {
+  await page.request.post(`${API_BASE}/api/auth/sign-out`, {
     headers: { Origin: BASE },
   });
   await page.goto(`${BASE}/`);

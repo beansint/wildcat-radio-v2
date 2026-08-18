@@ -72,6 +72,54 @@ test('edge: switching to Staff audit shows the audit-specific columns', async ({
   await expect(auditTable.getByTestId('mod-logs-col-reason')).toBeVisible();
 });
 
+// FE#51: the search box is a client-side quick-filter over the already-loaded
+// page (see src/lib/mod/log-search.ts's header note — neither log endpoint
+// takes a `q` param), so these assert the box narrows the visible rows
+// in-place rather than asserting a network refetch.
+test('golden: searching the broadcast activity tab narrows visible rows', async ({ page }) => {
+  await loginAs(page, MOD_EMAIL, '/mod/logs');
+  await expectBroadcastSettled(page);
+
+  await expect(page.getByTestId('mod-logs-search')).toBeVisible();
+
+  const rowsBefore = page.getByTestId('mod-logs-row');
+  const countBefore = await rowsBefore.count();
+
+  // A query that shouldn't match any seeded broadcast log entry.
+  await page.getByTestId('mod-logs-search').fill('zzz-no-such-log-entry-zzz-e2e');
+
+  if (countBefore > 0) {
+    await expect(page.getByTestId('mod-logs-empty')).toBeVisible({ timeout: 5_000 });
+  }
+
+  // Clearing the search restores the original row count.
+  await page.getByTestId('mod-logs-search').fill('');
+  await expect(async () => {
+    const count = await page.getByTestId('mod-logs-row').count();
+    expect(count).toBe(countBefore);
+  }).toPass({ timeout: 5_000 });
+});
+
+test('edge: the search box carries over to the Staff audit tab and resets on tab switch', async ({ page }) => {
+  await loginAs(page, MOD_EMAIL, '/mod/logs');
+  await expectBroadcastSettled(page);
+
+  await page.getByTestId('mod-logs-search').fill('some-broadcast-only-query');
+
+  await page.getByTestId('mod-logs-tabs-audit').click();
+  await expect(page.getByTestId('mod-logs-audit-table')).toBeVisible();
+
+  // Switching tabs clears the filter rather than silently carrying a
+  // broadcast-shaped query over to the differently-shaped audit rows.
+  await expect(page.getByTestId('mod-logs-search')).toHaveValue('');
+
+  await expect(async () => {
+    const rows = await page.getByTestId('mod-logs-row').count();
+    const empty = await page.getByTestId('mod-logs-empty').count();
+    expect(rows + empty).toBeGreaterThan(0);
+  }).toPass({ timeout: 10_000 });
+});
+
 test('edge: applying a date range refetches the active table', async ({ page }) => {
   await loginAs(page, MOD_EMAIL, '/mod/logs');
   await expectBroadcastSettled(page);

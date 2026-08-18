@@ -4,8 +4,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
-const WEB_BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? process.env.PLAYWRIGHT_API_BASE ?? 'http://localhost:3001';
+// FE#55 — these were locally redeclared with stale defaults (3000/3001 instead of
+// 3011/3010) and a third env-var spelling (`PLAYWRIGHT_API_BASE`) used nowhere
+// else. Re-exported from the shared fixtures so there is one source of truth.
+import { API_BASE, WEB_BASE } from './_fixtures';
 const BACKEND_DIR = process.env.WILDCAT_BACKEND_DIR ?? path.resolve(process.cwd(), '../wildcat-radio-v2-backend');
 const STATION_TOKEN = process.env.STATION_DEVICE_TOKEN ?? 'dev-studio-token-change-me';
 const TOKEN_HASH = createHash('sha256').update(STATION_TOKEN).digest('hex');

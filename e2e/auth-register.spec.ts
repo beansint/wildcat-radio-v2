@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { WEB_BASE } from './_fixtures';
 
-const BASE = 'http://localhost:3000';
+// FE#55 — was a hardcoded, stale `http://localhost:3000` (the web app runs on 3011).
+const BASE = WEB_BASE;
 const ts = () => Date.now();
 
 // AC-1: Guest registers → logged-in + verify banner shown

@@ -12,6 +12,8 @@
  * clock, not the station's — station-local rendering needs this file too.
  */
 
+import type { Weekday } from "../mod/types";
+
 export const STATION_OFFSET_MIN = Number.parseInt(
   process.env.NEXT_PUBLIC_STATION_UTC_OFFSET_MINUTES ?? "480",
   10,
@@ -34,4 +36,39 @@ export function stationHhmm(iso: string | Date): string {
 export function stationDate(iso: string | Date): string {
   const t = (typeof iso === "string" ? new Date(iso) : iso).getTime();
   return new Date(t + STATION_OFFSET_MIN * 60000).toISOString().slice(0, 10);
+}
+
+/**
+ * `/studio` kiosk header's date display (FE#46), e.g. "Tuesday, June 10,
+ * 2026" (`studio-console.html` line 30). Same station-local-shift technique
+ * as `stationHhmm`/`stationDate` — shift the instant by the fixed station
+ * offset, then read it back out with `timeZone: "UTC"` so the *shifted*
+ * instant's UTC calendar fields are what render, not the browser's own
+ * timezone reinterpreting them a second time.
+ */
+const STATION_LONG_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/** UTC instant/ISO -> station-local long date, e.g. "Tuesday, June 10, 2026" */
+export function stationLongDate(iso: string | Date): string {
+  const t = (typeof iso === "string" ? new Date(iso) : iso).getTime();
+  return STATION_LONG_DATE_FORMATTER.format(new Date(t + STATION_OFFSET_MIN * 60000));
+}
+
+const WEEKDAY_BY_UTC_DAY: Weekday[] = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+/**
+ * UTC instant/ISO -> station-local weekday code (`"MON"`..`"SUN"`), for the
+ * public `/schedule` page's "today" chip and on-air badge (FE#42). Same
+ * shift-then-read-UTC-fields technique as `stationDate`/`stationLongDate` —
+ * never derive this from the browser's own `Date#getDay()`.
+ */
+export function stationWeekday(iso: string | Date = new Date()): Weekday {
+  const t = (typeof iso === "string" ? new Date(iso) : iso).getTime();
+  return WEEKDAY_BY_UTC_DAY[new Date(t + STATION_OFFSET_MIN * 60000).getUTCDay()];
 }

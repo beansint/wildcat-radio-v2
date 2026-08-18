@@ -195,10 +195,19 @@ export default function RegisterPage() {
                     data-testid="auth-terms"
                     {...register('terms')}
                   />
+                  {/* FE#53 — both links were dead `href="#"` anchors on a REQUIRED
+                      consent checkbox: the user had to agree to documents they
+                      could not open. Terms now points at the real page. The
+                      "Community Guidelines" link is removed rather than left
+                      dangling — no such page or content exists anywhere in the
+                      product, so shipping a link to nothing is worse than not
+                      claiming it. Restore it here if that document is ever written. */}
                   <span>
                     I agree to the Wildcat Radio{' '}
-                    <a href="#" className="font-semibold text-maroon">Terms</a> and{' '}
-                    <a href="#" className="font-semibold text-maroon">Community Guidelines</a>.
+                    <Link href="/legal/terms" className="font-semibold text-maroon">
+                      Terms
+                    </Link>
+                    .
                   </span>
                 </label>
 

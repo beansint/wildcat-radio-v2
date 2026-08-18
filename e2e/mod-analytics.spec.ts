@@ -105,10 +105,18 @@ test('AN-E-02: the heatmap distinguishes a silent slot from one never broadcast'
   await page.goto(`${WEB_BASE}/mod/analytics`);
   await expect(page.getByTestId('mod-analytics-heatmap')).toBeVisible({ timeout: 15_000 });
 
-  // 6 two-hour rows x 7 weekdays. A zero-filled grid would say "we aired and
-  // nobody came" everywhere the station simply does not broadcast.
+  // Rows x 7 weekdays. Deliberately derived, not hard-coded: heatmapRows() is
+  // "the default day plus any band the station actually used", so a broadcast
+  // outside 08:00-18:00 legitimately adds a row and any fixed count goes stale
+  // against real data. The six default bands are still the floor.
+  const rowHeaders = page.getByTestId('mod-analytics-heatmap').getByRole('rowheader');
+  const rowCount = await rowHeaders.count();
+  expect(rowCount).toBeGreaterThanOrEqual(6);
+
+  // A zero-filled grid would say "we aired and nobody came" everywhere the
+  // station simply does not broadcast.
   const cells = page.locator('[data-testid^="mod-analytics-heat-"]');
-  await expect(cells).toHaveCount(42);
+  await expect(cells).toHaveCount(rowCount * 7);
 
   const unaired = page.locator('[data-testid^="mod-analytics-heat-"][data-aired="false"]').first();
   await expect(unaired).toHaveAttribute('aria-label', /no broadcast/);

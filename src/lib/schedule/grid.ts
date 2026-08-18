@@ -18,9 +18,25 @@ import type { Weekday, Cadence } from "../mod/types";
 
 export const WEEKDAYS: Weekday[] = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
+/**
+ * Public `/schedule` page only — the owner ruled Mon–Fri (matching the
+ * prototype) for the public-facing grid. Deliberately a SEPARATE array from
+ * `WEEKDAYS`, which stays all seven days: `WEEKDAYS` is shared with
+ * `/mod/schedule`, and narrowing it would silently hide weekend programming
+ * from staff. Never use `PUBLIC_WEEKDAYS` for anything mod-facing.
+ */
+export const PUBLIC_WEEKDAYS: Weekday[] = ["MON", "TUE", "WED", "THU", "FRI"];
+
 export interface ScheduleShowCell {
   id: string;
   name: string;
+  /**
+   * Show slug for `/shows/[slug]` links. Present on the public
+   * `GET /api/schedule` payload (`ScheduleShowDto.slug`). Optional because
+   * `buildScheduleFromShows` (mod-only, built from `GET /api/shows`) has no
+   * use for it — `/mod/schedule` opens an edit dialog by `id` instead.
+   */
+  slug?: string;
   /** HH:MM */
   start: string;
   /** HH:MM */
@@ -90,6 +106,44 @@ export function toDaypartGrid(schedule: ScheduleDto): DaypartGrid {
   });
 
   return { rows };
+}
+
+export type DayItem =
+  | { type: "show"; cell: ScheduleShowCell }
+  | { type: "gap"; start: string; end: string };
+
+/**
+ * Per-day list for the public `/schedule` mobile card view: walks a day's
+ * dayparts in time order and merges consecutive empty slots into a single
+ * "Music rotation" gap card (prototype `schedule.html` mobile panels show
+ * one merged "10 AM–2 PM · Music rotation" card, not three separate blanks).
+ */
+export function buildDayItems(grid: DaypartGrid, day: Weekday): DayItem[] {
+  const items: DayItem[] = [];
+  let gapStart: string | null = null;
+  let gapEnd: string | null = null;
+
+  function flushGap() {
+    if (gapStart !== null && gapEnd !== null) {
+      items.push({ type: "gap", start: gapStart, end: gapEnd });
+    }
+    gapStart = null;
+    gapEnd = null;
+  }
+
+  for (const row of grid.rows) {
+    const cell = row.cells[day];
+    if (cell) {
+      flushGap();
+      items.push({ type: "show", cell });
+    } else {
+      if (gapStart === null) gapStart = row.start;
+      gapEnd = row.end;
+    }
+  }
+  flushGap();
+
+  return items;
 }
 
 export interface ScheduleSourceShow {

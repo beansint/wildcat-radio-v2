@@ -163,7 +163,14 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="wc-container py-5 pb-16">
+    // FE#51: matches the other 8 /mod pages' full-width framing (p-4 md:p-7)
+    // instead of `wc-container` (which caps at 1180px with fixed 1rem
+    // padding) — see docs/frontend-parity-launch+react-audit for the gap.
+    // Deliberately NOT `wc-container p-4 md:p-7` on the same element: both
+    // set `max-width` at equal specificity, and `.wc-container` (defined
+    // later in the unlayered globals.css) wins, silently ignoring the
+    // Tailwind utility.
+    <div className="p-4 md:p-7">
       <header className="mb-4">
         <h1 className="text-2xl font-extrabold">Analytics</h1>
         <p className="wc-muted">

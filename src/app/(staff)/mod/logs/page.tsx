@@ -13,6 +13,11 @@
  * No mutations here: this is purely a read surface over an append-only log,
  * so there's no edit/delete affordance to wire up (unlike attendance's
  * `AttendanceEditDialog`).
+ *
+ * FE#51: added a search box to both tabs. Neither log endpoint takes a
+ * free-text `q` param (see `src/lib/mod/log-search.ts`'s header note), so
+ * this is a client-side quick-filter over the already-fetched page — the
+ * Prev/Next footer keeps paginating the server's real page/total.
  */
 import { useState } from "react";
 import { Filter } from "lucide-react";
@@ -32,11 +37,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TableToolbar } from "@/components/mod/table-toolbar";
 import { BroadcastActivityTable } from "@/components/mod/logs/broadcast-activity-table";
 import { StaffAuditTable } from "@/components/mod/logs/staff-audit-table";
 import { BROADCAST_TYPE_OPTIONS, AUDIT_TYPE_OPTIONS } from "@/components/mod/logs/log-meta";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import { stationLocalToUtcISO } from "@/lib/time/station";
+import { matchesLogSearch } from "@/lib/mod/log-search";
 
 const ALL_TYPES = "all";
 const PAGE_SIZE = 20;
@@ -67,10 +74,15 @@ export default function LogsPage() {
   const [type, setType] = useState(ALL_TYPES);
   const [page, setPage] = useState(1);
 
+  // Client-side quick-filter over the currently loaded page — see the
+  // file-header note on why this isn't a server-side `q` param.
+  const [search, setSearch] = useState("");
+
   function handleTabChange(next: string) {
     setTab(next as LogTab);
     setType(ALL_TYPES);
     setPage(1);
+    setSearch("");
   }
 
   function handleApply() {
@@ -171,9 +183,18 @@ export default function LogsPage() {
         </div>
       )}
 
+      <div className="wc-card overflow-hidden mb-4">
+        <TableToolbar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder={tab === "broadcast" ? "Search broadcast activity…" : "Search staff audit…"}
+          searchTestId="mod-logs-search"
+        />
+      </div>
+
       {tab === "broadcast" ? (
         <BroadcastActivityTable
-          rows={broadcastQuery.data?.items ?? []}
+          rows={(broadcastQuery.data?.items ?? []).filter((r) => matchesLogSearch(r, search))}
           total={broadcastQuery.data?.total ?? 0}
           page={page}
           pageSize={PAGE_SIZE}
@@ -183,7 +204,7 @@ export default function LogsPage() {
         />
       ) : (
         <StaffAuditTable
-          rows={auditQuery.data?.items ?? []}
+          rows={(auditQuery.data?.items ?? []).filter((r) => matchesLogSearch(r, search))}
           total={auditQuery.data?.total ?? 0}
           page={page}
           pageSize={PAGE_SIZE}

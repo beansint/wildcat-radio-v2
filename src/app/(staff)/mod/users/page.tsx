@@ -9,13 +9,11 @@
  * Mute/Ban (shared ConfirmDialog → `moderationControllerAction`),
  * Force-rename (own small dialog → `usersControllerForceRename`).
  *
- * NOTE on the prototype's `.wc-toolbar` / `.wc-search` / `.wc-pagination`
- * classes: they're defined in the prototype's own theme.css but were never
- * ported into this app's globals.css (verified — no occurrences repo-wide).
- * Editing globals.css is outside this page's file-ownership, so the
- * toolbar/search-input/pagination-footer rows below are built with
- * Tailwind utilities that reproduce the same visual layout instead of
- * relying on those class names. Flagged for a follow-up globals.css pass.
+ * FE#51: the toolbar/pagination footer now render through the shared
+ * `TableToolbar` / `TablePagination` components on the `.wc-toolbar` /
+ * `.wc-search` / `.wc-pagination` classes ported into globals.css from the
+ * prototype (this page used to hand-roll the equivalent layout in Tailwind
+ * utilities before those classes existed — see git history for that version).
  *
  * NOTE on strike history: `UserSummaryDto` (this page's only per-user data
  * source) exposes `activeStrikeCount` but not the underlying `StrikeDto[]`
@@ -28,7 +26,7 @@
  */
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, ListFilter } from "lucide-react";
+import { ListFilter } from "lucide-react";
 import {
   useUsersControllerSearchUsers,
   getUsersControllerSearchUsersQueryKey,
@@ -43,10 +41,11 @@ import {
 } from "@/lib/api/model";
 import type { StrikeDialogValues } from "@/components/mod/strike-dialog";
 import { DataTable, type DataTableColumn } from "@/components/mod/data-table";
+import { TableToolbar } from "@/components/mod/table-toolbar";
+import { TablePagination } from "@/components/mod/table-pagination";
 import { StatusPill } from "@/components/mod/status-pill";
 import { StrikeDialog } from "@/components/mod/strike-dialog";
 import { ConfirmDialog } from "@/components/mod/confirm-dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RenameDialog } from "@/components/mod/users/rename-dialog";
 import { ViewDialog } from "@/components/mod/users/view-dialog";
@@ -243,9 +242,6 @@ export default function UsersPage() {
     },
   ];
 
-  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(page * PAGE_SIZE, total);
-
   return (
     <div className="p-4 md:p-7">
       <header className="mb-5">
@@ -256,81 +252,44 @@ export default function UsersPage() {
       </header>
 
       <div className="wc-card overflow-hidden">
-        {/* toolbar — see file-header note: .wc-toolbar/.wc-search aren't in globals.css yet */}
-        <div
-          className="flex items-center gap-2.5 flex-wrap p-3 md:px-4 border-b"
-          style={{ borderColor: "var(--border)" }}
-        >
-          <div className="relative flex-1 min-w-[170px]">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 wc-muted pointer-events-none"
-              aria-hidden="true"
-            />
-            <Input
-              style={{ paddingLeft: "2.25rem" }}
-              placeholder="Search users…"
-              aria-label="Search"
-              data-testid="mod-users-search"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            data-testid="mod-users-filter"
-            aria-label={`Class filter: ${classFilterLabel(classFilter)}`}
-            onClick={cycleClassFilter}
-          >
-            <ListFilter className="w-4 h-4" aria-hidden="true" />
-            {classFilterLabel(classFilter)}
-          </Button>
-          <span className="ml-auto wc-muted text-sm tnum" data-testid="mod-users-count">
-            {total} users
-          </span>
-        </div>
-
-        {usersQuery.isPending ? (
-          <div className="p-6 text-center wc-muted">Loading…</div>
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={items}
-            testid="mod-users"
-            rowKey={(u) => u.id}
-            emptyState={<div className="p-6 text-center wc-muted">No users found</div>}
-          />
-        )}
-
-        {/* pagination footer — see file-header note on .wc-pagination */}
-        <div
-          className="flex items-center justify-between gap-2.5 p-3 md:px-4 border-t text-sm wc-muted"
-          style={{ borderColor: "var(--border)" }}
-        >
-          <span className="tnum">
-            Showing {rangeStart}–{rangeEnd} of {total}
-          </span>
-          <div className="flex gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              data-testid="mod-users-prev"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+        <DataTable
+          columns={columns}
+          rows={items}
+          testid="mod-users"
+          rowKey={(u) => u.id}
+          loading={usersQuery.isPending}
+          toolbar={
+            <TableToolbar
+              searchValue={searchInput}
+              onSearchChange={setSearchInput}
+              searchPlaceholder="Search users…"
+              searchTestId="mod-users-search"
+              summary={<span data-testid="mod-users-count">{total} users</span>}
             >
-              Prev
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              data-testid="mod-users-next"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="mod-users-filter"
+                aria-label={`Class filter: ${classFilterLabel(classFilter)}`}
+                onClick={cycleClassFilter}
+              >
+                <ListFilter className="w-4 h-4" aria-hidden="true" />
+                {classFilterLabel(classFilter)}
+              </Button>
+            </TableToolbar>
+          }
+          pagination={
+            <TablePagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={total}
+              onPrev={() => setPage((p) => Math.max(1, p - 1))}
+              onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+              testidPrefix="mod-users"
+            />
+          }
+          emptyState={<div className="p-6 text-center wc-muted">No users found</div>}
+        />
       </div>
 
       {viewTarget && (

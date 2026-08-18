@@ -5,8 +5,13 @@
  * tables. Both endpoints are 1-based `page`/`pageSize` paginated
  * (`ModerationControllerGet{Audit,BroadcastLogs}Params`), so the range math
  * is identical for both tabs.
+ *
+ * FE#51: thin wrapper over the shared `TablePagination` (same range math,
+ * `src/lib/pagination/range.ts`) — kept as its own file so the
+ * `mod-logs-prev`/`mod-logs-next` testids (bound by e2e/mod-logs.spec.ts)
+ * don't need every call site to spell out `testidPrefix="mod-logs"`.
  */
-import { Button } from "@/components/ui/button";
+import { TablePagination } from "@/components/mod/table-pagination";
 
 interface PaginationFooterProps {
   page: number;
@@ -17,36 +22,14 @@ interface PaginationFooterProps {
 }
 
 export function PaginationFooter({ page, pageSize, total, onPrev, onNext }: PaginationFooterProps) {
-  const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const end = Math.min(page * pageSize, total);
-  const hasPrev = page > 1;
-  const hasNext = end < total;
-
   return (
-    <div className="flex items-center justify-between gap-3 px-3 py-2.5 border-t" style={{ borderColor: "var(--border)" }}>
-      <span className="tnum wc-muted text-sm">
-        Showing {start}–{end} of {total}
-      </span>
-      <div className="flex gap-1.5">
-        <Button
-          variant="outline"
-          size="sm"
-          data-testid="mod-logs-prev"
-          disabled={!hasPrev}
-          onClick={onPrev}
-        >
-          Prev
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          data-testid="mod-logs-next"
-          disabled={!hasNext}
-          onClick={onNext}
-        >
-          Next
-        </Button>
-      </div>
-    </div>
+    <TablePagination
+      page={page}
+      pageSize={pageSize}
+      total={total}
+      onPrev={onPrev}
+      onNext={onNext}
+      testidPrefix="mod-logs"
+    />
   );
 }

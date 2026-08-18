@@ -3,7 +3,9 @@
  * `customFetch` — that helper parses every response as JSON, and the media-kit
  * export returns a CSV or PDF blob.
  */
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+import { API_ORIGIN } from '@/lib/api-origin';
+
+export const API_BASE_URL = API_ORIGIN;
 
 export const customFetch = async <T>(url: string, options?: RequestInit): Promise<T> => {
   const base = API_BASE_URL;

@@ -48,7 +48,7 @@
  * per-user filter query param today, so this only proves reachability
  * (README § Coverage: "not covered, deliberately" beyond that).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Plus, CalendarCheck } from "lucide-react";
 import Link from "next/link";
@@ -83,6 +83,7 @@ export default function StaffReviewPage() {
   const [page, setPage] = useState(1);
 
   const [promoteOpen, setPromoteOpen] = useState(false);
+  const promoteOpenerRef = useRef<HTMLButtonElement>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<StaffMemberDto | null>(null);
 
   useEffect(() => {
@@ -236,7 +237,11 @@ export default function StaffReviewPage() {
             Promote, audit &amp; deactivate moderators. Custodian-only — every action here is logged.
           </p>
         </div>
-        <Button data-testid="admin-staff-promote-open" onClick={() => setPromoteOpen(true)}>
+        <Button
+          ref={promoteOpenerRef}
+          data-testid="admin-staff-promote-open"
+          onClick={() => setPromoteOpen(true)}
+        >
           <Plus className="w-4 h-4" aria-hidden="true" />
           Promote moderator
         </Button>
@@ -348,7 +353,14 @@ export default function StaffReviewPage() {
 
       <PromoteModeratorDialog
         open={promoteOpen}
-        onOpenChange={setPromoteOpen}
+        onOpenChange={(next) => {
+          setPromoteOpen(next);
+          // WAI-ARIA dialog pattern: closing returns focus to the control that
+          // opened it, so a keyboard user is not dumped back at <body>. The
+          // table refetches on close and re-renders this header, which loses
+          // the automatic restore — so do it after that paint.
+          if (!next) requestAnimationFrame(() => promoteOpenerRef.current?.focus());
+        }}
         onSubmit={(values) => promoteMutation.mutate(values)}
         pending={promoteMutation.isPending}
         error={promoteMutation.isError ? getApiErrorMessage(promoteMutation.error) : null}

@@ -10,6 +10,7 @@ import {
   useListPolls,
 } from "@/lib/api/endpoints/engagement/engagement";
 import { getApiErrorMessage } from "@/lib/api/error-message";
+import type { Socket } from "socket.io-client";
 import type {
   CreateReactionDtoEmoji,
   PollResponseDto,
@@ -101,6 +102,10 @@ export function useEngagementRoom(
   // only force a disconnect/reconnect when the session identity truly
   // transitions (not on every effect re-run / episodeId change).
   const prevAuthSessionKeyRef = useRef<string | null | undefined>(undefined);
+  // Holds the `connect` handler currently attached to the socket, so the
+  // effect cleanup (which fires before the async getSocket().then() might
+  // have resolved) can detach the *right* handler instance.
+  const joinEpisodeRef = useRef<(() => void) | null>(null);
 
   const pollsQuery = useListPolls(episodeId ?? "", {
     query: {
@@ -118,7 +123,8 @@ export function useEngagementRoom(
 
   useEffect(() => {
     if (!episodeId) return;
-    const socket = getSocket();
+    let cancelled = false;
+    let socket: Socket | null = null;
 
     function onChatNew(event: ChatEvent) {
       setMessages((prev) => {
@@ -162,49 +168,58 @@ export function useEngagementRoom(
       setPinnedTopic(event);
     }
 
-    socket.on("chat:new", onChatNew);
-    socket.on("chat:hidden", onChatHidden);
-    socket.on("queue:receipt", onQueueReceipt);
-    socket.on("queue:up-next", onQueueUpNext);
-    socket.on("poll:updated", onPollUpdated);
-    socket.on("hype:tick", onHypeTick);
-    socket.on("topic:pinned", onTopicPinned);
+    getSocket().then((s) => {
+      if (cancelled) return;
+      socket = s;
 
-    const joinEpisode = () => socket.emit("episode:join", { episodeId });
-    // Persistent (not `once`) so episode room membership is restored after
-    // ANY reconnect — including one triggered by the auth-session cycling
-    // below — not just the very first connection.
-    socket.on("connect", joinEpisode);
+      s.on("chat:new", onChatNew);
+      s.on("chat:hidden", onChatHidden);
+      s.on("queue:receipt", onQueueReceipt);
+      s.on("queue:up-next", onQueueUpNext);
+      s.on("poll:updated", onPollUpdated);
+      s.on("hype:tick", onHypeTick);
+      s.on("topic:pinned", onTopicPinned);
 
-    // Only force a disconnect/reconnect when the auth session identity has
-    // actually transitioned on an already-live socket. Re-running this
-    // effect for unrelated reasons (e.g. episodeId changing) must not
-    // gratuitously cycle the shared socket, since that also knocks out
-    // stream-presence room membership until it self-heals on `connect`.
-    const sessionChanged =
-      prevAuthSessionKeyRef.current !== undefined &&
-      prevAuthSessionKeyRef.current !== (authSessionKey ?? null);
-    prevAuthSessionKeyRef.current = authSessionKey ?? null;
+      const joinEpisode = () => s.emit("episode:join", { episodeId });
+      // Persistent (not `once`) so episode room membership is restored after
+      // ANY reconnect — including one triggered by the auth-session cycling
+      // below — not just the very first connection.
+      s.on("connect", joinEpisode);
+      joinEpisodeRef.current = joinEpisode;
 
-    if (socket.connected && sessionChanged) {
-      socket.disconnect();
-      socket.connect();
-    } else if (socket.connected) {
-      joinEpisode();
-    } else {
-      socket.connect();
-    }
+      // Only force a disconnect/reconnect when the auth session identity has
+      // actually transitioned on an already-live socket. Re-running this
+      // effect for unrelated reasons (e.g. episodeId changing) must not
+      // gratuitously cycle the shared socket, since that also knocks out
+      // stream-presence room membership until it self-heals on `connect`.
+      const sessionChanged =
+        prevAuthSessionKeyRef.current !== undefined &&
+        prevAuthSessionKeyRef.current !== (authSessionKey ?? null);
+      prevAuthSessionKeyRef.current = authSessionKey ?? null;
+
+      if (s.connected && sessionChanged) {
+        s.disconnect();
+        s.connect();
+      } else if (s.connected) {
+        joinEpisode();
+      } else {
+        s.connect();
+      }
+    });
 
     return () => {
-      socket.emit("episode:leave", { episodeId });
-      socket.off("connect", joinEpisode);
-      socket.off("chat:new", onChatNew);
-      socket.off("chat:hidden", onChatHidden);
-      socket.off("queue:receipt", onQueueReceipt);
-      socket.off("queue:up-next", onQueueUpNext);
-      socket.off("poll:updated", onPollUpdated);
-      socket.off("hype:tick", onHypeTick);
-      socket.off("topic:pinned", onTopicPinned);
+      cancelled = true;
+      if (socket) {
+        socket.emit("episode:leave", { episodeId });
+        if (joinEpisodeRef.current) socket.off("connect", joinEpisodeRef.current);
+        socket.off("chat:new", onChatNew);
+        socket.off("chat:hidden", onChatHidden);
+        socket.off("queue:receipt", onQueueReceipt);
+        socket.off("queue:up-next", onQueueUpNext);
+        socket.off("poll:updated", onPollUpdated);
+        socket.off("hype:tick", onHypeTick);
+        socket.off("topic:pinned", onTopicPinned);
+      }
     };
   }, [authSessionKey, episodeId, pushToast, queryClient]);
 
@@ -239,7 +254,7 @@ export function useEngagementRoom(
   const sendChat = useCallback(
     async (content: string) => {
       if (!episodeId) throw new Error("No live episode right now.");
-      const socket = getSocket();
+      const socket = await getSocket();
       await new Promise<void>((resolve, reject) => {
         socket.timeout(5_000).emit(
           "chat:message",

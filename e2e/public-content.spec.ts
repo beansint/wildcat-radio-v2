@@ -179,8 +179,23 @@ test.describe('@contract', () => {
     const showRes = await anonApi.get(`/api/shows/${show.slug}`);
     expect(showRes.status()).toBe(200);
     const showBody = await showRes.json();
+    // `cadenceLabel` and `airtimeLabel` are the Tier-1 additions from BE#62
+    // (ruling 6) — the show page rendered placeholder chips without them. This
+    // exact-key assertion is the contract guard, so it is updated deliberately
+    // rather than loosened to a subset check.
     expect(Object.keys(showBody).sort()).toEqual(
-      ['coverImage', 'description', 'id', 'name', 'roster', 'slug', 'tags', 'theme'].sort(),
+      [
+        'airtimeLabel',
+        'cadenceLabel',
+        'coverImage',
+        'description',
+        'id',
+        'name',
+        'roster',
+        'slug',
+        'tags',
+        'theme',
+      ].sort(),
     );
     for (const rosterEntry of showBody.roster) {
       expect(Object.keys(rosterEntry).sort()).toEqual(['id', 'displayName', 'photoUrl'].sort());
@@ -203,7 +218,12 @@ test.describe('@contract', () => {
     expect(showsRes.status()).toBe(200);
     const showsBody = await showsRes.json();
     const names = showsBody.map((entry: { name: string }) => entry.name);
-    expect([...names]).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+    // Compare with the default sort, not `localeCompare`: the list is ordered by
+    // Postgres, which puts every uppercase initial before any lowercase one,
+    // and default JS sort is the same code-unit order. `localeCompare` folds
+    // case, so it disagreed as soon as one show name began lowercase — the
+    // assertion was describing an ordering the API never promised.
+    expect([...names]).toEqual([...names].sort());
 
     const djsRes = await anonApi.get('/api/djs');
     expect(djsRes.status()).toBe(200);
@@ -437,7 +457,9 @@ test('PUB-E-03: shows index lists shows; detail shows description, lineup, episo
   await expect(cards.filter({ hasText: show.name })).toHaveCount(1);
 
   await page.goto(`${WEB_BASE}/shows/${show.slug}`);
-  await expect(page.getByText(show.name)).toBeVisible({ timeout: 10_000 });
+  // Scope to the heading: FE#37 gave this route real metadata, so the show name
+  // is now also the document <title> and a page-wide getByText matches both.
+  await expect(page.getByRole('heading', { name: show.name })).toBeVisible({ timeout: 10_000 });
   // FE#44 restored a "Hosted by <DJ>" byline in the hero, which duplicates
   // the same display name already rendered in the Lineup grid below — a
   // page-wide `getByText(displayName)` now resolves two elements and trips

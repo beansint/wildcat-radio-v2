@@ -8,8 +8,14 @@
  * every roster member scheduled that date with no attendance record — those
  * fields are treated as nullable throughout, rendered as an "Absent" pill,
  * and never get an edit trigger (there's nothing to PATCH).
+ *
+ * FE#51: search + pagination are client-side. `GET /api/attendance` (see
+ * `AttendanceControllerListParams`) takes only `date`/`showId` — no `q` or
+ * `page` — because a day's roster is small (one station, one day), so the
+ * whole day's rows are fetched once and search/paginate happens over the
+ * already-loaded array rather than round-tripping per keystroke/page.
  */
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import { useAttendanceControllerList, getAttendanceControllerListQueryKey } from "@/lib/api/endpoints/attendance/attendance";
@@ -17,6 +23,8 @@ import { useListShowsAdmin } from "@/lib/api/endpoints/shows/shows";
 import type { AttendanceRowDto, ShowDto } from "@/lib/api/model";
 import { AttendanceRowDtoStatus } from "@/lib/api/model";
 import { DataTable, type DataTableColumn } from "@/components/mod/data-table";
+import { TableToolbar } from "@/components/mod/table-toolbar";
+import { TablePagination } from "@/components/mod/table-pagination";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -31,6 +39,8 @@ import { AttendanceEditDialog } from "@/components/mod/attendance-edit-dialog";
 import { stationDate, stationHhmm } from "@/lib/time/station";
 
 const ALL_SHOWS = "all";
+const PAGE_SIZE = 20;
+const SEARCH_DEBOUNCE_MS = 350;
 
 /** Formats a station-local 'HH:MM' as a 12-hour display string, e.g. "1:00 PM". */
 function formatHhmmDisplay(hhmm: string): string {
@@ -70,6 +80,10 @@ export default function AttendancePage() {
   const [showId, setShowId] = useState<string>(ALL_SHOWS);
   const [editRow, setEditRow] = useState<AttendanceRowDto | null>(null);
 
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
   const showsQuery = useListShowsAdmin<ShowDto[]>();
   const shows = showsQuery.data ?? [];
 
@@ -77,7 +91,37 @@ export default function AttendancePage() {
     date,
     showId: showId === ALL_SHOWS ? undefined : showId,
   });
-  const rows = attendanceQuery.data ?? [];
+  const allRows = useMemo(() => attendanceQuery.data ?? [], [attendanceQuery.data]);
+
+  // Debounced search — the whole day's roster is already in memory (see
+  // file-header note), so this filters client-side rather than refetching.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setSearch(searchInput.trim().toLowerCase());
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
+
+  // A new date/show selection changes the underlying roster — start back at
+  // page 1 rather than stranding the moderator on a now-out-of-range page.
+  // Adjusted during render (React's documented "resetting state" pattern)
+  // rather than in an Effect, so it doesn't cause an extra render pass.
+  const rosterKey = `${date}::${showId}`;
+  const [prevRosterKey, setPrevRosterKey] = useState(rosterKey);
+  if (rosterKey !== prevRosterKey) {
+    setPrevRosterKey(rosterKey);
+    setPage(1);
+  }
+
+  const filteredRows = useMemo(() => {
+    if (!search) return allRows;
+    return allRows.filter((r) => r.displayName.toLowerCase().includes(search));
+  }, [allRows, search]);
+
+  const total = filteredRows.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const rows = filteredRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function handleSaved() {
     queryClient.invalidateQueries({ queryKey: getAttendanceControllerListQueryKey() });
@@ -173,8 +217,30 @@ export default function AttendancePage() {
           rows={rows}
           testid="mod-attendance"
           rowKey={(r, i) => r.recordId ?? `absent-${r.rosterId}-${i}`}
+          loading={attendanceQuery.isPending}
+          toolbar={
+            <TableToolbar
+              searchValue={searchInput}
+              onSearchChange={setSearchInput}
+              searchPlaceholder="Search DJs…"
+              searchTestId="mod-attendance-search"
+              summary={<span data-testid="mod-attendance-count">{total} rows</span>}
+            />
+          }
+          pagination={
+            <TablePagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={total}
+              onPrev={() => setPage((p) => Math.max(1, p - 1))}
+              onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+              testidPrefix="mod-attendance"
+            />
+          }
           emptyState={
-            <div className="p-6 text-center wc-muted">No attendance rows for this date.</div>
+            <div className="p-6 text-center wc-muted">
+              {search ? "No DJs match your search." : "No attendance rows for this date."}
+            </div>
           }
         />
       </div>

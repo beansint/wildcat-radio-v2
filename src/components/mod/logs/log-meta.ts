@@ -68,6 +68,7 @@ export interface AuditActionMeta {
 
 const AUDIT_ACTION_PREFIX_META: [prefix: string, meta: AuditActionMeta][] = [
   ["mod.", { label: "Moderation", variant: "bad" }],
+  ["staff.", { label: "Staff review", variant: "bad" }],
   ["user.role", { label: "Role change", variant: "bad" }],
   ["strike.", { label: "Strike", variant: "bad" }],
   ["attendance.", { label: "Attendance correction", variant: "warn" }],
@@ -93,6 +94,7 @@ export function auditActionMeta(action: string): AuditActionMeta {
 export const AUDIT_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "All actions" },
   { value: "mod.", label: "Moderation" },
+  { value: "staff.", label: "Staff review" },
   { value: "strike.", label: "Strike" },
   { value: "appeal.", label: "Appeal" },
   { value: "filter.", label: "Filter" },

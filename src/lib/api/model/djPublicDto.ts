@@ -15,4 +15,5 @@ export interface DjPublicDto {
   /** @nullable */
   bio: string | null;
   activeShows: DjActiveShowDto[];
+  since: string;
 }

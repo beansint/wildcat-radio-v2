@@ -21,7 +21,11 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  EscalationsDto
+  AdminControllerListDeactivatedParams,
+  AdminControllerListModeratorsParams,
+  EscalationsDto,
+  StaffActionResultDto,
+  StaffListDto
 } from '../../model';
 
 import { customFetch } from '../../fetcher';
@@ -120,6 +124,420 @@ export function useAdminControllerGetEscalations<TData = Awaited<ReturnType<type
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getAdminControllerGetEscalationsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getAdminControllerListModeratorsUrl = (params?: AdminControllerListModeratorsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/staff/moderators?${stringifiedParams}` : `/api/admin/staff/moderators`
+}
+
+/**
+ * @summary Active moderator roster: search + pagination
+ */
+export const adminControllerListModerators = async (params?: AdminControllerListModeratorsParams, options?: RequestInit): Promise<StaffListDto> => {
+
+  return customFetch<StaffListDto>(getAdminControllerListModeratorsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminControllerListModeratorsQueryKey = (params?: AdminControllerListModeratorsParams,) => {
+    return [
+    `/api/admin/staff/moderators`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getAdminControllerListModeratorsQueryOptions = <TData = Awaited<ReturnType<typeof adminControllerListModerators>>, TError = unknown>(params?: AdminControllerListModeratorsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerListModerators>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdminControllerListModeratorsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminControllerListModerators>>> = ({ signal }) => adminControllerListModerators(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof adminControllerListModerators>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AdminControllerListModeratorsQueryResult = NonNullable<Awaited<ReturnType<typeof adminControllerListModerators>>>
+export type AdminControllerListModeratorsQueryError = unknown
+
+
+export function useAdminControllerListModerators<TData = Awaited<ReturnType<typeof adminControllerListModerators>>, TError = unknown>(
+ params: undefined |  AdminControllerListModeratorsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerListModerators>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminControllerListModerators>>,
+          TError,
+          Awaited<ReturnType<typeof adminControllerListModerators>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminControllerListModerators<TData = Awaited<ReturnType<typeof adminControllerListModerators>>, TError = unknown>(
+ params?: AdminControllerListModeratorsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerListModerators>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminControllerListModerators>>,
+          TError,
+          Awaited<ReturnType<typeof adminControllerListModerators>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminControllerListModerators<TData = Awaited<ReturnType<typeof adminControllerListModerators>>, TError = unknown>(
+ params?: AdminControllerListModeratorsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerListModerators>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Active moderator roster: search + pagination
+ */
+
+export function useAdminControllerListModerators<TData = Awaited<ReturnType<typeof adminControllerListModerators>>, TError = unknown>(
+ params?: AdminControllerListModeratorsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerListModerators>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAdminControllerListModeratorsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getAdminControllerListDeactivatedUrl = (params?: AdminControllerListDeactivatedParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/staff/deactivated?${stringifiedParams}` : `/api/admin/staff/deactivated`
+}
+
+/**
+ * @summary Deactivated (formerly moderator) roster, derived from audit history
+ */
+export const adminControllerListDeactivated = async (params?: AdminControllerListDeactivatedParams, options?: RequestInit): Promise<StaffListDto> => {
+
+  return customFetch<StaffListDto>(getAdminControllerListDeactivatedUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminControllerListDeactivatedQueryKey = (params?: AdminControllerListDeactivatedParams,) => {
+    return [
+    `/api/admin/staff/deactivated`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getAdminControllerListDeactivatedQueryOptions = <TData = Awaited<ReturnType<typeof adminControllerListDeactivated>>, TError = unknown>(params?: AdminControllerListDeactivatedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerListDeactivated>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdminControllerListDeactivatedQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminControllerListDeactivated>>> = ({ signal }) => adminControllerListDeactivated(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof adminControllerListDeactivated>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AdminControllerListDeactivatedQueryResult = NonNullable<Awaited<ReturnType<typeof adminControllerListDeactivated>>>
+export type AdminControllerListDeactivatedQueryError = unknown
+
+
+export function useAdminControllerListDeactivated<TData = Awaited<ReturnType<typeof adminControllerListDeactivated>>, TError = unknown>(
+ params: undefined |  AdminControllerListDeactivatedParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerListDeactivated>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminControllerListDeactivated>>,
+          TError,
+          Awaited<ReturnType<typeof adminControllerListDeactivated>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminControllerListDeactivated<TData = Awaited<ReturnType<typeof adminControllerListDeactivated>>, TError = unknown>(
+ params?: AdminControllerListDeactivatedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerListDeactivated>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminControllerListDeactivated>>,
+          TError,
+          Awaited<ReturnType<typeof adminControllerListDeactivated>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminControllerListDeactivated<TData = Awaited<ReturnType<typeof adminControllerListDeactivated>>, TError = unknown>(
+ params?: AdminControllerListDeactivatedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerListDeactivated>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Deactivated (formerly moderator) roster, derived from audit history
+ */
+
+export function useAdminControllerListDeactivated<TData = Awaited<ReturnType<typeof adminControllerListDeactivated>>, TError = unknown>(
+ params?: AdminControllerListDeactivatedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerListDeactivated>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAdminControllerListDeactivatedQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getAdminControllerPromoteUrl = () => {
+
+
+
+
+  return `/api/admin/staff/promote`
+}
+
+/**
+ * @summary Promote a verified campus user to MODERATOR (required reason, audit-logged)
+ */
+export const adminControllerPromote = async ( options?: RequestInit): Promise<StaffActionResultDto> => {
+
+  return customFetch<StaffActionResultDto>(getAdminControllerPromoteUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminControllerPromoteQueryKey = () => {
+    return [
+    'POST', `/api/admin/staff/promote`
+    ] as const;
+    }
+
+
+export const getAdminControllerPromoteQueryOptions = <TData = Awaited<ReturnType<typeof adminControllerPromote>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerPromote>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdminControllerPromoteQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminControllerPromote>>> = ({ signal }) => adminControllerPromote({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof adminControllerPromote>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AdminControllerPromoteQueryResult = NonNullable<Awaited<ReturnType<typeof adminControllerPromote>>>
+export type AdminControllerPromoteQueryError = unknown
+
+
+export function useAdminControllerPromote<TData = Awaited<ReturnType<typeof adminControllerPromote>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerPromote>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminControllerPromote>>,
+          TError,
+          Awaited<ReturnType<typeof adminControllerPromote>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminControllerPromote<TData = Awaited<ReturnType<typeof adminControllerPromote>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerPromote>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminControllerPromote>>,
+          TError,
+          Awaited<ReturnType<typeof adminControllerPromote>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminControllerPromote<TData = Awaited<ReturnType<typeof adminControllerPromote>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerPromote>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Promote a verified campus user to MODERATOR (required reason, audit-logged)
+ */
+
+export function useAdminControllerPromote<TData = Awaited<ReturnType<typeof adminControllerPromote>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerPromote>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAdminControllerPromoteQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getAdminControllerDeactivateUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/staff/${id}/deactivate`
+}
+
+/**
+ * @summary Deactivate a moderator: demotes to LISTENER (required reason, audit-logged)
+ */
+export const adminControllerDeactivate = async (id: string, options?: RequestInit): Promise<StaffActionResultDto> => {
+
+  return customFetch<StaffActionResultDto>(getAdminControllerDeactivateUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminControllerDeactivateQueryKey = (id: string,) => {
+    return [
+    'POST', `/api/admin/staff/${id}/deactivate`
+    ] as const;
+    }
+
+
+export const getAdminControllerDeactivateQueryOptions = <TData = Awaited<ReturnType<typeof adminControllerDeactivate>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerDeactivate>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdminControllerDeactivateQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminControllerDeactivate>>> = ({ signal }) => adminControllerDeactivate(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof adminControllerDeactivate>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AdminControllerDeactivateQueryResult = NonNullable<Awaited<ReturnType<typeof adminControllerDeactivate>>>
+export type AdminControllerDeactivateQueryError = unknown
+
+
+export function useAdminControllerDeactivate<TData = Awaited<ReturnType<typeof adminControllerDeactivate>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerDeactivate>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminControllerDeactivate>>,
+          TError,
+          Awaited<ReturnType<typeof adminControllerDeactivate>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminControllerDeactivate<TData = Awaited<ReturnType<typeof adminControllerDeactivate>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerDeactivate>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminControllerDeactivate>>,
+          TError,
+          Awaited<ReturnType<typeof adminControllerDeactivate>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminControllerDeactivate<TData = Awaited<ReturnType<typeof adminControllerDeactivate>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerDeactivate>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Deactivate a moderator: demotes to LISTENER (required reason, audit-logged)
+ */
+
+export function useAdminControllerDeactivate<TData = Awaited<ReturnType<typeof adminControllerDeactivate>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminControllerDeactivate>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAdminControllerDeactivateQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

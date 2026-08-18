@@ -237,6 +237,7 @@ export const ModerationControllerResolveReportResponse = zod.object({
 export const ModerationControllerGetAuditQueryParams = zod.object({
   "pageSize": zod.number().optional().describe('Default 20, max 100'),
   "page": zod.number().optional().describe('1-based page number, default 1'),
+  "actorId": zod.string().optional().describe('Restrict to rows where this user was the acting staff member (\"View audit\")'),
   "action": zod.string().optional().describe('Exact or prefix match (e.g. \"mod.action.\")'),
   "to": zod.string().optional().describe('ISO date-time, inclusive-end'),
   "from": zod.string().optional().describe('ISO date-time, inclusive')
@@ -391,6 +392,75 @@ export const AdminControllerGetEscalationsResponse = zod.object({
   "class": zod.string().nullable().describe('Subject (userId) listener class'),
   "role": zod.string().nullable().describe('Subject (userId) role')
 }))
+})
+
+
+/**
+ * @summary Active moderator roster: search + pagination
+ */
+export const AdminControllerListModeratorsQueryParams = zod.object({
+  "pageSize": zod.number().optional().describe('Default 20, max 100'),
+  "page": zod.number().optional().describe('1-based page number, default 1'),
+  "q": zod.string().optional().describe('Case-insensitive match on name or email')
+})
+
+export const AdminControllerListModeratorsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "handle": zod.string(),
+  "status": zod.enum(['ACTIVE', 'DEACTIVATED']),
+  "joinedAt": zod.iso.datetime({"offset":true}),
+  "lastActionAt": zod.iso.datetime({"offset":true}).nullable(),
+  "deactivatedAt": zod.iso.datetime({"offset":true}).nullable()
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Deactivated (formerly moderator) roster, derived from audit history
+ */
+export const AdminControllerListDeactivatedQueryParams = zod.object({
+  "pageSize": zod.number().optional().describe('Default 20, max 100'),
+  "page": zod.number().optional().describe('1-based page number, default 1')
+})
+
+export const AdminControllerListDeactivatedResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "handle": zod.string(),
+  "status": zod.enum(['ACTIVE', 'DEACTIVATED']),
+  "joinedAt": zod.iso.datetime({"offset":true}),
+  "lastActionAt": zod.iso.datetime({"offset":true}).nullable(),
+  "deactivatedAt": zod.iso.datetime({"offset":true}).nullable()
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Promote a verified campus user to MODERATOR (required reason, audit-logged)
+ */
+export const AdminControllerPromoteResponse = zod.object({
+  "id": zod.string(),
+  "role": zod.enum(['CUSTODIAN', 'MODERATOR', 'LISTENER'])
+})
+
+
+/**
+ * @summary Deactivate a moderator: demotes to LISTENER (required reason, audit-logged)
+ */
+export const AdminControllerDeactivateParams = zod.object({
+  "id": zod.string()
+})
+
+export const AdminControllerDeactivateResponse = zod.object({
+  "id": zod.string(),
+  "role": zod.enum(['CUSTODIAN', 'MODERATOR', 'LISTENER'])
 })
 
 
@@ -813,6 +883,25 @@ export const UsersControllerSearchUsersResponse = zod.object({
 
 
 /**
+ * @summary Get a user's full strike history, newest first (moderator)
+ */
+export const UsersControllerGetUserStrikesParams = zod.object({
+  "id": zod.string()
+})
+
+export const UsersControllerGetUserStrikesResponseItem = zod.object({
+  "id": zod.string(),
+  "level": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]),
+  "reason": zod.string(),
+  "issuedById": zod.string(),
+  "expiresAt": zod.iso.datetime({"offset":true}),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "active": zod.boolean().describe('true if expiresAt is in the future as of the query')
+})
+export const UsersControllerGetUserStrikesResponse = zod.array(UsersControllerGetUserStrikesResponseItem)
+
+
+/**
  * @summary Force-rename a user handle (moderator); audited
  */
 export const UsersControllerForceRenameParams = zod.object({
@@ -835,111 +924,6 @@ export const UsersControllerChangeRoleParams = zod.object({
 export const UsersControllerChangeRoleResponse = zod.object({
   "id": zod.string(),
   "role": zod.enum(['CUSTODIAN', 'MODERATOR', 'LISTENER'])
-})
-
-
-/**
- * @summary Record anonymous age-bucket contribution (L33/L27; PII-safe aggregate counter)
- */
-export const AnalyticsControllerRecordAgeBucketResponse = zod.unknown()
-
-
-/**
- * @summary Headline audience figures for a period
- */
-export const GetAnalyticsOverviewQueryParams = zod.object({
-  "to": zod.string().optional().describe('ISO date, exclusive. Default: now.'),
-  "from": zod.string().optional().describe('ISO date, inclusive. Default: 30 days ago.')
-})
-
-export const GetAnalyticsOverviewResponse = zod.object({
-  "peakConcurrent": zod.number().describe('Highest concurrent listeners in any episode in range'),
-  "cumulativeEpisodeReach": zod.number().describe('Sum of each episode\'s unique listeners. Counts a repeat listener once per episode.'),
-  "totalListeningHours": zod.number().describe('Total listening hours across the period'),
-  "averageEngagementPerEpisode": zod.number().describe('Mean engagement actions per episode'),
-  "episodeCount": zod.number().describe('Episodes with a snapshot in range')
-})
-
-
-/**
- * @summary Show ranking with trend against the preceding window
- */
-export const GetAnalyticsShowsQueryParams = zod.object({
-  "to": zod.string().optional().describe('ISO date, exclusive. Default: now.'),
-  "from": zod.string().optional().describe('ISO date, inclusive. Default: 30 days ago.')
-})
-
-export const GetAnalyticsShowsResponseItem = zod.object({
-  "showId": zod.string().nullable().describe('null for the synthetic Unscheduled row'),
-  "name": zod.string(),
-  "theme": zod.string().nullable(),
-  "episodeCount": zod.number(),
-  "avgConcurrent": zod.number(),
-  "avgTlh": zod.number(),
-  "avgEngagement": zod.number(),
-  "trend": zod.enum(['up', 'down', 'flat']).describe('Against the immediately preceding window of equal length')
-})
-export const GetAnalyticsShowsResponse = zod.array(GetAnalyticsShowsResponseItem)
-
-
-/**
- * @summary Weekday x hour heatmap; empty slots are omitted
- */
-export const GetAnalyticsDaypartsQueryParams = zod.object({
-  "to": zod.string().optional().describe('ISO date, exclusive. Default: now.'),
-  "from": zod.string().optional().describe('ISO date, inclusive. Default: 30 days ago.')
-})
-
-export const GetAnalyticsDaypartsResponseItem = zod.object({
-  "weekday": zod.number().describe('0 = Sunday, station-local'),
-  "hour": zod.number().describe('0-23, station-local'),
-  "avgConcurrent": zod.number(),
-  "episodeCount": zod.number()
-})
-export const GetAnalyticsDaypartsResponse = zod.array(GetAnalyticsDaypartsResponseItem)
-
-
-/**
- * @summary Aggregate media-kit report as CSV or PDF (min-bucket suppressed)
- */
-export const ExportMediaKitQueryParams = zod.object({
-  "to": zod.string().optional().describe('ISO date, exclusive. Default: now.'),
-  "from": zod.string().optional().describe('ISO date, inclusive. Default: 30 days ago.'),
-  "format": zod.enum(['csv', 'pdf'])
-})
-
-export const ExportMediaKitResponse = zod.unknown()
-
-
-/**
- * @summary One episode's stored snapshot, including its retention curve
- */
-export const GetAnalyticsEpisodeParams = zod.object({
-  "id": zod.string()
-})
-
-export const GetAnalyticsEpisodeResponse = zod.object({
-  "episodeId": zod.string(),
-  "showName": zod.string().nullable(),
-  "startedAt": zod.string().nullable(),
-  "endedAt": zod.string().nullable(),
-  "peak": zod.number(),
-  "average": zod.number(),
-  "reach": zod.number(),
-  "tlh": zod.number(),
-  "tsl": zod.number(),
-  "retention": zod.array(zod.object({
-  "minute": zod.number().describe('Minutes into the episode, 0-based'),
-  "activeCount": zod.number(),
-  "pctOfPeak": zod.number()
-})),
-  "engagement": zod.object({
-  "chatMessages": zod.number().describe('Listener chat only — booth output excluded'),
-  "requestsReceived": zod.number(),
-  "requestsHandled": zod.number(),
-  "pollVotes": zod.number(),
-  "reactions": zod.number()
-})
 })
 
 
@@ -1088,6 +1072,111 @@ export const DeleteMusicSourceResponse = zod.unknown()
 
 
 /**
+ * @summary Record anonymous age-bucket contribution (L33/L27; PII-safe aggregate counter)
+ */
+export const AnalyticsControllerRecordAgeBucketResponse = zod.unknown()
+
+
+/**
+ * @summary Headline audience figures for a period
+ */
+export const GetAnalyticsOverviewQueryParams = zod.object({
+  "to": zod.string().optional().describe('ISO date, exclusive. Default: now.'),
+  "from": zod.string().optional().describe('ISO date, inclusive. Default: 30 days ago.')
+})
+
+export const GetAnalyticsOverviewResponse = zod.object({
+  "peakConcurrent": zod.number().describe('Highest concurrent listeners in any episode in range'),
+  "cumulativeEpisodeReach": zod.number().describe('Sum of each episode\'s unique listeners. Counts a repeat listener once per episode.'),
+  "totalListeningHours": zod.number().describe('Total listening hours across the period'),
+  "averageEngagementPerEpisode": zod.number().describe('Mean engagement actions per episode'),
+  "episodeCount": zod.number().describe('Episodes with a snapshot in range')
+})
+
+
+/**
+ * @summary Show ranking with trend against the preceding window
+ */
+export const GetAnalyticsShowsQueryParams = zod.object({
+  "to": zod.string().optional().describe('ISO date, exclusive. Default: now.'),
+  "from": zod.string().optional().describe('ISO date, inclusive. Default: 30 days ago.')
+})
+
+export const GetAnalyticsShowsResponseItem = zod.object({
+  "showId": zod.string().nullable().describe('null for the synthetic Unscheduled row'),
+  "name": zod.string(),
+  "theme": zod.string().nullable(),
+  "episodeCount": zod.number(),
+  "avgConcurrent": zod.number(),
+  "avgTlh": zod.number(),
+  "avgEngagement": zod.number(),
+  "trend": zod.enum(['up', 'down', 'flat']).describe('Against the immediately preceding window of equal length')
+})
+export const GetAnalyticsShowsResponse = zod.array(GetAnalyticsShowsResponseItem)
+
+
+/**
+ * @summary Weekday x hour heatmap; empty slots are omitted
+ */
+export const GetAnalyticsDaypartsQueryParams = zod.object({
+  "to": zod.string().optional().describe('ISO date, exclusive. Default: now.'),
+  "from": zod.string().optional().describe('ISO date, inclusive. Default: 30 days ago.')
+})
+
+export const GetAnalyticsDaypartsResponseItem = zod.object({
+  "weekday": zod.number().describe('0 = Sunday, station-local'),
+  "hour": zod.number().describe('0-23, station-local'),
+  "avgConcurrent": zod.number(),
+  "episodeCount": zod.number()
+})
+export const GetAnalyticsDaypartsResponse = zod.array(GetAnalyticsDaypartsResponseItem)
+
+
+/**
+ * @summary Aggregate media-kit report as CSV or PDF (min-bucket suppressed)
+ */
+export const ExportMediaKitQueryParams = zod.object({
+  "to": zod.string().optional().describe('ISO date, exclusive. Default: now.'),
+  "from": zod.string().optional().describe('ISO date, inclusive. Default: 30 days ago.'),
+  "format": zod.enum(['csv', 'pdf'])
+})
+
+export const ExportMediaKitResponse = zod.unknown()
+
+
+/**
+ * @summary One episode's stored snapshot, including its retention curve
+ */
+export const GetAnalyticsEpisodeParams = zod.object({
+  "id": zod.string()
+})
+
+export const GetAnalyticsEpisodeResponse = zod.object({
+  "episodeId": zod.string(),
+  "showName": zod.string().nullable(),
+  "startedAt": zod.string().nullable(),
+  "endedAt": zod.string().nullable(),
+  "peak": zod.number(),
+  "average": zod.number(),
+  "reach": zod.number(),
+  "tlh": zod.number(),
+  "tsl": zod.number(),
+  "retention": zod.array(zod.object({
+  "minute": zod.number().describe('Minutes into the episode, 0-based'),
+  "activeCount": zod.number(),
+  "pctOfPeak": zod.number()
+})),
+  "engagement": zod.object({
+  "chatMessages": zod.number().describe('Listener chat only — booth output excluded'),
+  "requestsReceived": zod.number(),
+  "requestsHandled": zod.number(),
+  "pollVotes": zod.number(),
+  "reactions": zod.number()
+})
+})
+
+
+/**
  * @summary List roster entries (DJs)
  */
 export const RosterControllerListQueryParams = zod.object({
@@ -1182,7 +1271,8 @@ export const ListShowsPublicResponseItem = zod.object({
   "description": zod.string().nullable(),
   "coverImage": zod.string().nullable(),
   "theme": zod.string().nullable(),
-  "tags": zod.array(zod.string())
+  "tags": zod.array(zod.string()),
+  "roster": zod.array(zod.string())
 })
 export const ListShowsPublicResponse = zod.array(ListShowsPublicResponseItem)
 
@@ -1256,7 +1346,9 @@ export const GetShowPublicResponse = zod.object({
   "id": zod.string(),
   "displayName": zod.string(),
   "photoUrl": zod.string().nullable()
-}))
+})),
+  "cadenceLabel": zod.string().nullable(),
+  "airtimeLabel": zod.string().nullable()
 })
 
 
@@ -1270,15 +1362,21 @@ export const GetShowEpisodesParams = zod.object({
 export const GetShowEpisodesResponse = zod.object({
   "upcoming": zod.array(zod.object({
   "id": zod.string(),
+  "title": zod.string().nullable(),
   "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
   "startedAt": zod.iso.datetime({"offset":true}).nullable(),
-  "endedAt": zod.iso.datetime({"offset":true}).nullable()
+  "endedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "peakListeners": zod.number().nullable(),
+  "requestCount": zod.number().nullable()
 })),
   "recent": zod.array(zod.object({
   "id": zod.string(),
+  "title": zod.string().nullable(),
   "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
   "startedAt": zod.iso.datetime({"offset":true}).nullable(),
-  "endedAt": zod.iso.datetime({"offset":true}).nullable()
+  "endedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "peakListeners": zod.number().nullable(),
+  "requestCount": zod.number().nullable()
 }))
 })
 
@@ -2019,7 +2117,13 @@ export const AnnouncementsPublicControllerGetOneResponse = zod.object({
 export const ListDjsPublicResponseItem = zod.object({
   "id": zod.string(),
   "displayName": zod.string(),
-  "photoUrl": zod.string().nullable()
+  "photoUrl": zod.string().nullable(),
+  "bio": zod.string().nullable(),
+  "currentShow": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string()
+}).nullable()
 })
 export const ListDjsPublicResponse = zod.array(ListDjsPublicResponseItem)
 
@@ -2040,7 +2144,8 @@ export const GetDjPublicResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "slug": zod.string()
-}))
+})),
+  "since": zod.iso.datetime({"offset":true})
 })
 
 

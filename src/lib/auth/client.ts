@@ -8,6 +8,7 @@
  */
 import { createAuthClient } from 'better-auth/react';
 import { inferAdditionalFields } from 'better-auth/client/plugins';
+import { API_ORIGIN } from '@/lib/api-origin';
 
 export type UserClass = 'CAMPUS' | 'GUEST';
 export type UserRole = 'CUSTODIAN' | 'MODERATOR' | 'LISTENER';
@@ -28,7 +29,7 @@ export interface SessionUser {
 }
 
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001',
+  baseURL: API_ORIGIN,
   fetchOptions: { credentials: 'include' as RequestCredentials },
   plugins: [
     inferAdditionalFields({

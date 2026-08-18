@@ -1,0 +1,66 @@
+name: CI
+
+# The frontend had no CI at all until the launch-readiness audit. A lint error
+# that breaks `next build` reached `dev` and sat there, because "it renders
+# locally" was standing in for a real gate. This job is that gate.
+#
+# It deliberately does NOT run Playwright: those specs need a live backend on
+# :3010, a seeded database and a real session, and a gate people learn to
+# ignore is worse than no gate. `pnpm test:e2e` stays a local/manual step —
+# see the backend's docs/conventions/09-ci-and-verification.md.
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+
+concurrency:
+  # A new push supersedes an in-flight run for the same ref.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: lint · typecheck · unit tests · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # `next build` reads the API origin, which now throws in production
+      # rather than falling back to a wrong port. CI is not production, but the
+      # build still needs a syntactically valid origin to prerender against.
+      NEXT_PUBLIC_API_URL: http://localhost:3010
+      NEXT_PUBLIC_SITE_URL: http://localhost:3011
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Unit tests
+        run: pnpm run test:unit
+
+      - name: Build
+        # Last, because it is the slowest and the cheaper gates above catch
+        # most of what would fail here.
+        run: pnpm run build

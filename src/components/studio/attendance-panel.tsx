@@ -14,8 +14,15 @@
  * Right: "Today's schedule" — every episode scheduled today, ported from the
  * same `GET /api/studio/today` payload the left card uses, so both sides
  * always agree.
+ *
+ * FE#46: the sub/guest time-in dialog + toast host moved up to `StudioPage`
+ * so the kiosk header's persistent "add a DJ" button (visible in both
+ * Attendance and Console mode) can open the *same* dialog this panel's own
+ * "Time in a sub / guest DJ" button opens, instead of forking a second
+ * instance. This panel now takes `pushToast`/`onOpenSubDialog` as props
+ * rather than owning `useToast()`/`useState` for the dialog itself.
  */
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
@@ -35,8 +42,6 @@ import { getApiErrorMessage } from "@/lib/api/error-message";
 import type { StudioTodayDto, StudioTodayShowDto } from "@/lib/api/model";
 import { stationHhmm } from "@/lib/time/station";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/listen/toast";
-import { SubTimeInDialog } from "@/components/studio/sub-timein-dialog";
 
 const MONO_CLASSES = ["wc-mono-1", "wc-mono-2", "wc-mono-3", "wc-mono-4", "wc-mono-5", "wc-mono-6"];
 
@@ -73,12 +78,12 @@ function scheduleRowMeta(show: StudioTodayShowDto): { label: string; pillClass: 
 
 interface AttendancePanelProps {
   onOpenConsole: () => void;
+  pushToast: (message: string) => void;
+  onOpenSubDialog: () => void;
 }
 
-export function AttendancePanel({ onOpenConsole }: AttendancePanelProps) {
+export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: AttendancePanelProps) {
   const queryClient = useQueryClient();
-  const { pushToast, ToastHost } = useToast();
-  const [subDialogOpen, setSubDialogOpen] = useState(false);
 
   const todayQuery = useGetStudioToday<StudioTodayDto>({
     query: { refetchInterval: 15_000 },
@@ -120,11 +125,6 @@ export function AttendancePanel({ onOpenConsole }: AttendancePanelProps) {
     });
   }
 
-  async function handleSubTimedIn(displayName: string) {
-    await invalidateToday();
-    pushToast(`✓ ${displayName} timed in ${new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`);
-  }
-
   // `attendees` is the open episode's full attendance-record set (every
   // timed-in roster member, including subs merged into `slotRoster` and
   // ad-hoc episodes that have no `slotRoster` at all) — it's the
@@ -146,8 +146,6 @@ export function AttendancePanel({ onOpenConsole }: AttendancePanelProps) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
-      <ToastHost />
-
       <div className="wc-stack min-w-0">
         <section className="wc-card">
           <div className="wc-card-pad border-b border-border flex items-center gap-3 flex-wrap">
@@ -287,7 +285,7 @@ export function AttendancePanel({ onOpenConsole }: AttendancePanelProps) {
               variant="outline"
               className="wc-btn-block"
               data-testid="studio-timein-sub"
-              onClick={() => setSubDialogOpen(true)}
+              onClick={onOpenSubDialog}
             >
               <UserPlus className="h-4 w-4" aria-hidden="true" />
               Time in a sub / guest DJ
@@ -366,12 +364,6 @@ export function AttendancePanel({ onOpenConsole }: AttendancePanelProps) {
           </div>
         )}
       </section>
-
-      <SubTimeInDialog
-        open={subDialogOpen}
-        onOpenChange={setSubDialogOpen}
-        onTimedIn={handleSubTimedIn}
-      />
     </div>
   );
 }

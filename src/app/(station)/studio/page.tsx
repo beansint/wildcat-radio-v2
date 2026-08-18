@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
   Check,
-  ClipboardCheck,
   Flame,
   Heart,
   HelpCircle,
@@ -18,7 +17,6 @@ import {
   Radio,
   RefreshCw,
   Send,
-  SlidersHorizontal,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
@@ -34,6 +32,8 @@ import {
   getStudioQueue,
   postBoothChat,
   setPinnedTopic,
+  getGetStudioTodayQueryKey,
+  useGetStudioToday,
 } from "@/lib/api/endpoints/studio/studio";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import type {
@@ -41,6 +41,7 @@ import type {
   PollResponseDto,
   QueueActDtoAction,
   StudioQueueItemResponseDtoType,
+  StudioTodayDto,
 } from "@/lib/api/model";
 import { getSocket } from "@/lib/realtime/socket";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { AttendancePanel } from "@/components/studio/attendance-panel";
+import { KioskHeader } from "@/components/studio/kiosk-header";
+import { SubTimeInDialog } from "@/components/studio/sub-timein-dialog";
+import { pushToast } from "@/components/listen/toast";
 
 const STUDIO_UNLOCKED_KEY = "wc.studioUnlocked";
 
@@ -134,6 +138,17 @@ export default function StudioPage() {
   // Attendance is the default surface (booth kiosk convention) — Console is
   // the pre-existing unlock-gated panel below, now reachable via the segment.
   const [mode, setMode] = useState<"attendance" | "console">("attendance");
+  // FE#46 — the substitution dialog is owned by the page rather than by
+  // `AttendancePanel`, so the kiosk header's "add a DJ" button opens the same
+  // dialog the attendance table does. (Toasts go through the app-wide host in
+  // `StreamProvider`; see `components/listen/toast.tsx`.)
+  const [subDialogOpen, setSubDialogOpen] = useState(false);
+  // Same query key `AttendancePanel` uses, so React Query dedupes the two
+  // callers onto a single request rather than polling `/studio/today` twice.
+  const todayQuery = useGetStudioToday<StudioTodayDto>({
+    query: { refetchInterval: 15_000 },
+  });
+  const today = todayQuery.data;
   const feedRef = useRef<HTMLDivElement | null>(null);
 
   const tokenForm = useForm<TokenForm>({
@@ -225,7 +240,8 @@ export default function StudioPage() {
 
   useEffect(() => {
     if (!episodeId) return;
-    const socket = getSocket();
+    let cancelled = false;
+    let socket: Awaited<ReturnType<typeof getSocket>> | null = null;
     function onPollUpdated(poll: PollResponseDto) {
       setPolls((prev) => {
         const exists = prev.some((item) => item.id === poll.id);
@@ -241,17 +257,24 @@ export default function StudioPage() {
     function onChatNew(event: ChatMessageResponseDto) {
       addChatMessage(event);
     }
-    socket.emit("episode:join", { episodeId });
-    socket.on("poll:updated", onPollUpdated);
-    socket.on("hype:tick", onHypeTick);
-    socket.on("topic:pinned", onTopicPinned);
-    socket.on("chat:new", onChatNew);
+    getSocket().then((s) => {
+      if (cancelled) return;
+      socket = s;
+      s.emit("episode:join", { episodeId });
+      s.on("poll:updated", onPollUpdated);
+      s.on("hype:tick", onHypeTick);
+      s.on("topic:pinned", onTopicPinned);
+      s.on("chat:new", onChatNew);
+    });
     return () => {
-      socket.emit("episode:leave", { episodeId });
-      socket.off("poll:updated", onPollUpdated);
-      socket.off("hype:tick", onHypeTick);
-      socket.off("topic:pinned", onTopicPinned);
-      socket.off("chat:new", onChatNew);
+      cancelled = true;
+      if (socket) {
+        socket.emit("episode:leave", { episodeId });
+        socket.off("poll:updated", onPollUpdated);
+        socket.off("hype:tick", onHypeTick);
+        socket.off("topic:pinned", onTopicPinned);
+        socket.off("chat:new", onChatNew);
+      }
     };
   }, [episodeId, addChatMessage]);
 
@@ -349,7 +372,7 @@ export default function StudioPage() {
 
   if (sessionQuery.isPending) {
     return (
-      <main className="dark min-h-screen bg-background pb-28 text-foreground">
+      <main className="min-h-screen bg-background pb-28 text-foreground">
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-4 text-sm wc-muted">
           Checking station session…
         </div>
@@ -359,7 +382,7 @@ export default function StudioPage() {
 
   if (!unlocked) {
     return (
-      <main className="dark min-h-screen bg-background pb-28 text-foreground">
+      <main className="min-h-screen bg-background pb-28 text-foreground">
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4">
           <div className="wc-card wc-card-pad">
             <h1 className="mb-4 flex items-center gap-2 text-xl font-extrabold">
@@ -368,8 +391,19 @@ export default function StudioPage() {
             </h1>
             <form onSubmit={tokenForm.handleSubmit(saveToken)} noValidate>
               <Label htmlFor="station-token">Station token</Label>
+              {/* FE#54 — masked. The booth is a shared kiosk, so a Bearer token
+                  rendered in plaintext is readable by anyone standing at the
+                  desk. The token is never persisted (it is posted once and the
+                  field is reset), so the on-screen moment during paste was the
+                  whole exposure — which is exactly what type="password" closes.
+                  autoComplete/spellCheck off so it never lands in a browser
+                  credential store or a spellcheck service. */}
               <Input
                 id="station-token"
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+                autoCapitalize="none"
                 className="mt-2"
                 placeholder="Paste station Bearer token"
                 data-testid="studio-token-input"
@@ -397,37 +431,24 @@ export default function StudioPage() {
   const barHeights = hypeBarHeights(hype.count, 12);
 
   return (
-    <main className="dark min-h-screen bg-background text-foreground">
-      <div className="mx-auto w-full max-w-7xl px-4 pt-4">
-        <div className="wc-seg" role="tablist" aria-label="Studio mode">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "attendance"}
-            className={mode === "attendance" ? "active" : undefined}
-            data-testid="studio-seg-attendance"
-            onClick={() => setMode("attendance")}
-          >
-            <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
-            Attendance
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "console"}
-            className={mode === "console" ? "active" : undefined}
-            data-testid="studio-seg-console"
-            onClick={() => setMode("console")}
-          >
-            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-            Console
-          </button>
-        </div>
-      </div>
+    <main className="min-h-screen bg-background text-foreground">
+      {/* FE#46 — the mode switch moved into the persistent kiosk bar, which
+          also carries the station date, the session pill, the theme toggle and
+          the attendance strip (prototype studio-console.html:22-41). */}
+      <KioskHeader
+        mode={mode}
+        onModeChange={setMode}
+        today={today}
+        onAddDj={() => setSubDialogOpen(true)}
+      />
 
       {mode === "attendance" ? (
         <div className="mx-auto w-full max-w-7xl px-4 py-4">
-          <AttendancePanel onOpenConsole={() => setMode("console")} />
+          <AttendancePanel
+            onOpenConsole={() => setMode("console")}
+            pushToast={pushToast}
+            onOpenSubDialog={() => setSubDialogOpen(true)}
+          />
         </div>
       ) : (
       <div className="mx-auto grid w-full max-w-7xl gap-4 px-4 py-4 lg:grid-cols-[1fr_360px]">
@@ -747,6 +768,19 @@ export default function StudioPage() {
         </aside>
       </div>
       )}
+
+      {/* Owned by the page so both the attendance table and the kiosk bar's
+          "add a DJ" button open the same dialog, and so a toast survives a
+          switch between the Attendance and Console tabs. */}
+      <SubTimeInDialog
+        open={subDialogOpen}
+        onOpenChange={setSubDialogOpen}
+        onTimedIn={(displayName) => {
+          setSubDialogOpen(false);
+          pushToast(`✓ ${displayName} timed in`);
+          void queryClient.invalidateQueries({ queryKey: getGetStudioTodayQueryKey() });
+        }}
+      />
     </main>
   );
 }

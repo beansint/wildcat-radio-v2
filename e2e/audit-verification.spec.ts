@@ -1,4 +1,4 @@
-import { test, type Page } from '@playwright/test';
+import { test, expect, type Page, type Locator } from '@playwright/test';
 
 /**
  * AUDIT VERIFICATION SPEC — temporary, not part of the product suite.
@@ -38,6 +38,26 @@ function contrast(fg: string, bg: string): number {
   const l2 = lum(parse(bg));
   const [hi, lo] = l1 > l2 ? [l1, l2] : [l2, l1];
   return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * Walk up from an element to find its effective (non-transparent) background
+ * color. `contrast()` truncates rgba to its rgb components (ignores alpha —
+ * see module comment above), so a transparent element would otherwise report
+ * against `rgba(0, 0, 0, 0)` and produce a meaningless ratio. Was duplicated
+ * inline in the P0-PILL and P0-GOLD tests; extracted here so both share one
+ * implementation.
+ */
+async function effectiveBackground(el: Locator): Promise<string> {
+  return el.evaluate((node) => {
+    let n: HTMLElement | null = node as HTMLElement;
+    while (n) {
+      const c = getComputedStyle(n).backgroundColor;
+      if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') return c;
+      n = n.parentElement;
+    }
+    return 'rgb(255,255,255)';
+  });
 }
 
 async function loginAsMod(page: Page) {
@@ -144,9 +164,11 @@ test('P0-SCHED: schedule overflows horizontally on a phone viewport', async ({ p
 });
 
 // ─────────────────────────────────────────────────────────────────────────
-// P0-5 — BottomNav absent on public pages, present on (app) pages
+// P0-5 — BottomNav. The component was REMOVED by owner decision (it duplicated
+// the top nav), so 0 on every route is now the CORRECT result, not the defect
+// the original audit filed. Kept as an observation so the count stays visible.
 // ─────────────────────────────────────────────────────────────────────────
-test('P0-BOTTOMNAV: bottom nav missing on public routes at mobile width', async ({ page }) => {
+test('P0-BOTTOMNAV: bottom nav removed — expect 0 on every public route', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   const results: string[] = [];
   for (const r of ['/', '/shows', '/schedule', '/charts', '/announcements', '/djs']) {
@@ -155,7 +177,7 @@ test('P0-BOTTOMNAV: bottom nav missing on public routes at mobile width', async 
     const n = await page.locator('.wc-bottomnav').count();
     results.push(`${r}=${n}`);
   }
-  say('P0-BOTTOMNAV', 'OBSERVED', `.wc-bottomnav count per public route: ${results.join(' ')}`);
+  say('P0-BOTTOMNAV', 'OBSERVED', `.wc-bottomnav count per public route (0 expected — component removed): ${results.join(' ')}`);
 });
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -200,19 +222,14 @@ test('P0-PILL: staff dark-mode pill contrast on /mod/users and /mod/logs', async
       });
       let bg = styles.bg;
       if (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') {
-        bg = await p.evaluate((el) => {
-          let n = el.parentElement;
-          while (n) {
-            const c = getComputedStyle(n).backgroundColor;
-            if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') return c;
-            n = n.parentElement;
-          }
-          return 'rgb(0,0,0)';
-        });
+        bg = await effectiveBackground(p);
       }
       const ratio = contrast(styles.color, bg);
       const variant = cls.match(/wc-pill-(\w+)/)?.[1] ?? '?';
       rows.push(`${variant}: fg=${styles.color} bg=${bg} ratio=${ratio.toFixed(2)}${ratio < 4.5 ? ' ⚠BELOW-AA' : ''}`);
+      // Regression guard (was observational-only): the 2.95:1 .wc-pill-ok
+      // failure measured on /mod/users in dark mode must not come back.
+      expect(ratio, `${route} dark=${isDark} .wc-pill-${variant} fg=${styles.color} bg=${bg}`).toBeGreaterThanOrEqual(4.5);
     }
     say('P0-PILL', 'OBSERVED', `${route} dark=${isDark} pills=${count}\n    ` + rows.join('\n    '));
   }
@@ -246,19 +263,14 @@ test('P0-GOLD: staff light mode renders gold text on a white surface', async ({ 
     for (let i = 0; i < Math.min(n, 5); i++) {
       const el = golds.nth(i);
       if (!(await el.isVisible().catch(() => false))) continue;
-      const styles = await el.evaluate((e) => {
-        const cs = getComputedStyle(e);
-        let node: HTMLElement | null = e as HTMLElement;
-        let bg = 'rgb(255,255,255)';
-        while (node) {
-          const c = getComputedStyle(node).backgroundColor;
-          if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') { bg = c; break; }
-          node = node.parentElement;
-        }
-        return { color: cs.color, bg, text: (e.textContent ?? '').trim().slice(0, 24) };
-      });
-      const ratio = contrast(styles.color, styles.bg);
-      rows.push(`"${styles.text}" fg=${styles.color} bg=${styles.bg} ratio=${ratio.toFixed(2)}${ratio < 4.5 ? ' ⚠BELOW-AA' : ''}`);
+      const color = await el.evaluate((e) => getComputedStyle(e).color);
+      const text = (await el.textContent())?.trim().slice(0, 24) ?? '';
+      const bg = await effectiveBackground(el);
+      const ratio = contrast(color, bg);
+      rows.push(`"${text}" fg=${color} bg=${bg} ratio=${ratio.toFixed(2)}${ratio < 4.5 ? ' ⚠BELOW-AA' : ''}`);
+      // Regression guard (was observational-only): the 1.33:1 gold-on-white
+      // "Staff" label failure measured on /mod in light mode must not come back.
+      expect(ratio, `.text-gold "${text}" fg=${color} bg=${bg}`).toBeGreaterThanOrEqual(4.5);
     }
     say('P0-GOLD', 'OBSERVED',
       `after toggle dark=${afterDark}; .text-gold elements=${n}\n    ` + (rows.join('\n    ') || '(none visible)'));

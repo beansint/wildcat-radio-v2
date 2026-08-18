@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { WEB_BASE } from './_fixtures';
 
 /**
  * These tests require the user to be logged in.
@@ -6,7 +7,8 @@ import { test, expect, type Page } from '@playwright/test';
  * Here we log in via the UI before each test.
  */
 
-const BASE  = 'http://localhost:3000';
+// FE#55 — was a hardcoded, stale `http://localhost:3000` (the web app runs on 3011).
+const BASE  = WEB_BASE;
 const EMAIL = 'test@example.com';
 const PASS  = 'Password123!';
 
@@ -15,7 +17,9 @@ async function login(page: Page) {
   await page.getByTestId('auth-email').fill(EMAIL);
   await page.getByTestId('auth-password').fill(PASS);
   await page.getByTestId('auth-submit').click();
-  await page.waitForURL(/localhost:3000(\/)?$/, { timeout: 10_000 });
+  await page.waitForURL((url) => url.href === BASE || url.href === `${BASE}/`, {
+    timeout: 10_000,
+  });
 }
 
 /** Click the <label> wrapping an input to toggle a controlled checkbox reliably */

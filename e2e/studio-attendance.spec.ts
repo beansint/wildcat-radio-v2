@@ -17,7 +17,8 @@ import { expect, test } from '@playwright/test';
 // an Episode row directly via a small Prisma script against the seeded
 // "Afternoon Vibes" show / "DJ Carla" roster entry.
 
-const WEB_BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
+// FE#55 — was locally redeclared with a stale 3000 default; the web app runs on 3011.
+import { WEB_BASE } from './_fixtures';
 const STATION_TOKEN = process.env.STATION_DEVICE_TOKEN ?? 'dev-studio-token-change-me';
 const BACKEND_DIR = process.env.WILDCAT_BACKEND_DIR ?? path.resolve(process.cwd(), '../wildcat-radio-v2-backend');
 const SHOW_ID = 'seed-show-av';

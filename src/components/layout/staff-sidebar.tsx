@@ -8,8 +8,8 @@
  * Station group (Roster/Schedule/Attendance) wired for FE#5 Task 9; Moderate
  * (Queue/Users), Insights→Logs, and Custodian→Escalations are wired for the
  * moderation UI (FE#8); Announcements and Settings for the content UI (FE#9).
- * Analytics is wired for the curation dashboard (FE#10); Staff Review remains
- * the prototype's placeholder (`href="#"`) until its own feature lands.
+ * Analytics is wired for the curation dashboard (FE#10); Custodian→Staff
+ * Review is wired for /admin/staff (BEA-184).
  */
 import Image from "next/image";
 import Link from "next/link";
@@ -40,6 +40,7 @@ export type StaffNavSlug =
   | "users"
   | "analytics"
   | "logs"
+  | "staff-review"
   | "escalations"
   | "announcements"
   | "settings";
@@ -61,20 +62,65 @@ const STATION_ITEMS: { slug: StaffNavSlug; href: string; label: string; Icon: ty
   { slug: "attendance", href: "/mod/attendance", label: "Attendance", Icon: ClipboardCheck },
 ];
 
-const THEME_KEY = "wc-staff-theme";
+/** Versioned key (FE#39): the pre-hydration script and the toggle both read/
+ *  write this one. Bumped from the unversioned `wc-staff-theme` so a future
+ *  format change can be migrated cleanly; the old key is still read as a
+ *  one-time fallback (see `readStoredTheme` / `StaffThemeScript`) so existing
+ *  localStorage state — including the 6 e2e specs that poke the legacy key
+ *  directly — keeps working. */
+const THEME_KEY = "wc-staff-theme:v1";
+const LEGACY_THEME_KEY = "wc-staff-theme";
 
-function StaffThemeToggle() {
+function readStoredTheme(): boolean {
+  if (typeof window === "undefined") return true;
+  const versioned = window.localStorage.getItem(THEME_KEY);
+  if (versioned) return versioned === "dark";
+  const legacy = window.localStorage.getItem(LEGACY_THEME_KEY);
+  if (legacy) return legacy === "dark";
+  return true;
+}
+
+/**
+ * Synchronous, pre-hydration theme stamp (FE#39). A post-paint `useEffect`
+ * (the old approach) always paints light first, then flips — this runs as a
+ * blocking inline script before first paint instead, mirroring the same
+ * versioned-key-with-legacy-fallback read `readStoredTheme` does on the
+ * client. Render this once per staff layout (mod + admin), before the
+ * sidebar/shell markup, in every branch (including the auth-loading
+ * skeleton) so there is no window where it's skipped.
+ */
+export function StaffThemeScript() {
+  const code =
+    `(function(){try{` +
+    `var v=localStorage.getItem(${JSON.stringify(THEME_KEY)});` +
+    `if(!v){v=localStorage.getItem(${JSON.stringify(LEGACY_THEME_KEY)});}` +
+    `var dark=v?v==="dark":true;` +
+    `if(dark){document.documentElement.classList.add("dark");}` +
+    `}catch(e){}})();`;
+  return <script dangerouslySetInnerHTML={{ __html: code }} />;
+}
+
+/**
+ * Exported (FE#46) so `/studio` can mount the same dark/light toggle in its
+ * kiosk top bar. Deliberately reused *unmodified* — same `THEME_KEY`
+ * (`wc-staff-theme:v1`) and same `data-testid="mod-nav-theme-toggle"` — so
+ * `/studio` shares one staff-wide theme preference with `/mod`/`/admin`
+ * rather than forking a `wc-studio-theme:v1` key. See the `/studio` layout
+ * for the full reasoning; short version: `/studio` is a staff-only surface
+ * a moderator already reaches from `/mod` (StaffSidebar's "Broadcast PC"
+ * link) in the same browser session, so inheriting their existing dark/
+ * light choice is the more correct default than fragmenting it — and reuse
+ * keeps this change from touching the key/testid the 6 pinned e2e specs
+ * bind to.
+ */
+export function StaffThemeToggle() {
   // Staff register is dark-by-default with a persisted light/dark override
   // (design-notes.md). No app-wide ThemeProvider exists yet, so this toggles
   // the `.dark` class Tailwind/globals.css already key off of and persists
   // the choice to localStorage. Lazy-init reads the stored preference during
   // render (client-only guard for SSR) so the effect only ever syncs the DOM
   // class from state, never calls setState itself.
-  const [isDark, setIsDark] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
-    const stored = window.localStorage.getItem(THEME_KEY);
-    return stored ? stored === "dark" : true;
-  });
+  const [isDark, setIsDark] = useState<boolean>(readStoredTheme);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
@@ -86,7 +132,7 @@ function StaffThemeToggle() {
   // purely a staff-register concern. Strip it when this toggle unmounts
   // (i.e. leaving `/mod` entirely, since `ModLayout` keeps the sidebar
   // mounted across staff subpages) so the class never leaks onto public
-  // pages after "View public site". The `wc-staff-theme` preference stays
+  // pages after "View public site". The `wc-staff-theme:v1` preference stays
   // in localStorage so the next `/mod` visit reopens with it.
   useEffect(() => {
     return () => {
@@ -212,10 +258,15 @@ export function StaffSidebar({ active, queueCount }: StaffSidebarProps) {
       </Link>
 
       <div className="wc-sidebar-group">Custodian</div>
-      <a href="#" data-testid="mod-nav-staff-review">
+      <Link
+        href="/admin/staff"
+        className={active === "staff-review" ? "active" : undefined}
+        aria-current={active === "staff-review" ? "page" : undefined}
+        data-testid="mod-nav-staff-review"
+      >
         <ShieldCheck className="w-4 h-4" aria-hidden="true" />
         Staff Review
-      </a>
+      </Link>
       <Link
         href="/admin/escalations"
         className={active === "escalations" ? "active" : undefined}

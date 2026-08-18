@@ -66,14 +66,26 @@ async function createThrowawayCampusUser(page: Page): Promise<{ email: string; h
   const email = `sr${id}@example.com`;
   const handle = `sr_${id}`;
 
-  await page.goto(`${WEB_BASE}/register`);
-  await page.getByTestId('auth-email').fill(email);
-  await page.getByTestId('auth-handle').fill(handle);
-  await page.getByTestId('auth-password').fill(PASSWORD);
-  await page.getByTestId('auth-confirm').fill(PASSWORD);
-  await page.getByTestId('auth-terms').check();
-  await page.getByTestId('auth-submit').click();
-  await expect(page.getByRole('heading', { name: /welcome.*wildcat/i })).toBeVisible({ timeout: 10_000 });
+  // Register in an ISOLATED context. Registering signs the new user in, so
+  // doing it on the caller's page silently replaces the custodian session with
+  // a LISTENER one — every later /admin/staff visit then redirects to / and
+  // the whole suite fails with "testid never appeared" rather than saying why.
+  const browser = page.context().browser();
+  if (!browser) throw new Error('createThrowawayCampusUser needs a browser-backed context');
+  const ctx = await browser.newContext();
+  const regPage = await ctx.newPage();
+  try {
+    await regPage.goto(`${WEB_BASE}/register`);
+    await regPage.getByTestId('auth-email').fill(email);
+    await regPage.getByTestId('auth-handle').fill(handle);
+    await regPage.getByTestId('auth-password').fill(PASSWORD);
+    await regPage.getByTestId('auth-confirm').fill(PASSWORD);
+    await regPage.getByTestId('auth-terms').check();
+    await regPage.getByTestId('auth-submit').click();
+    await expect(regPage.getByRole('heading', { name: /welcome.*wildcat/i })).toBeVisible({ timeout: 10_000 });
+  } finally {
+    await ctx.close();
+  }
 
   runPrismaScript(`
     await prisma.user.update({
@@ -147,8 +159,11 @@ test.describe('admin staff review — golden path + edges', () => {
     await expect(page.getByText(/custodian-only/i)).toBeVisible();
     await expect(page.getByText(/logged/i)).toBeVisible();
 
-    await expect(page.getByText('Active moderators')).toBeVisible();
-    await expect(page.getByText('Deactivated')).toBeVisible();
+    // Scope to the section headings: "Deactivated" is also the text of every
+    // status pill in that table, so a bare getByText matches N+1 elements and
+    // trips strict mode as soon as the table has any rows.
+    await expect(page.getByRole('heading', { name: 'Active moderators' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Deactivated' })).toBeVisible();
 
     await expect(page.getByTestId('mod-nav-staff-review')).toHaveAttribute('aria-current', 'page');
 
@@ -227,12 +242,27 @@ test.describe('admin staff review — golden path + edges', () => {
       data: { reason: deactivateReason },
     });
     expect(deactivateRes.ok()).toBe(true);
+
+    // The invariant under test (SR-I-11) is that each state change lands an
+    // audit row carrying the operator's reason verbatim. Assert it at the read
+    // model first, so a UI-side selector problem can never be mistaken for the
+    // audit write silently not happening.
+    const auditRes = await api.get(`${API_BASE}/api/mod/audit?page=1&pageSize=25`);
+    expect(auditRes.ok()).toBe(true);
+    const audit = await auditRes.json();
+    const reasons = (audit.items ?? []).map(
+      (row: { metadata?: { reason?: string } }) => row.metadata?.reason,
+    );
+    expect(reasons).toContain(promoteReason);
+    expect(reasons).toContain(deactivateReason);
     await api.dispose();
 
+    // Then the round trip proper: both reasons render verbatim in the staff
+    // audit table's Reason column. /mod/logs opens on "Broadcast activity", so
+    // the staff tab has to be selected — without that click this assertion was
+    // searching the wrong table and failing against a correct implementation.
     await page.goto(`${WEB_BASE}/mod/logs`);
-    // /mod/logs is a sibling, out-of-ownership surface (reserved); this only
-    // proves the audit metadata this page wrote is independently visible
-    // there — the tab/testid names are transcribed from that page's own spec.
+    await page.getByRole('tab', { name: 'Staff audit' }).click();
     await expect(page.getByText(promoteReason)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(deactivateReason)).toBeVisible({ timeout: 10_000 });
   });
@@ -352,7 +382,15 @@ test.describe('admin staff review — golden path + edges', () => {
 
     await page.getByTestId('admin-staff-promote-cancel').click();
     await page.getByTestId('admin-staff-search').fill(ACCOUNTS.moderator.split('@')[0]);
-    await expect(page.getByTestId('admin-staff-active-row').filter({ hasText: ACCOUNTS.moderator })).toHaveCount(1);
+    // Exact-text match on the email cell, not `hasText`. Other seeded e2e
+    // moderators are named `e2e_<id>_mod@example.com`, which *contains*
+    // `mod@example.com` — substring matching selects every one of them and the
+    // "no duplicate row" assertion fails against a perfectly correct table.
+    await expect(
+      page
+        .getByTestId('admin-staff-active-row')
+        .filter({ has: page.getByText(ACCOUNTS.moderator, { exact: true }) }),
+    ).toHaveCount(1);
   });
 
   test('SR-W-E4 edge: deactivate with an empty reason blocks the request, row stays active', async ({ page }) => {

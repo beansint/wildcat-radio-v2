@@ -51,6 +51,9 @@
   --shadow-md: 0 4px 14px rgba(21,20,20,.08), 0 2px 4px rgba(21,20,20,.05);
   --shadow-lg: 0 14px 38px rgba(21,20,20,.14);
   --canvas:    #faf9f7;
+  /* The global player is always-dark chrome in BOTH themes (as every streaming
+     player is) — soft charcoal, not the old near-black gradient. */
+  --player-surface: #303030;
 
   /* Data-visualisation series (M6 analytics). Taken from the prototype's
      theme.css so a chart drawn here matches the design basis exactly. Series 1
@@ -95,6 +98,7 @@
   --shadow-md: 0 6px 20px rgba(0,0,0,.45);
   --shadow-lg: 0 18px 44px rgba(0,0,0,.55);
   --canvas:    #100f0f;
+  --player-surface: #303030;
 
   /* Staff dark mode: the maroon is too dark to read as a line on a near-black
      canvas, so series 1 lifts to the lighter brand red. The gold already
@@ -140,8 +144,8 @@
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-xl: calc(var(--radius) * 1.3);
+  --radius-2xl: calc(var(--radius) * 1.7);
   --font-sans:                    var(--font-sans);
 }
 
@@ -159,12 +163,19 @@ body {
   text-rendering: optimizeLegibility;
   padding-bottom: env(safe-area-inset-bottom);
 }
+body.wc-staff { background: var(--canvas); }   /* staff/studio canvas tint (both modes) */
+/* light staff: gold-as-text is illegible on white (DESIGN §1.3) → use maroon.
+   Scoped to light + staff so gold-on-dark elements (player, dark chips) are untouched. */
+html:not(.dark) body.wc-staff .text-gold { color: var(--maroon); }
 h1,h2,h3,h4 { font-weight: 800; line-height: 1.12; letter-spacing: -0.018em; }
 h1,h2,h3 { text-wrap: balance; }
 .tnum { font-variant-numeric: tabular-nums; }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 6px; }
 img { max-width: 100%; display: block; }
 a { color: inherit; }
+.dark ::-webkit-scrollbar { width: 10px; height: 10px; }
+.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 8px; }
+.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
 
 /* ----------------------------------------------------------- patterns */
 /* large, faint mascot watermark for heroes/empty states */
@@ -179,6 +190,16 @@ a { color: inherit; }
   background-color: var(--maroon);
   background-image: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1px);
   background-size: 20px 20px;
+}
+.wc-pattern-gold {
+  background-color: var(--gold);
+  background-image: radial-gradient(rgba(99,0,1,0.10) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+.wc-pattern-ink {
+  background-color: var(--ink);
+  background-image: radial-gradient(rgba(255,255,255,0.045) 1px, transparent 1px);
+  background-size: 22px 22px;
 }
 /* The repeating "wildcat" wordmark brand texture is rendered by the
    <BrandPattern> inline-SVG component (true brick offset, Poppins, theme-able). */
@@ -292,6 +313,7 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
   border: 1px solid var(--input); border-radius: 12px; padding: .65rem .8rem; font: inherit; font-size: 1rem;
   min-height: 44px; transition: border-color .15s ease, box-shadow .15s ease;
 }
+.dark .wc-input, .dark .wc-select, .dark .wc-textarea { background: rgba(255,255,255,.04); }
 .wc-input::placeholder, .wc-textarea::placeholder { color: color-mix(in srgb, var(--muted-foreground) 75%, transparent); }
 .wc-input:focus, .wc-select:focus, .wc-textarea:focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 28%, transparent); }
 .wc-label { display: block; font-weight: 600; font-size: .85rem; margin-bottom: .35rem; }
@@ -307,7 +329,7 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
    style both so either can sit inside a `.wc-seg` group. */
 .wc-seg button[data-state="active"], .wc-seg a[data-state="active"] { background: var(--card); color: var(--foreground); box-shadow: var(--shadow-sm); }
 .dark .wc-seg button.active, .dark .wc-seg a.active,
-.dark .wc-seg button[data-state="active"], .dark .wc-seg a[data-state="active"] { color: var(--gold); }
+.dark .wc-seg button[data-state="active"], .dark .wc-seg a[data-state="active"] { background: #000; color: var(--gold); }
 
 /* -------------------------------------------------- overlay / bottom sheet */
 .wc-overlay { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.55); backdrop-filter: blur(2px); display: none; }
@@ -324,8 +346,10 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
 @keyframes wc-toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 /* -------------------------------------------------------------- chat */
+.wc-chat { display: flex; flex-direction: column; gap: .7rem; }
 .wc-msg .who { font-weight: 700; font-size: .82rem; }
 .wc-msg .who .name { color: var(--maroon); }
+.dark .wc-msg .who .name { color: var(--gold); }
 .wc-msg .body { font-size: .92rem; }
 .wc-msg.booth { background: var(--accent); border-radius: 12px; padding: .55rem .7rem; }
 .wc-msg.mod { background: color-mix(in srgb, var(--destructive) 8%, transparent); border-left: 3px solid var(--destructive); padding: .45rem .7rem; border-radius: 0 10px 10px 0; }
@@ -361,14 +385,14 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
 .wc-sidenav.open { transform: none; box-shadow: 0 0 50px rgba(0,0,0,.22); }
 .wc-sidenav .sn-brand { display: flex; align-items: center; gap: .55rem; padding: .3rem .55rem 1rem; font-weight: 800; color: var(--foreground); text-decoration: none; }
 .wc-sidenav .sn-list { display: flex; flex-direction: column; gap: .12rem; overflow-y: auto; }
-.wc-sidenav .sn-item { display: flex; align-items: center; gap: .85rem; padding: .62rem .7rem; border-radius: 12px; font-weight: 600; font-size: .95rem; color: var(--muted-foreground); text-decoration: none; transition: background .15s ease, color .15s ease; }
+.wc-sidenav .sn-item { display: flex; align-items: center; gap: .85rem; min-height: 44px; padding: .62rem .7rem; border-radius: 12px; font-weight: 600; font-size: .95rem; color: var(--muted-foreground); text-decoration: none; transition: background .15s ease, color .15s ease; }
 .wc-sidenav .sn-item:hover { background: var(--muted); color: var(--foreground); }
 .wc-sidenav .sn-item.active { background: var(--accent); color: var(--foreground); }
 .wc-sidenav .sn-item.active svg { color: var(--maroon); }
 .wc-sidenav .sn-item svg { width: 20px; height: 20px; flex: none; }
 .wc-sidenav .sn-foot { margin-top: auto; display: flex; flex-direction: column; gap: .5rem; padding-top: 1rem; }
 
-.wc-navtoggle { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; border: none; background: transparent; color: var(--foreground); cursor: pointer; flex: none; }
+.wc-navtoggle { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; border: none; background: transparent; color: var(--foreground); cursor: pointer; flex: none; }
 .wc-navtoggle:hover { background: var(--muted); }
 
 /* Desktop: hide the hamburger button — uses real @media to beat unlayered specificity in Tailwind v4 */
@@ -393,33 +417,134 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
 .wc-btn-ghost:hover { background: var(--muted); }
 .wc-btn-danger    { background: var(--destructive); color: var(--destructive-foreground); }
 .wc-btn-danger:hover { filter: brightness(1.06); }
-.wc-btn-sm { min-height: 36px; padding: .35rem .8rem; font-size: .85rem; }
+/* FE#49 — 44px is the DESIGN.md rule-8 floor for touch targets. `wc-btn-sm`
+   is shared via shadcn `Button size="sm"`, so raising it here fixes every
+   small button app-wide rather than per-page. Padding is unchanged; the
+   min-height only takes effect where the content box is shorter. */
+.wc-btn-sm { min-height: 44px; padding: .35rem .8rem; font-size: .85rem; }
 .wc-btn-icon { min-height: 44px; min-width: 44px; padding: .5rem; border-radius: 999px; }
 .wc-btn-block { width: 100%; }
 
 /* ----------------------------------------------------------- the player */
+/* Persistent bottom chrome, SoundCloud-calibrated: a soft charcoal shelf that
+   sits *under* the content rather than shouting over it. Deliberately the same
+   surface in light and dark — like every streaming player, this bar is its own
+   always-dark chrome, not a themed surface. Height is ~48px (was ~61px): the
+   old build was a 48px gold disc + 44px art + a heavy near-black gradient with
+   a 34px shadow, which read as a toolbar rather than a status shelf. */
 .wc-player {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
   padding-bottom: env(safe-area-inset-bottom);
-  background: linear-gradient(180deg,#241f1f,var(--ink)); color: #fff;
-  border-top: 1px solid rgba(255,255,255,.08);
-  box-shadow: 0 -10px 34px rgba(0,0,0,.3);
+  background: var(--player-surface); color: #fff;
+  border-top: 1px solid rgba(255,255,255,.09);
+  /* A hairline lift, not a plume. The old 0 -10px 34px shadow bled a dark
+     smudge ~34px up the page over real content. */
+  box-shadow: 0 -1px 0 rgba(0,0,0,.28);
+  animation: wc-player-in .34s cubic-bezier(.22,.61,.36,1) both;
 }
+@keyframes wc-player-in { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Live-activity strip, flush to the top edge. This is a LIVE stream: there is
+   no duration, so a percentage fill would be a lie dressed as a scrubber. It
+   is an indeterminate shimmer that runs only while audio is actually playing —
+   honest about meaning "streaming", not "38% elapsed". */
+.wc-player-progress { height: 2px; background: rgba(255,255,255,.08); overflow: hidden; }
+.wc-player-progress > span {
+  display: block; height: 100%; width: 100%;
+  background: linear-gradient(90deg, transparent 0%, var(--gold) 45%, var(--gold) 55%, transparent 100%);
+  background-size: 220px 100%; background-repeat: repeat-x;
+  animation: wc-player-stream 2.2s linear infinite;
+  transition: width .28s cubic-bezier(.22,.61,.36,1);
+}
+@keyframes wc-player-stream { from { background-position: -220px 0; } to { background-position: 220px 0; } }
+
 .wc-player-inner {
   max-width: 1180px; margin: 0 auto;
-  display: flex; align-items: center; gap: .8rem; padding: .55rem .9rem;
+  display: flex; align-items: center; gap: .7rem; padding: .35rem .85rem;
 }
-.wc-player .cover { width: 44px; height: 44px; border-radius: 10px; flex: none; }
+.wc-player .cover { width: 36px; height: 36px; border-radius: 8px; flex: none; }
 .wc-player .meta { min-width: 0; flex: 1; }
-.wc-player .meta .title { font-weight: 700; font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wc-player .meta .sub   { font-size: .78rem; color: #bdb6b1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wc-player .meta .title { font-weight: 650; font-size: .82rem; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wc-player .meta .sub   { font-size: .715rem; line-height: 1.3; color: rgba(255,255,255,.62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 44x44 hit area (Apple HIG / this skill's CRITICAL touch rule) with a 32px
+   visual disc inside — shrinking the button itself to 32px would have failed
+   the touch-target minimum. */
 .wc-play {
-  width: 48px; height: 48px; flex: none; border-radius: 999px; border: none; cursor: pointer;
-  background: var(--gold); color: #151414; display: grid; place-items: center;
-  transition: transform .12s ease, filter .15s ease; font-family: inherit;
+  width: 44px; height: 44px; flex: none; border: none; background: none; padding: 0;
+  cursor: pointer; display: grid; place-items: center; font-family: inherit;
+  border-radius: 999px;
 }
-.wc-play:hover { filter: brightness(.96); transform: scale(1.05); }
-.wc-play:active { transform: scale(.96); }
+.wc-play > span {
+  width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center;
+  background: var(--gold); color: #151414;
+  transition: transform .16s cubic-bezier(.22,.61,.36,1), filter .16s ease;
+}
+.wc-play:hover > span { filter: brightness(1.06); transform: scale(1.06); }
+.wc-play:active > span { transform: scale(.94); }
+.wc-play:disabled { cursor: not-allowed; }
+.wc-play:disabled > span { background: rgba(255,255,255,.16); color: rgba(255,255,255,.45); transform: none; filter: none; }
+
+/* Secondary controls — muted until touched, so the bar stays quiet. */
+.wc-player-btn {
+  width: 44px; height: 44px; flex: none; border: none; background: none; padding: 0;
+  cursor: pointer; display: grid; place-items: center; border-radius: 999px;
+  color: rgba(255,255,255,.62); transition: color .16s ease, background-color .16s ease;
+}
+.wc-player-btn:hover { color: #fff; background: rgba(255,255,255,.08); }
+
+/* Volume: collapsed to zero width, expands on hover/focus-within. Desktop
+   only — on touch there is no hover and the OS owns volume anyway. */
+.wc-player-vol { display: none; align-items: center; gap: .1rem; }
+@media (min-width: 768px) { .wc-player-vol { display: flex; } }
+.wc-player-vol input[type="range"] {
+  -webkit-appearance: none; appearance: none; background: none;
+  width: 0; opacity: 0; margin: 0; cursor: pointer;
+  transition: width .22s cubic-bezier(.22,.61,.36,1), opacity .18s ease;
+}
+.wc-player-vol:hover input[type="range"],
+.wc-player-vol:focus-within input[type="range"] { width: 76px; opacity: 1; }
+.wc-player-vol input[type="range"]::-webkit-slider-runnable-track { height: 3px; border-radius: 999px; background: rgba(255,255,255,.22); }
+.wc-player-vol input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 11px; height: 11px; margin-top: -4px;
+  border-radius: 999px; background: #fff; border: none;
+}
+.wc-player-vol input[type="range"]::-moz-range-track { height: 3px; border-radius: 999px; background: rgba(255,255,255,.22); }
+.wc-player-vol input[type="range"]::-moz-range-thumb { width: 11px; height: 11px; border-radius: 999px; background: #fff; border: none; }
+
+/* Listener count — tabular so the bar never twitches as the number changes. */
+.wc-player-listeners {
+  display: none; align-items: center; gap: .3rem; flex: none;
+  font-size: .715rem; color: rgba(255,255,255,.62); font-variant-numeric: tabular-nums;
+}
+@media (min-width: 640px) { .wc-player-listeners { display: flex; } }
+
+/* Up-next peek. Truncates hard rather than wrapping — the bar's height is
+   fixed and a two-line queue item would push the whole shelf taller. Hidden
+   below lg: on a phone the meta column already owns the available width. */
+.wc-player-upnext { display: none; align-items: baseline; gap: .4rem; min-width: 0; max-width: 260px; }
+@media (min-width: 1024px) { .wc-player-upnext { display: flex; } }
+.wc-player-upnext .label {
+  font-size: .6rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 700;
+  color: rgba(255,255,255,.45); flex: none;
+}
+.wc-player-upnext .text {
+  font-size: .715rem; color: rgba(255,255,255,.62);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Reaction: gold on hover so the one expressive control in the bar reads as
+   the brand's, while resting at the same muted weight as its neighbours. */
+.wc-player-react:hover:not(:disabled) { color: var(--gold); background: rgba(255,223,1,.10); }
+.wc-player-react:active:not(:disabled) { transform: scale(.92); }
+.wc-player-react:disabled { opacity: .5; cursor: default; }
+
+/* Motion is meaning here, not decoration — but it is all optional. */
+@media (prefers-reduced-motion: reduce) {
+  .wc-player { animation: none; }
+  .wc-player-progress > span { animation: none; background: var(--gold); }
+  .wc-play > span, .wc-player-vol input[type="range"] { transition: none; }
+}
 
 
 /* --------------------------------------------------------------- top nav */
@@ -444,6 +569,7 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
   content: ""; position: absolute; left: 0; right: 0; bottom: -.62rem;
   height: 2px; border-radius: 2px; background: var(--maroon);
 }
+.dark .wc-navlink.active::after { background: var(--gold); }
 
 /* utility */
 /* NOTE: use padding-inline (not the `padding` shorthand) so Tailwind's vertical
@@ -470,21 +596,9 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
 .eq i:nth-child(4) { animation-delay: -350ms; }
 @keyframes eq { 0%,100%{ height: 4px; } 50%{ height: 14px; } }
 
-/* ---- bottom nav (mobile dock above the player) ---- */
-.wc-bottomnav {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
-  display: flex; background: linear-gradient(180deg,#221d1d,var(--ink));
-  border-top: 1px solid rgba(255,255,255,.08);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.wc-bottomnav a {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: .5rem 0 .55rem; font-size: .66rem; font-weight: 600; color: rgba(255,255,255,.6);
-  text-decoration: none; min-height: 54px; justify-content: center; transition: color .15s ease;
-}
-.wc-bottomnav a:hover { color: rgba(255,255,255,.85); }
-.wc-bottomnav a.active { color: #fff; }
-.wc-bottomnav a.active svg { color: var(--gold); }
+/* The `.wc-bottomnav` dock was removed along with its component: it duplicated
+   the top nav on desktop and the owner cut it product-wide. Mobile navigation is
+   the `.wc-sidenav` drawer. Recover from git history if it ever comes back. */
 
 /* ---- toggle switch ---- */
 .wc-switch { position: relative; width: 44px; height: 26px; flex: none; }
@@ -492,14 +606,20 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
 .wc-switch .track { position: absolute; inset: 0; background: var(--input); border-radius: 999px; transition: .2s; cursor: pointer; }
 .wc-switch .track::before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #fff; border-radius: 999px; transition: .2s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
 .wc-switch input:checked + .track { background: var(--maroon); }
+.dark .wc-switch input:checked + .track { background: var(--gold); }
 .wc-switch input:checked + .track::before { transform: translateX(18px); }
+.dark .wc-switch input:checked + .track::before { background: #151414; }
 
 /* ---- status pills ---- */
 .wc-pill { display: inline-flex; align-items: center; gap: .4rem; font-size: .76rem; font-weight: 700; padding: .22rem .6rem; border-radius: 999px; white-space: nowrap; }
 .wc-pill::before { content: ""; width: .45rem; height: .45rem; border-radius: 999px; background: currentColor; flex: none; }
-/* darker than --success (#15803d) to meet WCAG 4.5:1 on the tinted pill background */
+/* darker than --success (#15803d) to meet WCAG 4.5:1 on the tinted pill background.
+   In dark mode --success flips to a bright #4ade80, so the token itself already
+   reads at ~7:1 there — override back to the token instead of the light-mode hardcode. */
 .wc-pill-ok   { background: color-mix(in srgb,var(--success) 15%,transparent); color: #166534; }
+.dark .wc-pill-ok { color: var(--success); }
 .wc-pill-warn { background: color-mix(in srgb,var(--amber) 20%,transparent); color: #8a5d00; }
+.dark .wc-pill-warn { color: var(--amber); }
 .wc-pill-bad  { background: color-mix(in srgb,var(--destructive) 15%,transparent); color: var(--destructive); }
 .wc-pill-neutral { background: var(--muted); color: var(--muted-foreground); }
 
@@ -511,9 +631,12 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
 .wc-typeicon { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none; }
 .wc-typeicon svg { width: 16px; height: 16px; }
 .wc-ti-req  { background: color-mix(in srgb,var(--maroon) 12%, transparent); color: var(--maroon); }
+.dark .wc-ti-req { background: rgba(255,150,150,.14); color: #ff9b9b; }
 .wc-ti-ded  { background: color-mix(in srgb,var(--amber) 20%, transparent); color: #8a5d00; }
+.dark .wc-ti-ded { color: var(--amber); }
 .wc-ti-qa   { background: var(--accent); color: var(--accent-foreground); }
 .wc-ti-air  { background: color-mix(in srgb,var(--gold) 32%, transparent); color: #7a5c00; }
+.dark .wc-ti-air { color: var(--gold); background: rgba(255,223,1,.16); }
 .wc-ti-info { background: var(--muted); color: var(--muted-foreground); }
 
 /* ---- auth split layout ---- */
@@ -598,6 +721,41 @@ body.wc-staff-page .wc-player { display: none; }
 .wc-table tbody tr:hover { background: color-mix(in srgb, var(--muted) 55%, transparent); }
 .wc-table tr:last-child td { border-bottom: none; }
 .wc-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* table toolbar + pagination */
+.wc-toolbar { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; padding: .7rem .85rem; border-bottom: 1px solid var(--border); }
+.wc-toolbar .wc-search { position: relative; flex: 1; min-width: 170px; }
+.wc-toolbar .wc-search svg { position: absolute; left: .7rem; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted-foreground); pointer-events: none; }
+.wc-toolbar .wc-search input { padding-left: 2.1rem; min-height: 38px; }
+.wc-pagination { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .6rem .85rem; border-top: 1px solid var(--border); font-size: .82rem; color: var(--muted-foreground); }
+
+/* schedule grid cell — one consistent style for every show slot */
+.wc-slot { display: block; border-radius: 12px; padding: .55rem .7rem; background: var(--muted); border: 1px solid var(--border); text-decoration: none; color: var(--foreground); transition: background .15s ease, border-color .15s ease, transform .12s ease; }
+.wc-slot:hover { background: var(--accent); border-color: color-mix(in srgb,var(--maroon) 30%, transparent); transform: translateY(-1px); }
+.wc-slot.on { background: var(--accent); border-color: var(--maroon); }
+.dark .wc-slot.on { border-color: var(--gold); }
+.wc-slot-empty { display: flex; align-items: center; justify-content: center; min-height: 46px; color: var(--muted-foreground); opacity: .5; }
+
+/* DJ directory navbar — horizontal chips on mobile, vertical list on desktop */
+.wc-djchip { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; border-radius: 12px; text-decoration: none; color: var(--foreground); border: 1px solid transparent; flex: none; min-width: 158px; transition: background .15s ease, border-color .15s ease; }
+.wc-djchip:hover { background: var(--muted); }
+.wc-djchip.active { background: var(--accent); color: var(--accent-foreground); border-color: color-mix(in srgb,var(--maroon) 28%, transparent); }
+.dark .wc-djchip.active { border-color: color-mix(in srgb,var(--gold) 40%, transparent); }
+@media (min-width: 768px) { .wc-djchip { min-width: 0; } }
+
+/* ---- settings live preview (mod/settings) ---- */
+.wc-previewfab {
+  position: fixed; right: 14px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 70;
+  display: inline-flex; align-items: center; gap: .45rem; padding: .6rem .9rem; border-radius: 999px;
+  background: var(--maroon); color: #fff; font-weight: 700; font-size: .85rem; border: none; cursor: pointer;
+  box-shadow: var(--shadow-lg); transition: transform .12s ease, filter .15s ease;
+}
+.wc-previewfab:hover { transform: translateY(-1px); filter: brightness(1.1); }
+.wc-previewfab svg { width: 18px; height: 18px; }
+.dark .wc-previewfab { background: var(--gold); color: var(--ink); }
+.wc-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 13px; color: var(--gold); }
+.wc-eq i { width: 2px; height: 100%; background: currentColor; border-radius: 2px; transform-origin: bottom; animation: wc-eqbar .9s ease-in-out infinite; }
+.wc-eq i:nth-child(2) { animation-delay: .15s; } .wc-eq i:nth-child(3) { animation-delay: .30s; } .wc-eq i:nth-child(4) { animation-delay: .45s; }
+@keyframes wc-eqbar { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }

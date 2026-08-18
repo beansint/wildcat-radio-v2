@@ -49,6 +49,13 @@ export function Footer() {
           <Link href="/attribution" className="hover:text-white" data-testid="footer-attribution">
             Music credits
           </Link>
+          {/* FE#53 — `/my-data` is the DPA data-subject-rights centre. It was
+              fully built but had ZERO inbound links anywhere in the app, so it
+              was reachable only by typing the URL. For a rights centre that is
+              arguably a compliance problem, not just a navigation one. */}
+          <Link href="/my-data" className="hover:text-white" data-testid="footer-my-data">
+            Your data
+          </Link>
         </nav>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-2">

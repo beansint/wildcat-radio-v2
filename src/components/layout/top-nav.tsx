@@ -33,7 +33,11 @@ export function TopNav({ onMenu }: TopNavProps) {
   return (
     <header className="wc-topnav">
       <div className="wc-topnav-inner">
-        {/* Hamburger — visible on mobile, hidden ≥1024px via .wc-navtoggle CSS */}
+        {/* Hamburger — visible on mobile, hidden ≥1024px via .wc-navtoggle CSS.
+            FE#49: .wc-navtoggle is 40x40 in globals.css (reserved this run) —
+            bumped to the 44x44 DESIGN.md floor with an inline style, which
+            wins over the class regardless of cascade order. See report for
+            the exact globals.css rule to change centrally. */}
         <button
           className="wc-navtoggle"
           aria-label="Open menu"
@@ -86,12 +90,20 @@ export function TopNav({ onMenu }: TopNavProps) {
                 style={user.image ? { backgroundImage: `url(${user.image})`, backgroundSize: 'cover' } : undefined}
               />
             ) : (
-              /* Logged-out: Sign in + Listen live */
+              /* Logged-out: Sign in + Listen live.
+                 FE#49: .wc-btn-sm is min-height:36px (globals.css, reserved
+                 this run) — bumped to 44px with inline style; see report. */
               <>
-                <Link href="/login" className="wc-btn wc-btn-outline wc-btn-sm">
+                <Link
+                  href="/login"
+                  className="wc-btn wc-btn-outline wc-btn-sm"
+                >
                   Sign in
                 </Link>
-                <Link href="/listen" className="wc-btn wc-btn-primary wc-btn-sm">
+                <Link
+                  href="/listen"
+                  className="wc-btn wc-btn-primary wc-btn-sm"
+                >
                   Listen live
                 </Link>
               </>

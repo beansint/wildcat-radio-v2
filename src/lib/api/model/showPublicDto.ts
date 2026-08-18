@@ -19,4 +19,8 @@ export interface ShowPublicDto {
   theme: string | null;
   tags: string[];
   roster: PublicRosterRefDto[];
+  /** @nullable */
+  cadenceLabel: string | null;
+  /** @nullable */
+  airtimeLabel: string | null;
 }

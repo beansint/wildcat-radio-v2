@@ -372,6 +372,15 @@
             }
           },
           {
+            "name": "actorId",
+            "required": false,
+            "in": "query",
+            "description": "Restrict to rows where this user was the acting staff member (\"View audit\")",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "action",
             "required": false,
             "in": "query",
@@ -608,6 +617,150 @@
           }
         },
         "summary": "Contested (open) appeals and open reinstatement requests, for custodian oversight",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/staff/moderators": {
+      "get": {
+        "operationId": "AdminController_listModerators",
+        "parameters": [
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Default 20, max 100",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number, default 1",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Case-insensitive match on name or email",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active moderators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffListDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Active moderator roster: search + pagination",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/staff/deactivated": {
+      "get": {
+        "operationId": "AdminController_listDeactivated",
+        "parameters": [
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Default 20, max 100",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "1-based page number, default 1",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deactivated moderators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffListDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Deactivated (formerly moderator) roster, derived from audit history",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/staff/promote": {
+      "post": {
+        "operationId": "AdminController_promote",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Resulting role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffActionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Promote a verified campus user to MODERATOR (required reason, audit-logged)",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/staff/{id}/deactivate": {
+      "post": {
+        "operationId": "AdminController_deactivate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resulting role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffActionResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Deactivate a moderator: demotes to LISTENER (required reason, audit-logged)",
         "tags": [
           "admin"
         ]
@@ -1332,6 +1485,40 @@
         ]
       }
     },
+    "/api/users/{id}/strikes": {
+      "get": {
+        "operationId": "UsersController_getUserStrikes",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Strike history, newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserStrikeDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a user's full strike history, newest first (moderator)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
     "/api/users/{id}/force-rename": {
       "post": {
         "operationId": "UsersController_forceRename",
@@ -1391,227 +1578,6 @@
         "summary": "Change a user role (custodian only); audited",
         "tags": [
           "users"
-        ]
-      }
-    },
-    "/api/analytics/age-bucket": {
-      "post": {
-        "operationId": "AnalyticsController_recordAgeBucket",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "{ ok: true, alreadyContributed: boolean }"
-          }
-        },
-        "summary": "Record anonymous age-bucket contribution (L33/L27; PII-safe aggregate counter)",
-        "tags": [
-          "analytics"
-        ]
-      }
-    },
-    "/api/analytics/overview": {
-      "get": {
-        "operationId": "getAnalyticsOverview",
-        "parameters": [
-          {
-            "name": "to",
-            "required": false,
-            "in": "query",
-            "description": "ISO date, exclusive. Default: now.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "from",
-            "required": false,
-            "in": "query",
-            "description": "ISO date, inclusive. Default: 30 days ago.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Period overview",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AnalyticsOverviewDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Headline audience figures for a period",
-        "tags": [
-          "analytics"
-        ]
-      }
-    },
-    "/api/analytics/shows": {
-      "get": {
-        "operationId": "getAnalyticsShows",
-        "parameters": [
-          {
-            "name": "to",
-            "required": false,
-            "in": "query",
-            "description": "ISO date, exclusive. Default: now.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "from",
-            "required": false,
-            "in": "query",
-            "description": "ISO date, inclusive. Default: 30 days ago.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Show ranking",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AnalyticsShowRankDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "summary": "Show ranking with trend against the preceding window",
-        "tags": [
-          "analytics"
-        ]
-      }
-    },
-    "/api/analytics/dayparts": {
-      "get": {
-        "operationId": "getAnalyticsDayparts",
-        "parameters": [
-          {
-            "name": "to",
-            "required": false,
-            "in": "query",
-            "description": "ISO date, exclusive. Default: now.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "from",
-            "required": false,
-            "in": "query",
-            "description": "ISO date, inclusive. Default: 30 days ago.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Daypart grid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AnalyticsDaypartDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "summary": "Weekday x hour heatmap; empty slots are omitted",
-        "tags": [
-          "analytics"
-        ]
-      }
-    },
-    "/api/analytics/media-kit/export": {
-      "get": {
-        "operationId": "exportMediaKit",
-        "parameters": [
-          {
-            "name": "to",
-            "required": false,
-            "in": "query",
-            "description": "ISO date, exclusive. Default: now.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "from",
-            "required": false,
-            "in": "query",
-            "description": "ISO date, inclusive. Default: 30 days ago.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "format",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "enum": [
-                "csv",
-                "pdf"
-              ],
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Report file download"
-          }
-        },
-        "summary": "Aggregate media-kit report as CSV or PDF (min-bucket suppressed)",
-        "tags": [
-          "analytics"
-        ]
-      }
-    },
-    "/api/analytics/episodes/{id}": {
-      "get": {
-        "operationId": "getAnalyticsEpisode",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Episode analytics",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AnalyticsEpisodeDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "One episode's stored snapshot, including its retention curve",
-        "tags": [
-          "analytics"
         ]
       }
     },
@@ -1892,6 +1858,227 @@
         "summary": "Remove a registry entry",
         "tags": [
           "music-sources"
+        ]
+      }
+    },
+    "/api/analytics/age-bucket": {
+      "post": {
+        "operationId": "AnalyticsController_recordAgeBucket",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "{ ok: true, alreadyContributed: boolean }"
+          }
+        },
+        "summary": "Record anonymous age-bucket contribution (L33/L27; PII-safe aggregate counter)",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/overview": {
+      "get": {
+        "operationId": "getAnalyticsOverview",
+        "parameters": [
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, exclusive. Default: now.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, inclusive. Default: 30 days ago.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Period overview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsOverviewDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Headline audience figures for a period",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/shows": {
+      "get": {
+        "operationId": "getAnalyticsShows",
+        "parameters": [
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, exclusive. Default: now.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, inclusive. Default: 30 days ago.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Show ranking",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AnalyticsShowRankDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Show ranking with trend against the preceding window",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/dayparts": {
+      "get": {
+        "operationId": "getAnalyticsDayparts",
+        "parameters": [
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, exclusive. Default: now.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, inclusive. Default: 30 days ago.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daypart grid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AnalyticsDaypartDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Weekday x hour heatmap; empty slots are omitted",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/media-kit/export": {
+      "get": {
+        "operationId": "exportMediaKit",
+        "parameters": [
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, exclusive. Default: now.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, inclusive. Default: 30 days ago.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "csv",
+                "pdf"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report file download"
+          }
+        },
+        "summary": "Aggregate media-kit report as CSV or PDF (min-bucket suppressed)",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/analytics/episodes/{id}": {
+      "get": {
+        "operationId": "getAnalyticsEpisode",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Episode analytics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsEpisodeDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "One episode's stored snapshot, including its retention curve",
+        "tags": [
+          "analytics"
         ]
       }
     },
@@ -3377,6 +3564,92 @@
           "reinstatements"
         ]
       },
+      "StaffMemberDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "DEACTIVATED"
+            ]
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastActionAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deactivatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "handle",
+          "status",
+          "joinedAt",
+          "lastActionAt",
+          "deactivatedAt"
+        ]
+      },
+      "StaffListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffMemberDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "StaffActionResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "CUSTODIAN",
+              "MODERATOR",
+              "LISTENER"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "role"
+        ]
+      },
       "SubmitQueueItemDto": {
         "type": "object",
         "properties": {
@@ -4220,6 +4493,49 @@
           "total"
         ]
       },
+      "UserStrikeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "level": {
+            "type": "number",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "issuedById": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "true if expiresAt is in the future as of the query"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "reason",
+          "issuedById",
+          "expiresAt",
+          "createdAt",
+          "active"
+        ]
+      },
       "ForceRenameResultDto": {
         "type": "object",
         "properties": {
@@ -4253,6 +4569,135 @@
         "required": [
           "id",
           "role"
+        ]
+      },
+      "LegalNoticeDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "effectiveDate": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "isPlaceholder": {
+            "type": "boolean",
+            "description": "True while the text is unreviewed placeholder pending counsel. A client must not present a placeholder document as binding terms."
+          }
+        },
+        "required": [
+          "key",
+          "version",
+          "effectiveDate",
+          "title",
+          "body",
+          "isPlaceholder"
+        ]
+      },
+      "ConsentRecordDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "DEMOGRAPHICS"
+            ]
+          },
+          "noticeVersion": {
+            "type": "string",
+            "description": "The version of the notice actually served at grant time"
+          },
+          "grantedAt": {
+            "type": "string"
+          },
+          "withdrawnAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "Set on withdrawal; the row is never deleted"
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "noticeVersion",
+          "grantedAt",
+          "withdrawnAt"
+        ]
+      },
+      "MusicAttributionDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "artist": {
+            "type": "string",
+            "nullable": true
+          },
+          "attribution": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "artist",
+          "attribution"
+        ]
+      },
+      "MusicSourceDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "artist": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "CC",
+              "PUBLIC_DOMAIN",
+              "ROYALTY_FREE",
+              "ORIGINAL_STUDENT"
+            ]
+          },
+          "attribution": {
+            "type": "string",
+            "nullable": true
+          },
+          "clearanceProof": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "artist",
+          "source",
+          "attribution",
+          "clearanceProof",
+          "createdAt"
         ]
       },
       "AnalyticsOverviewDto": {
@@ -4465,135 +4910,6 @@
           "engagement"
         ]
       },
-      "LegalNoticeDto": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string"
-          },
-          "version": {
-            "type": "string"
-          },
-          "effectiveDate": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "body": {
-            "type": "string"
-          },
-          "isPlaceholder": {
-            "type": "boolean",
-            "description": "True while the text is unreviewed placeholder pending counsel. A client must not present a placeholder document as binding terms."
-          }
-        },
-        "required": [
-          "key",
-          "version",
-          "effectiveDate",
-          "title",
-          "body",
-          "isPlaceholder"
-        ]
-      },
-      "ConsentRecordDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "scope": {
-            "type": "string",
-            "enum": [
-              "DEMOGRAPHICS"
-            ]
-          },
-          "noticeVersion": {
-            "type": "string",
-            "description": "The version of the notice actually served at grant time"
-          },
-          "grantedAt": {
-            "type": "string"
-          },
-          "withdrawnAt": {
-            "type": "string",
-            "nullable": true,
-            "description": "Set on withdrawal; the row is never deleted"
-          }
-        },
-        "required": [
-          "id",
-          "scope",
-          "noticeVersion",
-          "grantedAt",
-          "withdrawnAt"
-        ]
-      },
-      "MusicAttributionDto": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "artist": {
-            "type": "string",
-            "nullable": true
-          },
-          "attribution": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "artist",
-          "attribution"
-        ]
-      },
-      "MusicSourceDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "artist": {
-            "type": "string",
-            "nullable": true
-          },
-          "source": {
-            "type": "string",
-            "enum": [
-              "CC",
-              "PUBLIC_DOMAIN",
-              "ROYALTY_FREE",
-              "ORIGINAL_STUDENT"
-            ]
-          },
-          "attribution": {
-            "type": "string",
-            "nullable": true
-          },
-          "clearanceProof": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "artist",
-          "source",
-          "attribution",
-          "clearanceProof",
-          "createdAt"
-        ]
-      },
       "RosterEntryDto": {
         "type": "object",
         "properties": {
@@ -4784,6 +5100,12 @@
             "items": {
               "type": "string"
             }
+          },
+          "roster": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -4793,7 +5115,8 @@
           "description",
           "coverImage",
           "theme",
-          "tags"
+          "tags",
+          "roster"
         ]
       },
       "PublicRosterRefDto": {
@@ -4851,6 +5174,14 @@
             "items": {
               "$ref": "#/components/schemas/PublicRosterRefDto"
             }
+          },
+          "cadenceLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "airtimeLabel": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -4861,7 +5192,9 @@
           "coverImage",
           "theme",
           "tags",
-          "roster"
+          "roster",
+          "cadenceLabel",
+          "airtimeLabel"
         ]
       },
       "EpisodeRefDto": {
@@ -4869,6 +5202,10 @@
         "properties": {
           "id": {
             "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
           },
           "scheduledFor": {
             "type": "string",
@@ -4884,13 +5221,24 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "peakListeners": {
+            "type": "number",
+            "nullable": true
+          },
+          "requestCount": {
+            "type": "number",
+            "nullable": true
           }
         },
         "required": [
           "id",
+          "title",
           "scheduledFor",
           "startedAt",
-          "endedAt"
+          "endedAt",
+          "peakListeners",
+          "requestCount"
         ]
       },
       "ShowEpisodesDto": {
@@ -5265,26 +5613,6 @@
           "pageSize"
         ]
       },
-      "DjPublicListItemDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "photoUrl": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "displayName",
-          "photoUrl"
-        ]
-      },
       "DjActiveShowDto": {
         "type": "object",
         "properties": {
@@ -5302,6 +5630,41 @@
           "id",
           "name",
           "slug"
+        ]
+      },
+      "DjPublicListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "currentShow": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DjActiveShowDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "photoUrl",
+          "bio",
+          "currentShow"
         ]
       },
       "DjPublicDto": {
@@ -5326,6 +5689,10 @@
             "items": {
               "$ref": "#/components/schemas/DjActiveShowDto"
             }
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
@@ -5333,7 +5700,8 @@
           "displayName",
           "photoUrl",
           "bio",
-          "activeShows"
+          "activeShows",
+          "since"
         ]
       },
       "ChartEntryDto": {

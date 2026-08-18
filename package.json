@@ -3,15 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "sh -c 'set -a; [ -f .env.local ] && . ./.env.local; set +a; exec next dev -p ${PORT:-3000} \"$@\"' --",
+    "dev": "sh -c 'set -a; [ -f .env.local ] && . ./.env.local; set +a; exec next dev -p ${PORT:-3011} \"$@\"' --",
     "build": "next build",
-    "start": "sh -c 'set -a; [ -f .env.local ] && . ./.env.local; set +a; exec next start -p ${PORT:-3000} \"$@\"' --",
+    "start": "sh -c 'set -a; [ -f .env.local ] && . ./.env.local; set +a; exec next start -p ${PORT:-3011} \"$@\"' --",
     "lint": "eslint",
     "spec:sync": "cp ../wildcat-radio-v2-backend/apps/api/openapi.json openapi/openapi.json",
     "api:generate": "orval --config orval.config.ts",
     "api:refresh": "pnpm spec:sync && pnpm api:generate",
     "test:unit": "vitest run",
-    "test:unit:watch": "vitest"
+    "test:unit:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test": "pnpm run lint && pnpm run typecheck && pnpm run test:unit"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

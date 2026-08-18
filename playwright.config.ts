@@ -12,6 +12,12 @@ export default defineConfig({
   // spec files concurrently makes those tests fight each other over shared
   // state and fail on a correct implementation, so the suite is serial.
   workers: 1,
+  // FE#55 — CI guards. `forbidOnly` fails the run if a stray `test.only` is
+  // committed (which would silently green the suite by skipping everything
+  // else); one retry absorbs genuine flake against the shared live stack
+  // without masking a real failure locally, where retries stay off.
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 1 : 0,
   use: {
     // 3011 is this project's frontend port (backend runs on 3010) — the old
     // 3000 default predates that split and silently sent every spec using a

@@ -19,15 +19,14 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession, type SessionUser } from "@/lib/auth/client";
-import { StaffSidebar } from "@/components/layout/staff-sidebar";
+import { StaffSidebar, StaffThemeScript } from "@/components/layout/staff-sidebar";
 
 const CUSTODIAN_ROLES = new Set(["CUSTODIAN"]);
 
-function activeSlugFromPathname(pathname: string): "escalations" {
-  // Only one route lives under `/admin` today; extend this switch as more
+function activeSlugFromPathname(pathname: string): "escalations" | "staff-review" {
+  // Two routes live under `/admin` today; extend this switch as more
   // custodian-only pages land here.
-  void pathname;
-  return "escalations";
+  return pathname.startsWith("/admin/staff") ? "staff-review" : "escalations";
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -37,9 +36,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const user = data?.user as SessionUser | undefined;
 
   // Hide the persistent global player on staff pages (parity with /mod).
+  // `wc-staff` wires up the prototype's staff canvas tint + the
+  // light-mode gold→maroon text remap (globals.css `body.wc-staff`,
+  // `html:not(.dark) body.wc-staff .text-gold`).
   useEffect(() => {
-    document.body.classList.add("wc-staff-page");
-    return () => document.body.classList.remove("wc-staff-page");
+    document.body.classList.add("wc-staff-page", "wc-staff");
+    return () => document.body.classList.remove("wc-staff-page", "wc-staff");
   }, []);
 
   useEffect(() => {
@@ -57,27 +59,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!isAuthorized) {
     return (
-      <div className="wc-shell" aria-hidden="true">
-        <div
-          className="wc-sidebar"
-          style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}
-        >
-          <div className="h-8 w-32 rounded-full bg-muted animate-pulse" />
-          <div className="h-6 w-full rounded-lg bg-muted animate-pulse mt-4" />
-          <div className="h-6 w-full rounded-lg bg-muted animate-pulse" />
-          <div className="h-6 w-full rounded-lg bg-muted animate-pulse" />
+      <>
+        <StaffThemeScript />
+        <div className="wc-shell" aria-hidden="true">
+          <div
+            className="wc-sidebar"
+            style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}
+          >
+            <div className="h-8 w-32 rounded-full bg-muted animate-pulse" />
+            <div className="h-6 w-full rounded-lg bg-muted animate-pulse mt-4" />
+            <div className="h-6 w-full rounded-lg bg-muted animate-pulse" />
+            <div className="h-6 w-full rounded-lg bg-muted animate-pulse" />
+          </div>
+          <div className="wc-main flex items-center justify-center min-h-dvh">
+            <div className="wc-avatar h-10 w-10 animate-pulse" />
+          </div>
         </div>
-        <div className="wc-main flex items-center justify-center min-h-dvh">
-          <div className="wc-avatar h-10 w-10 animate-pulse" />
-        </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="wc-shell">
-      <StaffSidebar active={activeSlugFromPathname(pathname)} />
-      <div className="wc-main">{children}</div>
-    </div>
+    <>
+      <StaffThemeScript />
+      <div className="wc-shell">
+        <StaffSidebar active={activeSlugFromPathname(pathname)} />
+        <div className="wc-main">{children}</div>
+      </div>
+    </>
   );
 }

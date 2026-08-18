@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { WEB_BASE } from './_fixtures';
+import { WEB_BASE, loginAs } from './_fixtures';
 
 /**
  * FE#42 / FE#43 / FE#49 — public schedule + footer at a 375px viewport.
@@ -19,13 +19,16 @@ const VIEWPORT_375 = { width: 375, height: 812 };
 
 
 test.describe('FE#43 — Footer on (app) listener pages', () => {
-  // NOTE: requires a logged-in session. Swap in the project's real
-  // loginAs(page, 'listener') helper from ./_fixtures before running —
-  // left explicit here since /profile 401s to /login without one.
+  // /profile lives behind the (app) client-side auth guard, which renders a
+  // chrome skeleton — no footer — until the session resolves. So this needs a
+  // real session; without one the page redirects to /login and the assertion
+  // would be measuring the wrong page.
   test('/profile renders a footer', async ({ page }) => {
+    await loginAs(page, 'listener');
     await page.goto(`${WEB_BASE}/profile`);
-    // If redirected to /login (no session in this run), this assertion
-    // documents the gap rather than silently passing.
+    // Assert we are actually on /profile and past the guard before looking for
+    // the footer, so a silent redirect can never read as a footer failure.
+    await expect(page).toHaveURL(new RegExp('/profile$'));
     await expect(page.locator('footer')).toBeVisible({ timeout: 8_000 });
   });
 });

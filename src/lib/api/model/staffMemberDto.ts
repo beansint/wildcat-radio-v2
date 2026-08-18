@@ -5,17 +5,17 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
+import type { StaffMemberDtoStatus } from './staffMemberDtoStatus.ts';
 
-export interface ShowPublicListItemDto {
+export interface StaffMemberDto {
   id: string;
   name: string;
-  slug: string;
+  email: string;
+  handle: string;
+  status: StaffMemberDtoStatus;
+  joinedAt: string;
   /** @nullable */
-  description: string | null;
+  lastActionAt: string | null;
   /** @nullable */
-  coverImage: string | null;
-  /** @nullable */
-  theme: string | null;
-  tags: string[];
-  roster: string[];
+  deactivatedAt: string | null;
 }

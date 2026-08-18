@@ -5,10 +5,15 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
+import type { DjActiveShowDto } from './djActiveShowDto.ts';
 
 export interface DjPublicListItemDto {
   id: string;
   displayName: string;
   /** @nullable */
   photoUrl: string | null;
+  /** @nullable */
+  bio: string | null;
+  /** @nullable */
+  currentShow: DjActiveShowDto | null;
 }

@@ -9,9 +9,15 @@
 export interface EpisodeRefDto {
   id: string;
   /** @nullable */
+  title: string | null;
+  /** @nullable */
   scheduledFor: string | null;
   /** @nullable */
   startedAt: string | null;
   /** @nullable */
   endedAt: string | null;
+  /** @nullable */
+  peakListeners: number | null;
+  /** @nullable */
+  requestCount: number | null;
 }

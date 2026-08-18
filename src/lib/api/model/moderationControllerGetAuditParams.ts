@@ -16,6 +16,10 @@ pageSize?: number;
  */
 page?: number;
 /**
+ * Restrict to rows where this user was the acting staff member ("View audit")
+ */
+actorId?: string;
+/**
  * Exact or prefix match (e.g. "mod.action.")
  */
 action?: string;

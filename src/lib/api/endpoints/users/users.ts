@@ -25,6 +25,7 @@ import type {
   ForceRenameResultDto,
   MeStandingDto,
   UserSearchResultDto,
+  UserStrikeDto,
   UsersControllerSearchUsersParams
 } from '../../model';
 
@@ -631,6 +632,106 @@ export function useUsersControllerSearchUsers<TData = Awaited<ReturnType<typeof 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getUsersControllerSearchUsersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getUsersControllerGetUserStrikesUrl = (id: string,) => {
+
+
+
+
+  return `/api/users/${id}/strikes`
+}
+
+/**
+ * @summary Get a user's full strike history, newest first (moderator)
+ */
+export const usersControllerGetUserStrikes = async (id: string, options?: RequestInit): Promise<UserStrikeDto[]> => {
+
+  return customFetch<UserStrikeDto[]>(getUsersControllerGetUserStrikesUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getUsersControllerGetUserStrikesQueryKey = (id: string,) => {
+    return [
+    `/api/users/${id}/strikes`
+    ] as const;
+    }
+
+
+export const getUsersControllerGetUserStrikesQueryOptions = <TData = Awaited<ReturnType<typeof usersControllerGetUserStrikes>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerGetUserStrikes>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getUsersControllerGetUserStrikesQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof usersControllerGetUserStrikes>>> = ({ signal }) => usersControllerGetUserStrikes(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof usersControllerGetUserStrikes>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type UsersControllerGetUserStrikesQueryResult = NonNullable<Awaited<ReturnType<typeof usersControllerGetUserStrikes>>>
+export type UsersControllerGetUserStrikesQueryError = unknown
+
+
+export function useUsersControllerGetUserStrikes<TData = Awaited<ReturnType<typeof usersControllerGetUserStrikes>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerGetUserStrikes>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof usersControllerGetUserStrikes>>,
+          TError,
+          Awaited<ReturnType<typeof usersControllerGetUserStrikes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUsersControllerGetUserStrikes<TData = Awaited<ReturnType<typeof usersControllerGetUserStrikes>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerGetUserStrikes>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof usersControllerGetUserStrikes>>,
+          TError,
+          Awaited<ReturnType<typeof usersControllerGetUserStrikes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUsersControllerGetUserStrikes<TData = Awaited<ReturnType<typeof usersControllerGetUserStrikes>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerGetUserStrikes>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get a user's full strike history, newest first (moderator)
+ */
+
+export function useUsersControllerGetUserStrikes<TData = Awaited<ReturnType<typeof usersControllerGetUserStrikes>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerGetUserStrikes>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getUsersControllerGetUserStrikesQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

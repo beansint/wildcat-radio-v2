@@ -438,7 +438,43 @@ test('PUB-E-03: shows index lists shows; detail shows description, lineup, episo
 
   await page.goto(`${WEB_BASE}/shows/${show.slug}`);
   await expect(page.getByText(show.name)).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText(activeDjA.displayName)).toBeVisible({ timeout: 10_000 });
+  // FE#44 restored a "Hosted by <DJ>" byline in the hero, which duplicates
+  // the same display name already rendered in the Lineup grid below — a
+  // page-wide `getByText(displayName)` now resolves two elements and trips
+  // Playwright's strict mode. Scope this assertion to the Lineup section
+  // specifically, which is what it actually means to verify.
+  await expect(
+    page.getByTestId('public-show-lineup').getByText(activeDjA.displayName),
+  ).toBeVisible({ timeout: 10_000 });
+});
+
+test('FE#44: show detail hero has the CTA row, hosted-by byline, and cadence/airtime chips when present', async ({
+  page,
+}) => {
+  await page.goto(`${WEB_BASE}/shows/${show.slug}`);
+  const main = page.locator('main');
+  await expect(main.getByText(show.name)).toBeVisible({ timeout: 10_000 });
+
+  // CTA row — both point at /listen, scoped to <main> so the top-nav/global
+  // player's own "Listen live" link (present on every page) can't false-pass
+  // this assertion.
+  await expect(main.getByRole('link', { name: /listen live/i })).toBeVisible();
+  await expect(main.getByRole('link', { name: /join the chat/i })).toBeVisible();
+
+  // Hosted-by byline: both roster DJs, linked to their profile. The same
+  // href also appears in the Lineup grid further down, so assert on the
+  // href directly rather than a name-scoped role locator (which would hit
+  // the same strict-mode collision PUB-E-03 had).
+  await expect(main.getByText(/hosted by/i)).toBeVisible();
+  await expect(main.locator(`a[href="/djs/${activeDjA.id}"]`).first()).toBeVisible();
+
+  // cadence/airtime chips — the fixture show is created with a WEEKLY
+  // Mon/Wed/Fri 13:00-16:00 cadence (`createShow` in `_fixtures.ts`), which
+  // the backend's `formatCadence` renders as "Airs Mon, Wed, Fri" (not a
+  // contiguous run) and "1:00–4:00 PM" — assert those exact labels rather
+  // than just presence, so a formatting regression on either side shows up.
+  await expect(main.getByText('Airs Mon, Wed, Fri')).toBeVisible();
+  await expect(main.getByText('1:00–4:00 PM')).toBeVisible();
 });
 
 test('PUB-E-04: DJs index lists only active DJs; inactive DJ id 404s directly', async ({ page }) => {
@@ -449,11 +485,34 @@ test('PUB-E-04: DJs index lists only active DJs; inactive DJ id 404s directly', 
   await expect(cards.filter({ hasText: inactiveDj.displayName })).toHaveCount(0);
 
   await page.goto(`${WEB_BASE}/djs/${activeDjA.id}`);
-  await expect(page.getByText(activeDjA.displayName)).toBeVisible({ timeout: 10_000 });
+  // FE#45's "All DJs" rail also renders every sibling's display name
+  // (including the active DJ's own chip), so a page-wide `getByText` is no
+  // longer unique here — assert on the profile `<h1>` specifically.
+  await expect(page.getByRole('heading', { level: 1, name: activeDjA.displayName })).toBeVisible({
+    timeout: 10_000,
+  });
 
   await page.goto(`${WEB_BASE}/djs/${inactiveDj.id}`);
   const bodyText = await page.locator('body').innerText();
   expect(bodyText).not.toContain(inactiveDj.displayName);
+});
+
+test('FE#45: DJ profile "All DJs" rail lists siblings and marks the current DJ active', async ({ page }) => {
+  await page.goto(`${WEB_BASE}/djs/${activeDjA.id}`);
+  const rail = page.getByRole('navigation', { name: 'All DJs' });
+  await expect(rail).toBeVisible({ timeout: 10_000 });
+
+  // Both fixture DJs are on the same show's roster, so both are siblings in
+  // the rail; activeDjB (not the page's own DJ) should appear as a plain
+  // link, activeDjA (the page's own DJ) should be marked current.
+  const siblingLink = rail.locator(`a[href="/djs/${activeDjB.id}"]`);
+  await expect(siblingLink).toBeVisible();
+  await expect(siblingLink).not.toHaveClass(/active/);
+
+  const currentLink = rail.locator(`a[href="/djs/${activeDjA.id}"]`);
+  await expect(currentLink).toBeVisible();
+  await expect(currentLink).toHaveClass(/active/);
+  await expect(currentLink).toHaveAttribute('aria-current', 'page');
 });
 
 test('PUB-E-05: edge — unknown show slug renders not-found, episode sections absent', async ({ page }) => {
@@ -517,13 +576,20 @@ test('PUB-E-07: edge — rate limited read shows the retry card, retry re-issues
 
 test('PUB-E-08: cross-links resolve — show -> DJ, DJ -> show, schedule -> show', async ({ page }) => {
   await page.goto(`${WEB_BASE}/shows/${show.slug}`);
-  const djLink = page.getByRole('link', { name: new RegExp(activeDjA.displayName) });
+  // FE#44's "Hosted by" byline links to the same DJ as the Lineup grid
+  // card below it — both resolve `activeDjA.displayName` as a link name, so
+  // `.first()` (rather than a bare strict-mode locator) is required here.
+  const djLink = page.getByRole('link', { name: new RegExp(activeDjA.displayName) }).first();
   await expect(djLink).not.toHaveAttribute('href', '#');
   await djLink.click();
   await expect(page).toHaveURL(new RegExp(`/djs/${activeDjA.id}$`));
 
   await page.goto(`${WEB_BASE}/djs/${activeDjA.id}`);
-  const showLink = page.getByRole('link', { name: new RegExp(show.name) });
+  // FE#45's "All DJs" rail can also surface `show.name` — as the current
+  // DJ's `currentShow` subtitle on their own (active) rail chip — alongside
+  // the "Shows" list link this assertion actually means to test. Scope to
+  // the Shows list testid to avoid the same strict-mode collision.
+  const showLink = page.getByTestId('public-dj-shows').getByRole('link', { name: new RegExp(show.name) });
   await expect(showLink).not.toHaveAttribute('href', '#');
   await showLink.click();
   await expect(page).toHaveURL(new RegExp(`/shows/${show.slug}$`));

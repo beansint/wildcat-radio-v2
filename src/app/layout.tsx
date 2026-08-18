@@ -55,8 +55,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // `suppressHydrationWarning` is required, not cosmetic: the staff theme
+  // script (FE#39) adds `.dark` to <html> before React hydrates, so the server
+  // markup and the client DOM legitimately disagree on this one element's
+  // className. Without it React logs a hydration mismatch on every staff page
+  // load. It suppresses only this element's own attributes — one level deep —
+  // so a real mismatch anywhere inside still reports.
   return (
-    <html lang="en" className={`${poppins.variable} h-full antialiased`}>
+    <html lang="en" className={`${poppins.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col">
         <QueryProvider>
           {children}

@@ -215,7 +215,13 @@ test.describe('admin staff review — golden path + edges', () => {
     await page.getByTestId('admin-staff-deactivate-confirm').click();
     await expect(page.getByTestId('admin-staff-deactivate-dialog')).toBeHidden({ timeout: 10_000 });
 
-    await expect(page.getByTestId('admin-staff-active-row').filter({ hasText: target.email })).toHaveCount(0);
+    // Same 10s budget as every other assertion in this flow: the row leaving the
+    // active table waits on a refetch, and the default 5s is short enough that
+    // this went red under full-suite load against the remote dev database while
+    // passing in isolation.
+    await expect(
+      page.getByTestId('admin-staff-active-row').filter({ hasText: target.email }),
+    ).toHaveCount(0, { timeout: 10_000 });
 
     const deactivatedRow = page.getByTestId('admin-staff-deactivated-row').filter({ hasText: target.email });
     await expect(deactivatedRow).toBeVisible({ timeout: 10_000 });

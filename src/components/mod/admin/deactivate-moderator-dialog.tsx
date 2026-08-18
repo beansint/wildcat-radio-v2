@@ -13,6 +13,7 @@
  * they're the same operation — the page only wires up one control.
  */
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { AlertTriangle } from "lucide-react";
 import {
@@ -51,11 +52,19 @@ export function DeactivateModeratorDialog({
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<DeactivateFormValues>({
     resolver: zodResolver(deactivateSchema),
     defaultValues: { reason: "" },
   });
+
+  // The page keeps this mounted and only toggles `open`, so the form instance
+  // outlives a close — without this, a cancelled reason is still sitting there
+  // the next time a custodian opens the dialog, against a different moderator.
+  useEffect(() => {
+    if (open) reset({ reason: "" });
+  }, [open, reset]);
 
   const busy = isSubmitting || pending;
   const alertMessage = errors.reason?.message ?? error ?? null;

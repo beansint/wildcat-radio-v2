@@ -15,6 +15,7 @@
  * required reason.
  */
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import {
   Dialog,
@@ -50,11 +51,20 @@ export function PromoteModeratorDialog({
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<PromoteFormValues>({
     resolver: zodResolver(promoteSchema),
     defaultValues: { email: "", reason: "" },
   });
+
+  // The page keeps this component mounted and only toggles `open`, so the form
+  // instance outlives a close — without this, cancelling and reopening shows
+  // the previous email and reason still typed in. Clearing on open is what the
+  // "fresh defaults every open" contract above actually requires.
+  useEffect(() => {
+    if (open) reset({ email: "", reason: "" });
+  }, [open, reset]);
 
   const busy = isSubmitting || pending;
   const alertMessage = errors.email?.message ?? errors.reason?.message ?? error ?? null;

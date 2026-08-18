@@ -18,7 +18,7 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession, type SessionUser } from "@/lib/auth/client";
-import { StaffSidebar, type StaffNavSlug } from "@/components/layout/staff-sidebar";
+import { StaffSidebar, StaffThemeScript, type StaffNavSlug } from "@/components/layout/staff-sidebar";
 
 const STAFF_ROLES = new Set(["MODERATOR", "CUSTODIAN"]);
 
@@ -42,9 +42,12 @@ export default function ModLayout({ children }: { children: React.ReactNode }) {
 
   // Hide the persistent global player on staff pages (parity with the
   // prototype + the /studio booth). CSS: `body.wc-staff-page .wc-player`.
+  // `wc-staff` wires up the prototype's staff canvas tint + the
+  // light-mode gold→maroon text remap (globals.css `body.wc-staff`,
+  // `html:not(.dark) body.wc-staff .text-gold`).
   useEffect(() => {
-    document.body.classList.add("wc-staff-page");
-    return () => document.body.classList.remove("wc-staff-page");
+    document.body.classList.add("wc-staff-page", "wc-staff");
+    return () => document.body.classList.remove("wc-staff-page", "wc-staff");
   }, []);
 
   useEffect(() => {
@@ -62,7 +65,9 @@ export default function ModLayout({ children }: { children: React.ReactNode }) {
 
   if (!isAuthorized) {
     return (
-      <div className="wc-shell" aria-hidden="true">
+      <>
+        <StaffThemeScript />
+        <div className="wc-shell" aria-hidden="true">
         <div
           className="wc-sidebar"
           style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}
@@ -75,14 +80,18 @@ export default function ModLayout({ children }: { children: React.ReactNode }) {
         <div className="wc-main flex items-center justify-center min-h-dvh">
           <div className="wc-avatar h-10 w-10 animate-pulse" />
         </div>
-      </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="wc-shell">
-      <StaffSidebar active={activeSlugFromPathname(pathname)} />
-      <div className="wc-main">{children}</div>
-    </div>
+    <>
+      <StaffThemeScript />
+      <div className="wc-shell">
+        <StaffSidebar active={activeSlugFromPathname(pathname)} />
+        <div className="wc-main">{children}</div>
+      </div>
+    </>
   );
 }

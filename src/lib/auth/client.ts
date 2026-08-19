@@ -42,4 +42,42 @@ export const authClient = createAuthClient({
   ],
 });
 
-export const { useSession, signIn, signUp, signOut } = authClient;
+const { useSession: _useSession, signIn, signUp, signOut } = authClient;
+
+// ---------------------------------------------------------------------------
+// Demo mode — NEXT_PUBLIC_DEMO_MODE=true bypasses the backend session check
+// and returns a fake CUSTODIAN user so staff screens render on Vercel without
+// a running API. UX gate only; the real RBAC lives in the backend RolesGuard.
+// ---------------------------------------------------------------------------
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+
+const DEMO_SESSION = {
+  data: {
+    session: {
+      id: 'demo-session',
+      userId: 'demo-user',
+      token: 'demo-token',
+      expiresAt: new Date(Date.now() + 86_400_000),
+    },
+    user: {
+      id: 'demo-user',
+      email: 'demo@wildcat.radio',
+      name: 'Demo Custodian',
+      emailVerified: true,
+      image: null,
+      class: 'CAMPUS',
+      role: 'CUSTODIAN',
+      handle: 'demo',
+    } satisfies SessionUser,
+  },
+  isPending: false,
+  error: null,
+} as const;
+
+function useDemoSession() {
+  return DEMO_SESSION;
+}
+
+const useSession = DEMO_MODE ? useDemoSession : _useSession;
+
+export { useSession, signIn, signUp, signOut };

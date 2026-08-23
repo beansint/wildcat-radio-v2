@@ -54,6 +54,8 @@ interface StaffSidebarProps {
    * `useModerationControllerGetQueue`; other pages just omit this prop.
    */
   queueCount?: number;
+  /** Current authenticated role, used to hide custodian-only destinations. */
+  role?: string | null;
 }
 
 const STATION_ITEMS: { slug: StaffNavSlug; href: string; label: string; Icon: typeof Mic2 }[] = [
@@ -161,7 +163,8 @@ export function StaffThemeToggle() {
   );
 }
 
-export function StaffSidebar({ active, queueCount }: StaffSidebarProps) {
+export function StaffSidebar({ active, queueCount, role }: StaffSidebarProps) {
+  const isCustodian = role === "CUSTODIAN";
   return (
     <aside id="staffNav" className="wc-sidebar" aria-label="Staff navigation">
       <Link
@@ -257,25 +260,29 @@ export function StaffSidebar({ active, queueCount }: StaffSidebarProps) {
         Settings
       </Link>
 
-      <div className="wc-sidebar-group">Custodian</div>
-      <Link
-        href="/admin/staff"
-        className={active === "staff-review" ? "active" : undefined}
-        aria-current={active === "staff-review" ? "page" : undefined}
-        data-testid="mod-nav-staff-review"
-      >
-        <ShieldCheck className="w-4 h-4" aria-hidden="true" />
-        Staff Review
-      </Link>
-      <Link
-        href="/admin/escalations"
-        className={active === "escalations" ? "active" : undefined}
-        aria-current={active === "escalations" ? "page" : undefined}
-        data-testid="mod-nav-escalations"
-      >
-        <Gavel className="w-4 h-4" aria-hidden="true" />
-        Escalations
-      </Link>
+      {isCustodian && (
+        <>
+          <div className="wc-sidebar-group">Custodian</div>
+          <Link
+            href="/admin/staff"
+            className={active === "staff-review" ? "active" : undefined}
+            aria-current={active === "staff-review" ? "page" : undefined}
+            data-testid="mod-nav-staff-review"
+          >
+            <ShieldCheck className="w-4 h-4" aria-hidden="true" />
+            Staff Review
+          </Link>
+          <Link
+            href="/admin/escalations"
+            className={active === "escalations" ? "active" : undefined}
+            aria-current={active === "escalations" ? "page" : undefined}
+            data-testid="mod-nav-escalations"
+          >
+            <Gavel className="w-4 h-4" aria-hidden="true" />
+            Escalations
+          </Link>
+        </>
+      )}
 
       <div className="wc-sidebar-group">Broadcast PC</div>
       <Link href="/studio" data-testid="mod-nav-studio">

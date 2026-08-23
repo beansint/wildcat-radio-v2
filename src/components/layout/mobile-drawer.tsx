@@ -16,6 +16,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useSession, signOut, type SessionUser } from "@/lib/auth/client";
+import { getStaffPortalPath } from "@/lib/auth/staff-routing";
 import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
@@ -38,6 +39,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
   const router   = useRouter();
   const { data, isPending } = useSession();
   const user = data?.user as SessionUser | undefined;
+  const staffPortal = getStaffPortalPath(user?.role);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -116,6 +118,13 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
                  FE#49: bumped below-44px touch targets with inline style —
                  see report for the globals.css / Button size="sm" rules. */
               <>
+                {staffPortal && (
+                  <Button asChild size="sm" data-testid="staff-console-link-mobile">
+                    <Link href={staffPortal} onClick={onClose}>
+                      Staff console
+                    </Link>
+                  </Button>
+                )}
                 <Link
                   href="/profile"
                   className="sn-item"

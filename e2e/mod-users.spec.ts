@@ -19,7 +19,7 @@ async function login(page: import('@playwright/test').Page, email: string) {
   await page.getByTestId('auth-email').fill(email);
   await page.getByTestId('auth-password').fill(PASSWORD);
   await page.getByTestId('auth-submit').click();
-  await page.waitForURL(new RegExp(`^${BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(/)?$`), {
+  await page.waitForURL(new RegExp(`^${BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/mod/roster$`), {
     timeout: 10_000,
   });
 }

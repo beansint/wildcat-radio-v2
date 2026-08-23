@@ -17,6 +17,7 @@ import { z } from 'zod/v4';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signIn } from '@/lib/auth/client';
+import { resolvePostLoginPath } from '@/lib/auth/staff-routing';
 import { AuthBrandPane } from '@/components/auth/auth-brand-pane';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +33,7 @@ type LoginValues = z.infer<typeof loginSchema>;
 function LoginForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const nextUrl      = searchParams.get('next') ?? '/';
+  const requestedNext = searchParams.get('next');
 
   const [formError, setFormError]         = useState<string | null>(null);
   const [showPassword, setShowPassword]   = useState(false);
@@ -50,7 +51,7 @@ function LoginForm() {
         if (result.error) {
           setFormError(result.error.message ?? 'Sign-in failed. Please try again.');
         } else {
-          router.replace(nextUrl);
+          router.replace(resolvePostLoginPath(result.data?.user?.role, requestedNext));
         }
       } catch {
         setFormError('Something went wrong. Please try again.');

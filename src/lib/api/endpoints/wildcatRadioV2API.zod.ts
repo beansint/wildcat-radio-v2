@@ -1392,17 +1392,59 @@ export const AttendanceControllerListQueryParams = zod.object({
 export const AttendanceControllerListResponseItem = zod.object({
   "recordId": zod.string().nullable(),
   "episodeId": zod.string().nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
   "rosterId": zod.string(),
   "displayName": zod.string(),
   "scheduled": zod.string().nullable(),
+  "scheduledEnd": zod.string().nullable(),
+  "showId": zod.string().nullable(),
   "timeIn": zod.iso.datetime({"offset":true}).nullable(),
   "timeOut": zod.iso.datetime({"offset":true}).nullable(),
   "onAirHours": zod.number().nullable(),
-  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT', 'AGREED_OVERTIME']),
+  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT']),
   "lateMinutes": zod.number(),
+  "overtimeMinutes": zod.number(),
+  "overtimeStatus": zod.enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED']),
+  "overtimeApprovedById": zod.string().nullable(),
+  "overtimeApprovedAt": zod.iso.datetime({"offset":true}).nullable(),
   "note": zod.string().nullable()
 })
 export const AttendanceControllerListResponse = zod.array(AttendanceControllerListResponseItem)
+
+
+/**
+ * @summary Create attendance for a scheduled occurrence that currently has no record
+ */
+export const AttendanceControllerCreateBody = zod.object({
+  "showId": zod.string(),
+  "rosterId": zod.string(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).describe('The exact scheduled show occurrence identity'),
+  "timeIn": zod.iso.datetime({"offset":true}),
+  "timeOut": zod.iso.datetime({"offset":true}).nullish(),
+  "note": zod.string().optional(),
+  "reason": zod.string()
+})
+
+export const AttendanceControllerCreateResponse = zod.object({
+  "recordId": zod.string().nullable(),
+  "episodeId": zod.string().nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "rosterId": zod.string(),
+  "displayName": zod.string(),
+  "scheduled": zod.string().nullable(),
+  "scheduledEnd": zod.string().nullable(),
+  "showId": zod.string().nullable(),
+  "timeIn": zod.iso.datetime({"offset":true}).nullable(),
+  "timeOut": zod.iso.datetime({"offset":true}).nullable(),
+  "onAirHours": zod.number().nullable(),
+  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT']),
+  "lateMinutes": zod.number(),
+  "overtimeMinutes": zod.number(),
+  "overtimeStatus": zod.enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED']),
+  "overtimeApprovedById": zod.string().nullable(),
+  "overtimeApprovedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "note": zod.string().nullable()
+})
 
 
 /**
@@ -1412,17 +1454,65 @@ export const AttendanceControllerCorrectParams = zod.object({
   "recordId": zod.string()
 })
 
+export const AttendanceControllerCorrectBody = zod.object({
+  "timeIn": zod.string().optional(),
+  "timeOut": zod.iso.datetime({"offset":true}).nullish(),
+  "note": zod.string().optional(),
+  "reason": zod.string()
+})
+
 export const AttendanceControllerCorrectResponse = zod.object({
   "recordId": zod.string().nullable(),
   "episodeId": zod.string().nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
   "rosterId": zod.string(),
   "displayName": zod.string(),
   "scheduled": zod.string().nullable(),
+  "scheduledEnd": zod.string().nullable(),
+  "showId": zod.string().nullable(),
   "timeIn": zod.iso.datetime({"offset":true}).nullable(),
   "timeOut": zod.iso.datetime({"offset":true}).nullable(),
   "onAirHours": zod.number().nullable(),
-  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT', 'AGREED_OVERTIME']),
+  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT']),
   "lateMinutes": zod.number(),
+  "overtimeMinutes": zod.number(),
+  "overtimeStatus": zod.enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED']),
+  "overtimeApprovedById": zod.string().nullable(),
+  "overtimeApprovedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "note": zod.string().nullable()
+})
+
+
+/**
+ * @summary Approve or revoke completed DJ overtime
+ */
+export const AttendanceControllerDecideOvertimeParams = zod.object({
+  "recordId": zod.string()
+})
+
+export const AttendanceControllerDecideOvertimeBody = zod.object({
+  "approved": zod.boolean().describe('true approves recorded overtime, false rejects or revokes it'),
+  "reason": zod.string()
+})
+
+export const AttendanceControllerDecideOvertimeResponse = zod.object({
+  "recordId": zod.string().nullable(),
+  "episodeId": zod.string().nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "rosterId": zod.string(),
+  "displayName": zod.string(),
+  "scheduled": zod.string().nullable(),
+  "scheduledEnd": zod.string().nullable(),
+  "showId": zod.string().nullable(),
+  "timeIn": zod.iso.datetime({"offset":true}).nullable(),
+  "timeOut": zod.iso.datetime({"offset":true}).nullable(),
+  "onAirHours": zod.number().nullable(),
+  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT']),
+  "lateMinutes": zod.number(),
+  "overtimeMinutes": zod.number(),
+  "overtimeStatus": zod.enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED']),
+  "overtimeApprovedById": zod.string().nullable(),
+  "overtimeApprovedAt": zod.iso.datetime({"offset":true}).nullable(),
   "note": zod.string().nullable()
 })
 

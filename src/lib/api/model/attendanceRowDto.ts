@@ -5,6 +5,7 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
+import type { AttendanceRowDtoOvertimeStatus } from './attendanceRowDtoOvertimeStatus.ts';
 import type { AttendanceRowDtoStatus } from './attendanceRowDtoStatus.ts';
 
 export interface AttendanceRowDto {
@@ -12,10 +13,16 @@ export interface AttendanceRowDto {
   recordId: string | null;
   /** @nullable */
   episodeId: string | null;
+  /** @nullable */
+  scheduledFor: string | null;
   rosterId: string;
   displayName: string;
   /** @nullable */
   scheduled: string | null;
+  /** @nullable */
+  scheduledEnd: string | null;
+  /** @nullable */
+  showId: string | null;
   /** @nullable */
   timeIn: string | null;
   /** @nullable */
@@ -24,6 +31,12 @@ export interface AttendanceRowDto {
   onAirHours: number | null;
   status: AttendanceRowDtoStatus;
   lateMinutes: number;
+  overtimeMinutes: number;
+  overtimeStatus: AttendanceRowDtoOvertimeStatus;
+  /** @nullable */
+  overtimeApprovedById: string | null;
+  /** @nullable */
+  overtimeApprovedAt: string | null;
   /** @nullable */
   note: string | null;
 }

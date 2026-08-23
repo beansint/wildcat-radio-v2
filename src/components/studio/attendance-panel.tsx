@@ -91,7 +91,15 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
   const today = todayQuery.data;
 
   const activeShow = useMemo(
-    () => today?.todayShows.find((s) => s.id === today.episode?.id) ?? null,
+    () => {
+      if (!today?.episode) return null;
+      // Occurrences are identified by episode id. The show-id fallback keeps
+      // the kiosk legible while a fresh scheduled occurrence is materialized
+      // during a handoff and the today list catches up on its next poll.
+      return today.todayShows.find((s) => s.id === today.episode?.id)
+        ?? today.todayShows.find((s) => s.showId === today.episode?.showId)
+        ?? null;
+    },
     [today],
   );
 

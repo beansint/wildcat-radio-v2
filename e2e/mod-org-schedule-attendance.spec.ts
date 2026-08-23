@@ -368,6 +368,7 @@ test.describe('mod org/schedule/attendance', () => {
     await page.getByTestId('att-timein').fill('13:15');
     await page.getByTestId('att-timeout').fill('14:00');
     await page.getByTestId('att-note').fill(noteText);
+    await page.getByTestId('att-reason').fill('Corrected from the studio log');
     await page.getByTestId('att-save').click();
 
     await expect(page.getByTestId('att-save')).toHaveCount(0, { timeout: 10_000 }); // dialog closed
@@ -573,6 +574,7 @@ test.describe('mod org/schedule/attendance', () => {
     // stationLocalToUtcISO + the backend's stationDayWindowUtc fix that —
     // this asserts the fix holds.
     await page.getByTestId('att-timein').fill('05:15');
+    await page.getByTestId('att-reason').fill('Corrected station-local time');
     await page.getByTestId('att-save').click();
     await expect(page.getByTestId('att-save')).toHaveCount(0, { timeout: 10_000 }); // dialog closed
 
@@ -596,6 +598,7 @@ test.describe('mod org/schedule/attendance', () => {
     await row.getByTestId('mod-attendance-edit').click();
     await page.getByTestId('att-timein').fill('13:00');
     await page.getByTestId('att-timeout').fill('12:00');
+    await page.getByTestId('att-reason').fill('Verifying chronological validation');
     await page.getByTestId('att-save').click();
 
     await expect(page.getByRole('alert')).toBeVisible({ timeout: 5_000 });
@@ -608,7 +611,7 @@ test.describe('mod org/schedule/attendance', () => {
     await expect(row.locator('td').nth(3)).toHaveText(originalTimeOutCell);
   });
 
-  test('edge: a scheduled DJ with no attendance record renders an Absent pill and no edit button', async ({
+  test('edge: a moderator can backfill an absent DJ and explicitly approve its overtime', async ({
     page,
   }) => {
     const runId = uniqueSuffix();
@@ -618,7 +621,18 @@ test.describe('mod org/schedule/attendance', () => {
     const row = page.getByTestId('mod-attendance-row').filter({ hasText: djName });
     await expect(row).toBeVisible({ timeout: 10_000 });
     await expect(row).toContainText('Absent');
-    await expect(row.getByTestId('mod-attendance-edit')).toHaveCount(0);
+    await row.getByTestId('mod-attendance-create').click();
+    await page.getByTestId('att-timein').fill('05:10');
+    await page.getByTestId('att-timeout').fill('05:45');
+    await page.getByTestId('att-reason').fill('Backfilled from the booth attendance sheet');
+    await page.getByTestId('att-overtime').click();
+    await page.locator('[data-slot="select-item"]').filter({ hasText: 'Overtime approved' }).click();
+    await page.getByTestId('att-save').click();
+    await expect(page.getByTestId('att-save')).toHaveCount(0, { timeout: 10_000 });
+    const recordedRow = page.getByTestId('mod-attendance-row').filter({ hasText: djName });
+    await expect(recordedRow).not.toContainText('Absent');
+    await expect(recordedRow).toContainText('15m');
+    await expect(recordedRow).toContainText('Overtime approved');
   });
 
   test('edge: the attendance show filter narrows the sheet to the selected show', async ({ page }) => {

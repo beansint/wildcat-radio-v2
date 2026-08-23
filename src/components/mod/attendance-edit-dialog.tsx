@@ -1,116 +1,118 @@
 "use client";
 
-/**
- * Attendance correction dialog — 1:1 with
- * docs/frontend-design-basis-prototype/mod/attendance.html #mAtt.
- * Only ever opened for rows that have a `recordId` (the page never renders
- * the edit trigger for synthetic ABSENT rows), so `row.recordId` is assumed
- * present here.
- */
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
-import { attendanceControllerCorrect } from "@/lib/api/endpoints/attendance/attendance";
+import { useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
+import { attendanceControllerCorrect, attendanceControllerCreate, attendanceControllerDecideOvertime } from "@/lib/api/endpoints/attendance/attendance";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import type { AttendanceRowDto } from "@/lib/api/model";
-import { stationHhmm, stationLocalToUtcISO } from "@/lib/time/station";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { buildAttendanceCorrection, type OvertimeStatus } from "@/lib/time/attendance";
+import { stationDate, stationHhmm } from "@/lib/time/station";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const schema = z
-  .object({
-    timeIn: z.string().min(1, "Add a time in."),
-    timeOut: z.string(),
-    note: z.string().max(2000, "Keep the note under 2000 characters."),
-  })
-  .superRefine((val, ctx) => {
-    if (val.timeOut && val.timeIn && val.timeOut < val.timeIn) {
-      ctx.addIssue({ code: "custom", path: ["timeOut"], message: "Time out must be after time in." });
+const schema = z.object({
+  timeInDate: z.string().min(1, "Add a station date for time in."),
+  timeIn: z.string().min(1, "Add a time in."),
+  timeOutDate: z.string(),
+  timeOut: z.string(),
+  note: z.string().max(2000, "Keep the note under 2000 characters."),
+  reason: z.string().trim().min(1, "Explain this staff correction for the audit log.").max(2000),
+  overtimeStatus: z.enum(["NONE", "PENDING", "APPROVED", "REJECTED"]),
+}).superRefine((values, context) => {
+  if (values.timeOut && !values.timeOutDate) {
+    context.addIssue({ code: "custom", path: ["timeOutDate"], message: "Add a station date for time out." });
+  } else if (values.timeOut) {
+    const correction = buildAttendanceCorrection(values);
+    if (new Date(correction.timeOut ?? 0) < new Date(correction.timeIn)) {
+      context.addIssue({ code: "custom", path: ["timeOut"], message: "Time out must be after time in." });
     }
-  });
+  }
+});
 
 type FormValues = z.infer<typeof schema>;
 
-/**
- * Combines the attendance sheet's selected date with a `type=time` value,
- * both station-local, into the UTC ISO datetime the backend expects. Using
- * the browser's local timezone here would roll a correction near midnight to
- * the wrong day for anyone outside the station's timezone.
- */
-function toIso(date: string, hhmm: string): string {
-  return stationLocalToUtcISO(date, hhmm);
+function isoToStationDate(iso: string | null, fallback: string): string {
+  return iso ? stationDate(iso) : fallback;
 }
 
-/** Renders a UTC ISO instant as a station-local 'HH:MM' for the time input. */
 function isoToTimeInput(iso: string | null): string {
-  if (!iso) return "";
-  return stationHhmm(iso);
+  return iso ? stationHhmm(iso) : "";
 }
 
 interface AttendanceEditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   row: AttendanceRowDto;
-  /** YYYY-MM-DD, the sheet's currently selected date filter. */
+  /** YYYY-MM-DD, the sheet's currently selected station date filter. */
   date: string;
   onSaved: () => void;
 }
 
 export function AttendanceEditDialog({ open, onOpenChange, row, date, onSaved }: AttendanceEditDialogProps) {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
+  const isCreate = !row.recordId;
+  const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
+      timeInDate: isoToStationDate(row.timeIn, date),
       timeIn: isoToTimeInput(row.timeIn),
+      timeOutDate: isoToStationDate(row.timeOut, date),
       timeOut: isoToTimeInput(row.timeOut),
       note: row.note ?? "",
+      reason: "",
+      overtimeStatus: row.overtimeStatus ?? "NONE",
     },
   });
 
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
-      if (!row.recordId) throw new Error("No attendance record to correct.");
-      const body: Record<string, unknown> = { timeIn: toIso(date, values.timeIn) };
-      if (values.timeOut) body.timeOut = toIso(date, values.timeOut);
-      body.note = values.note ?? "";
-      return attendanceControllerCorrect(row.recordId, { body: JSON.stringify(body) });
+      const body = buildAttendanceCorrection(values);
+      if (row.recordId) {
+        const corrected = await attendanceControllerCorrect(row.recordId, body);
+        if (values.overtimeStatus === "APPROVED" && corrected.overtimeMinutes > 0) {
+          return attendanceControllerDecideOvertime(row.recordId, { approved: true, reason: values.reason });
+        }
+        if (values.overtimeStatus === "REJECTED") {
+          return attendanceControllerDecideOvertime(row.recordId, { approved: false, reason: values.reason });
+        }
+        return corrected;
+      }
+      if (!row.showId || !row.scheduledFor) throw new Error("This absent row is missing its scheduled show occurrence.");
+      const created = await attendanceControllerCreate({ ...body, rosterId: row.rosterId, showId: row.showId, scheduledFor: row.scheduledFor });
+      return values.overtimeStatus === "APPROVED" && created.overtimeMinutes > 0
+        ? attendanceControllerDecideOvertime(created.recordId!, { approved: true, reason: values.reason })
+        : values.overtimeStatus === "REJECTED" && created.overtimeMinutes > 0
+          ? attendanceControllerDecideOvertime(created.recordId!, { approved: false, reason: values.reason })
+        : created;
     },
     onSuccess: () => onSaved(),
   });
+  const overtimeStatus = useWatch({ control: form.control, name: "overtimeStatus" });
 
   const alertMessage =
-    errors.timeIn?.message ??
-    errors.timeOut?.message ??
-    errors.note?.message ??
+    form.formState.errors.timeInDate?.message ??
+    form.formState.errors.timeIn?.message ??
+    form.formState.errors.timeOutDate?.message ??
+    form.formState.errors.timeOut?.message ??
+    form.formState.errors.note?.message ??
+    form.formState.errors.reason?.message ??
     (mutation.isError ? getApiErrorMessage(mutation.error) : null);
 
-  const busy = isSubmitting || mutation.isPending;
-
-  function onSubmit(values: FormValues) {
-    mutation.mutate(values);
-  }
+  const busy = form.formState.isSubmitting || mutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit attendance · {row.displayName}</DialogTitle>
+          <DialogTitle>{isCreate ? "Record missed attendance" : "Edit attendance"} · {row.displayName}</DialogTitle>
         </DialogHeader>
         <p className="wc-muted text-sm">
-          Scheduled <span className="tnum">{row.scheduled ?? "—"}</span>
+          Scheduled <span className="tnum">{row.scheduled ?? "—"}</span>{row.scheduledEnd ? ` to ${row.scheduledEnd}` : ""}
         </p>
 
         {alertMessage && (
@@ -119,8 +121,12 @@ export function AttendanceEditDialog({ open, onOpenChange, row, date, onSaved }:
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid grid-cols-2 gap-3 mb-3">
+        <form onSubmit={form.handleSubmit((values) => mutation.mutate(values))} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="att-timein-date">Time in date</Label>
+              <Input id="att-timein-date" type="date" className="tnum" disabled={busy} {...form.register("timeInDate")} />
+            </div>
             <div>
               <Label htmlFor="att-timein">Time in</Label>
               <Input
@@ -129,8 +135,12 @@ export function AttendanceEditDialog({ open, onOpenChange, row, date, onSaved }:
                 className="tnum"
                 data-testid="att-timein"
                 disabled={busy}
-                {...register("timeIn")}
+                {...form.register("timeIn")}
               />
+            </div>
+            <div>
+              <Label htmlFor="att-timeout-date">Time out date</Label>
+              <Input id="att-timeout-date" type="date" className="tnum" disabled={busy} {...form.register("timeOutDate")} />
             </div>
             <div>
               <Label htmlFor="att-timeout">Time out</Label>
@@ -140,26 +150,37 @@ export function AttendanceEditDialog({ open, onOpenChange, row, date, onSaved }:
                 className="tnum"
                 data-testid="att-timeout"
                 disabled={busy}
-                {...register("timeOut")}
+                {...form.register("timeOut")}
               />
             </div>
           </div>
-          <Label htmlFor="att-note">Note</Label>
-          <Textarea
-            id="att-note"
-            rows={3}
-            className="mb-4"
-            placeholder="e.g. agreed overtime w/ Mara"
-            data-testid="att-note"
-            disabled={busy}
-            {...register("note")}
-          />
+          <p className="wc-help">Leave time out blank to keep this attendance record open.</p>
+          <div>
+            <Label htmlFor="att-overtime">Overtime review</Label>
+            <Select value={overtimeStatus} onValueChange={(value) => form.setValue("overtimeStatus", value as OvertimeStatus)} disabled={busy}>
+              <SelectTrigger id="att-overtime" data-testid="att-overtime"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NONE">No overtime</SelectItem>
+                <SelectItem value="PENDING">Overtime pending</SelectItem>
+                <SelectItem value="APPROVED">Overtime approved</SelectItem>
+                <SelectItem value="REJECTED">Overtime declined</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="att-note">Note</Label>
+            <Textarea id="att-note" rows={2} placeholder="e.g. extended live set" data-testid="att-note" disabled={busy} {...form.register("note")} />
+          </div>
+          <div>
+            <Label htmlFor="att-reason">Correction reason</Label>
+            <Textarea id="att-reason" rows={2} placeholder="Required for the staff audit log" data-testid="att-reason" disabled={busy} {...form.register("reason")} />
+          </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} data-testid="att-cancel">
               Cancel
             </Button>
             <Button type="submit" disabled={busy} data-testid="att-save">
-              {busy ? "Saving…" : "Save"}
+              {busy ? "Saving…" : isCreate ? "Create record" : "Save"}
             </Button>
           </DialogFooter>
         </form>

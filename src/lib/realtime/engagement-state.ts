@@ -9,8 +9,16 @@ export interface LiveChatMessage {
 }
 
 export interface QueueReceipt {
+  episodeId: string;
   itemId: string;
   status: string;
+}
+
+export function receiptMatchesEpisode(
+  receipt: QueueReceipt,
+  episodeId: string | null,
+): boolean {
+  return episodeId !== null && receipt.episodeId === episodeId;
 }
 
 export interface UpNextItem {

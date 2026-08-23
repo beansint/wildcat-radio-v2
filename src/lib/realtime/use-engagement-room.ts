@@ -20,6 +20,7 @@ import type {
 import { acquireSocket, type SocketLease } from "./socket";
 import {
   emptyEngagementState,
+  receiptMatchesEpisode,
   type HypeState,
   type LiveChatMessage,
   type PinnedTopic,
@@ -135,6 +136,7 @@ export function useEngagementRoom(
     }
 
     function onQueueReceipt(event: QueueReceipt) {
+      if (!receiptMatchesEpisode(event, episodeId)) return;
       updateState((current) => ({ ...current, receipts: [event, ...current.receipts] }));
       if (event.status === "QUEUED") {
         pushToast?.("Your request is up next.");

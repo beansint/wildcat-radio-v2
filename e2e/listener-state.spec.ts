@@ -66,6 +66,148 @@ test("#64: API failure is unavailable, not genuine OFF_AIR", async ({ page }, te
   ]);
 });
 
+test("#64: a failed poll clears prior LIVE data and stops playback", async ({ page }) => {
+  let unavailable = false;
+  await page.route("**/api/stream/manifest", (route) =>
+    unavailable
+      ? route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ message: "unavailable" }),
+        })
+      : route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(LIVE_MANIFEST),
+        }),
+  );
+  await page.route("**/api/episodes/*/polls", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
+  );
+  await page.route("**/api/auth/get-session", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "null" }),
+  );
+  await page.route("**/test-live.m3u8", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/vnd.apple.mpegurl",
+      body: [
+        "#EXTM3U",
+        "#EXT-X-VERSION:3",
+        "#EXT-X-TARGETDURATION:6",
+        "#EXT-X-MEDIA-SEQUENCE:1",
+        "#EXTINF:6.0,",
+        "live_1.ts",
+      ].join("\n"),
+    }),
+  );
+  await page.route("**/live_1.ts", (route) =>
+    route.fulfill({ status: 200, contentType: "video/mp2t", body: "segment" }),
+  );
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "__pauseCalls", { value: 0, writable: true });
+    HTMLMediaElement.prototype.play = async function () {};
+    HTMLMediaElement.prototype.pause = function () {
+      (window as typeof window & { __pauseCalls: number }).__pauseCalls += 1;
+    };
+  });
+
+  await page.goto("/listen");
+  await expect(page.getByRole("heading", { name: "Live on air" })).toBeVisible();
+  await page.getByTestId("player-play").click();
+  await expect(page.getByTestId("player-play")).toHaveAttribute("aria-label", "Pause");
+
+  unavailable = true;
+  await expect(page.getByTestId("player-status")).toHaveText("UNAVAILABLE", {
+    timeout: 20_000,
+  });
+  await expect(page.getByText("DJ Test")).toHaveCount(0);
+  await expect(page.locator(".wc-player .wc-badge-live")).toHaveCount(0);
+  await expect(page.getByTestId("player-play")).toBeDisabled();
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as typeof window & { __pauseCalls: number }).__pauseCalls),
+    )
+    .toBeGreaterThan(0);
+});
+
+test("#64: an episode-A submission cannot toast or close episode B", async ({ page }) => {
+  let currentManifest = LIVE_MANIFEST;
+  let releaseSubmission!: () => void;
+  let submissionStarted!: () => void;
+  const submissionGate = new Promise<void>((resolve) => {
+    releaseSubmission = resolve;
+  });
+  const started = new Promise<void>((resolve) => {
+    submissionStarted = resolve;
+  });
+  await page.route("**/api/stream/manifest", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(currentManifest),
+    }),
+  );
+  await page.route("**/api/auth/get-session", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        session: {
+          id: "listener-state-session",
+          userId: "listener-state-user",
+          token: "test",
+          expiresAt: new Date(Date.now() + 60_000).toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        user: {
+          id: "listener-state-user",
+          email: "listener@example.test",
+          name: "Listener",
+          emailVerified: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      }),
+    }),
+  );
+  await page.route("**/api/episodes/*/polls", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
+  );
+  await page.route("**/api/episodes/listener-state-episode-a/queue", async (route) => {
+    submissionStarted();
+    await submissionGate;
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({ id: "episode-a-item", status: "PENDING", remaining: 2 }),
+    });
+  });
+
+  await page.goto("/listen");
+  await page.getByTestId("engagement-open-request").click();
+  await page.getByTestId("engagement-request-song").fill("Episode A song");
+  await page.getByTestId("engagement-submit").click();
+  await started;
+
+  currentManifest = {
+    ...LIVE_MANIFEST,
+    dj: ["DJ Episode B"],
+    episodeId: "listener-state-episode-b",
+  };
+  await expect(page.getByTestId("now-playing")).toHaveText("DJ Episode B", {
+    timeout: 20_000,
+  });
+  await page.getByTestId("engagement-open-request").click();
+  await expect(page.getByTestId("engagement-sheet")).toBeVisible();
+
+  releaseSubmission();
+  await page.waitForTimeout(300);
+  await expect(page.getByTestId("engagement-sheet")).toBeVisible();
+  await expect(page.getByText("Request sent to the booth.")).toHaveCount(0);
+});
+
 test("#64: cancelling while the HLS manifest is pending never starts late audio", async ({ page }, testInfo) => {
   const consoleGuard = attachConsoleGuard(page);
   await manifest(page, LIVE_MANIFEST);

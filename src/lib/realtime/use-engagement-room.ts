@@ -17,38 +17,17 @@ import type {
   QueueSubmissionResponseDto,
   SubmitQueueItemDto,
 } from "@/lib/api/model";
-import { getSocket } from "./socket";
+import { acquireSocket, type SocketLease } from "./socket";
+import {
+  emptyEngagementState,
+  type HypeState,
+  type LiveChatMessage,
+  type PinnedTopic,
+  type QueueReceipt,
+  type UpNextItem,
+} from "./engagement-state";
 
-export interface LiveChatMessage {
-  id: string;
-  name: string;
-  body: string;
-  time?: string;
-  variant?: "booth" | "mod";
-}
-
-export interface QueueReceipt {
-  itemId: string;
-  status: string;
-}
-
-export interface UpNextItem {
-  id: string;
-  type: string;
-  text: string;
-  recipient?: string | null;
-  by?: string | null;
-}
-
-export interface PinnedTopic {
-  text: string;
-  expiresAt?: string | Date | null;
-}
-
-export interface HypeState {
-  count: number;
-  trend: "up" | "down" | "flat" | string;
-}
+export type { HypeState, LiveChatMessage, PinnedTopic, QueueReceipt, UpNextItem } from "./engagement-state";
 
 interface ChatEvent {
   id: string;
@@ -90,20 +69,34 @@ export function useEngagementRoom(
   authSessionKey?: string | null,
 ) {
   const queryClient = useQueryClient();
-  const [messages, setMessages] = useState<LiveChatMessage[]>([]);
-  const [livePolls, setLivePolls] = useState<PollResponseDto[]>([]);
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
-  const [receipts, setReceipts] = useState<QueueReceipt[]>([]);
-  const [upNext, setUpNext] = useState<UpNextItem[]>([]);
-  const [pinnedTopic, setPinnedTopic] = useState<PinnedTopic | null>(null);
-  const [hype, setHype] = useState<HypeState>({ count: 0, trend: "flat" });
+  const [storedState, setStoredState] = useState(() => emptyEngagementState(episodeId));
+  const state = useMemo(
+    () =>
+      storedState.episodeId === episodeId
+        ? storedState
+        : emptyEngagementState(episodeId),
+    [episodeId, storedState],
+  );
+  const updateState = useCallback(
+    (update: (current: typeof state) => typeof state) => {
+      setStoredState((previous) =>
+        update(
+          previous.episodeId === episodeId
+            ? previous
+            : emptyEngagementState(episodeId),
+        ),
+      );
+    },
+    [episodeId],
+  );
+  const { messages, livePolls, selectedOptions, receipts, upNext, pinnedTopic, hype } = state;
 
   // Tracks the last authSessionKey we actually cycled the socket for, so we
   // only force a disconnect/reconnect when the session identity truly
   // transitions (not on every effect re-run / episodeId change).
   const prevAuthSessionKeyRef = useRef<string | null | undefined>(undefined);
   // Holds the `connect` handler currently attached to the socket, so the
-  // effect cleanup (which fires before the async getSocket().then() might
+  // effect cleanup (which fires before the async acquireSocket().then() might
   // have resolved) can detach the *right* handler instance.
   const joinEpisodeRef = useRef<(() => void) | null>(null);
 
@@ -125,20 +118,24 @@ export function useEngagementRoom(
     if (!episodeId) return;
     let cancelled = false;
     let socket: Socket | null = null;
+    let lease: SocketLease<Socket> | null = null;
 
     function onChatNew(event: ChatEvent) {
-      setMessages((prev) => {
-        if (prev.some((message) => message.id === event.id)) return prev;
-        return [...prev, toChatMessage(event)];
+      updateState((current) => {
+        if (current.messages.some((message) => message.id === event.id)) return current;
+        return { ...current, messages: [...current.messages, toChatMessage(event)] };
       });
     }
 
     function onChatHidden(event: { id: string }) {
-      setMessages((prev) => prev.filter((message) => message.id !== event.id));
+      updateState((current) => ({
+        ...current,
+        messages: current.messages.filter((message) => message.id !== event.id),
+      }));
     }
 
     function onQueueReceipt(event: QueueReceipt) {
-      setReceipts((prev) => [event, ...prev]);
+      updateState((current) => ({ ...current, receipts: [event, ...current.receipts] }));
       if (event.status === "QUEUED") {
         pushToast?.("Your request is up next.");
       } else if (event.status === "READ") {
@@ -147,30 +144,39 @@ export function useEngagementRoom(
     }
 
     function onQueueUpNext(event: UpNextItem) {
-      setUpNext((prev) => {
-        if (prev.some((item) => item.id === event.id)) return prev;
-        return [event, ...prev].slice(0, 5);
+      updateState((current) => {
+        if (current.upNext.some((item) => item.id === event.id)) return current;
+        return { ...current, upNext: [event, ...current.upNext].slice(0, 5) };
       });
     }
 
     function onPollUpdated(event: PollResponseDto) {
-      setLivePolls((prev) => mergePoll(prev, event));
+      updateState((current) => ({
+        ...current,
+        livePolls: mergePoll(current.livePolls, event),
+      }));
       queryClient.setQueryData(["/api/episodes/" + episodeId + "/polls"], (current: unknown) => {
         return Array.isArray(current) ? mergePoll(current as PollResponseDto[], event) : [event];
       });
     }
 
     function onHypeTick(event: HypeState) {
-      setHype(event);
+      updateState((current) => ({ ...current, hype: event }));
     }
 
     function onTopicPinned(event: PinnedTopic) {
-      setPinnedTopic(event);
+      updateState((current) => ({ ...current, pinnedTopic: event }));
     }
 
-    getSocket().then((s) => {
-      if (cancelled) return;
-      socket = s;
+    acquireSocket()
+      .then((nextLease) => {
+        if (cancelled) {
+          nextLease.release();
+          return;
+        }
+        lease = nextLease;
+        socket = nextLease.socket;
+        const s = nextLease.socket;
 
       s.on("chat:new", onChatNew);
       s.on("chat:hidden", onChatHidden);
@@ -197,15 +203,19 @@ export function useEngagementRoom(
         prevAuthSessionKeyRef.current !== (authSessionKey ?? null);
       prevAuthSessionKeyRef.current = authSessionKey ?? null;
 
-      if (s.connected && sessionChanged) {
-        s.disconnect();
-        s.connect();
-      } else if (s.connected) {
-        joinEpisode();
-      } else {
-        s.connect();
-      }
-    });
+        if (s.connected && sessionChanged) {
+          s.disconnect();
+          s.connect();
+        } else if (s.connected) {
+          joinEpisode();
+        } else {
+          s.connect();
+        }
+      })
+      .catch(() => {
+        // The HTTP query surfaces unavailable engagement state. Avoid an
+        // unhandled rejection if the lazy Socket.IO import/connect fails.
+      });
 
     return () => {
       cancelled = true;
@@ -220,58 +230,121 @@ export function useEngagementRoom(
         socket.off("hype:tick", onHypeTick);
         socket.off("topic:pinned", onTopicPinned);
       }
+      joinEpisodeRef.current = null;
+      lease?.release();
     };
-  }, [authSessionKey, episodeId, pushToast, queryClient]);
+  }, [authSessionKey, episodeId, pushToast, queryClient, updateState]);
 
   const submitQueueMutation = useMutation({
-    mutationFn: async (payload: SubmitQueueItemDto) => {
-      if (!episodeId) throw new Error("No live episode right now.");
-      return submitQueueItem(episodeId, payload);
+    mutationFn: async ({
+      targetEpisodeId,
+      payload,
+    }: {
+      targetEpisodeId: string;
+      payload: SubmitQueueItemDto;
+    }) => {
+      const result = await submitQueueItem(targetEpisodeId, payload);
+      return { targetEpisodeId, result };
     },
-    onSuccess: (result: QueueSubmissionResponseDto) => {
-      pushToast?.(`Sent to the booth. ${result.remaining} left this episode.`);
+    onSuccess: ({ targetEpisodeId, result }: { targetEpisodeId: string; result: QueueSubmissionResponseDto }) => {
+      if (targetEpisodeId === episodeId) {
+        pushToast?.(`Sent to the booth. ${result.remaining} left this episode.`);
+      }
     },
   });
 
   const voteMutation = useMutation({
-    mutationFn: async ({ pollId, optionId }: { pollId: string; optionId: string }) => {
+    mutationFn: async ({
+      targetEpisodeId,
+      pollId,
+      optionId,
+    }: {
+      targetEpisodeId: string;
+      pollId: string;
+      optionId: string;
+    }) => {
       const result = await votePoll(pollId, { optionId });
-      return { pollId, optionId, result };
+      return { targetEpisodeId, pollId, optionId, result };
     },
-    onSuccess: ({ pollId, optionId, result }) => {
-      setSelectedOptions((prev) => ({ ...prev, [pollId]: optionId }));
-      setLivePolls((prev) => mergePoll(prev, result));
+    onSuccess: ({ targetEpisodeId, pollId, optionId, result }) => {
+      setStoredState((current) =>
+        current.episodeId === targetEpisodeId
+          ? {
+              ...current,
+              selectedOptions: { ...current.selectedOptions, [pollId]: optionId },
+              livePolls: mergePoll(current.livePolls, result),
+            }
+          : current,
+      );
     },
   });
 
   const reactionMutation = useMutation({
-    mutationFn: async (emoji: CreateReactionDtoEmoji) => {
-      if (!episodeId) throw new Error("No live episode right now.");
-      return react(episodeId, { emoji });
+    mutationFn: async ({
+      targetEpisodeId,
+      emoji,
+    }: {
+      targetEpisodeId: string;
+      emoji: CreateReactionDtoEmoji;
+    }) => {
+      const result = await react(targetEpisodeId, { emoji });
+      return { targetEpisodeId, result };
     },
   });
+
+  const submitQueue = useCallback(
+    (payload: SubmitQueueItemDto) => {
+      if (!episodeId) return Promise.reject(new Error("No live episode right now."));
+      return submitQueueMutation
+        .mutateAsync({ targetEpisodeId: episodeId, payload })
+        .then(({ result }) => result);
+    },
+    [episodeId, submitQueueMutation],
+  );
+  const vote = useCallback(
+    ({ pollId, optionId }: { pollId: string; optionId: string }) => {
+      if (!episodeId) return Promise.reject(new Error("No live episode right now."));
+      return voteMutation
+        .mutateAsync({ targetEpisodeId: episodeId, pollId, optionId })
+        .then(({ result }) => result);
+    },
+    [episodeId, voteMutation],
+  );
+  const sendReaction = useCallback(
+    (emoji: CreateReactionDtoEmoji) => {
+      if (!episodeId) return Promise.reject(new Error("No live episode right now."));
+      return reactionMutation
+        .mutateAsync({ targetEpisodeId: episodeId, emoji })
+        .then(({ result }) => result);
+    },
+    [episodeId, reactionMutation],
+  );
 
   const sendChat = useCallback(
     async (content: string) => {
       if (!episodeId) throw new Error("No live episode right now.");
-      const socket = await getSocket();
-      await new Promise<void>((resolve, reject) => {
-        socket.timeout(5_000).emit(
-          "chat:message",
-          { episodeId, content },
-          (error: Error | null, response?: { ok?: boolean; error?: string }) => {
-            if (error) {
-              reject(new Error("Chat send timed out."));
-              return;
-            }
-            if (!response?.ok) {
-              reject(new Error(response?.error ?? "Chat failed."));
-              return;
-            }
-            resolve();
-          },
-        );
-      });
+      const lease = await acquireSocket();
+      try {
+        await new Promise<void>((resolve, reject) => {
+          lease.socket.timeout(5_000).emit(
+            "chat:message",
+            { episodeId, content },
+            (error: Error | null, response?: { ok?: boolean; error?: string }) => {
+              if (error) {
+                reject(new Error("Chat send timed out."));
+                return;
+              }
+              if (!response?.ok) {
+                reject(new Error(response?.error ?? "Chat failed."));
+                return;
+              }
+              resolve();
+            },
+          );
+        });
+      } finally {
+        lease.release();
+      }
     },
     [episodeId],
   );
@@ -287,22 +360,31 @@ export function useEngagementRoom(
       hype,
       pollsLoading: pollsQuery.isLoading,
       pollsError: pollsQuery.error ? getApiErrorMessage(pollsQuery.error) : null,
-      submitQueue: submitQueueMutation.mutateAsync,
-      submitQueuePending: submitQueueMutation.isPending,
-      submitQueueError: submitQueueMutation.error
+      submitQueue,
+      submitQueuePending:
+        submitQueueMutation.variables?.targetEpisodeId === episodeId && submitQueueMutation.isPending,
+      submitQueueError: submitQueueMutation.variables?.targetEpisodeId === episodeId && submitQueueMutation.error
         ? getApiErrorMessage(submitQueueMutation.error)
         : null,
-      vote: voteMutation.mutateAsync,
-      votePending: voteMutation.isPending,
-      voteError: voteMutation.error ? getApiErrorMessage(voteMutation.error) : null,
-      react: reactionMutation.mutateAsync,
-      reacting: reactionMutation.isPending,
-      reactionError: reactionMutation.error ? getApiErrorMessage(reactionMutation.error) : null,
+      vote,
+      votePending:
+        voteMutation.variables?.targetEpisodeId === episodeId && voteMutation.isPending,
+      voteError:
+        voteMutation.variables?.targetEpisodeId === episodeId && voteMutation.error
+          ? getApiErrorMessage(voteMutation.error)
+          : null,
+      react: sendReaction,
+      reacting:
+        reactionMutation.variables?.targetEpisodeId === episodeId && reactionMutation.isPending,
+      reactionError:
+        reactionMutation.variables?.targetEpisodeId === episodeId && reactionMutation.error
+          ? getApiErrorMessage(reactionMutation.error)
+          : null,
       sendChat,
       refreshPolls: () => {
         if (!episodeId) return Promise.resolve([]);
         return listPolls(episodeId).then((fresh) => {
-          setLivePolls([]);
+          updateState((current) => ({ ...current, livePolls: [] }));
           return fresh;
         });
       },
@@ -317,17 +399,21 @@ export function useEngagementRoom(
       pollsQuery.isLoading,
       reactionMutation.error,
       reactionMutation.isPending,
+      reactionMutation.variables?.targetEpisodeId,
       receipts,
       selectedOptions,
+      sendReaction,
       sendChat,
+      submitQueue,
       submitQueueMutation.error,
       submitQueueMutation.isPending,
-      submitQueueMutation.mutateAsync,
+      submitQueueMutation.variables?.targetEpisodeId,
       upNext,
       voteMutation.error,
       voteMutation.isPending,
-      voteMutation.mutateAsync,
-      reactionMutation.mutateAsync,
+      voteMutation.variables?.targetEpisodeId,
+      vote,
+      updateState,
     ],
   );
 }

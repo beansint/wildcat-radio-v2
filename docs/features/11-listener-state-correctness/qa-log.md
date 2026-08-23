@@ -10,10 +10,13 @@
 | Cancel/new play invalidates stale attempt | Yes | `play-attempt.spec.ts` | Pure generation contract |
 | OFF_AIR has no fabricated metadata | Yes | `listener-state.spec.ts` | Chromium, clean console |
 | API failure differs from OFF_AIR | Yes | `listener-state.spec.ts` | Expected manifest 503 only |
+| LIVE poll failure clears stale data/audio | Yes | `listener-state.spec.ts` | Previous DJ/status hidden; pause invoked |
 | Pending HLS cancellation never calls play | Yes | `listener-state.spec.ts` | Instrumented real media seam |
 | Pause/resume retains engagement and one membership | Yes | `listener-state.spec.ts` | Real API and Socket.IO; one listener after resume |
 | Reconnect rejoins once | Yes | `listener-state.spec.ts` | Forced offline/online; booth event received afterward |
 | Episode A to B reset | Yes | `listener-state.spec.ts` | A chat clears before B chat arrives |
+| Delayed A submission cannot affect B | Yes | `listener-state.spec.ts` | No stale toast; B sheet remains open |
+| Delayed receipt cannot cross episode | Yes | `engagement-state.spec.ts`, backend `engagement.e2e-spec.ts` | Socket receipt now carries episodeId |
 | Navigation while playing | Yes | `listener-state.spec.ts` | Same audio DOM instance survives `/listen` to `/shows` |
 | Generated manifest client is typed | Yes | `pnpm api:refresh`, `pnpm typecheck` | Unsafe stream cast removed |
 | Unit regression | Yes | `pnpm exec vitest run` | 230 of 230 passed |
@@ -35,6 +38,9 @@
   now absent from OFF_AIR/unavailable screenshots.
 - The live test exposed a session-dependent top-navigation hydration mismatch. The navigation now
   waits for hydration before rendering session actions, matching the existing engagement pattern.
+- Adversarial review found cached LIVE data surviving a failed manifest poll, delayed queue receipts
+  crossing episodes, and an unmounted A sheet completing against B. Manifest failure now clears and
+  pauses, receipts are episode-scoped end to end, and unmounted sheets ignore completion.
 
 ## Runtime evidence
 

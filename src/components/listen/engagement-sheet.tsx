@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { HelpCircle, Megaphone, Music, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { z } from "zod";
 import type { SheetTab } from "./engagement-tiles";
@@ -68,6 +68,7 @@ export function EngagementSheet({
   submitError,
   disabled,
 }: EngagementSheetProps) {
+  const mounted = useRef(false);
   const gate = useEngagementGate();
   const [localError, setLocalError] = useState<string | null>(null);
   const reqForm = useForm<RequestForm>({
@@ -83,6 +84,13 @@ export function EngagementSheet({
     defaultValues: { body: "" },
   });
 
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
   const activeError = useMemo(() => {
     if (tab === "req") return errorText(reqForm.formState.errors);
     if (tab === "ded") return errorText(dedForm.formState.errors);
@@ -97,11 +105,12 @@ export function EngagementSheet({
     setLocalError(null);
     try {
       await onSubmitQueue(payload);
+      if (!mounted.current) return;
       pushToast(success);
       reset();
       onClose();
     } catch (error) {
-      setLocalError(getApiErrorMessage(error));
+      if (mounted.current) setLocalError(getApiErrorMessage(error));
     }
   }
 

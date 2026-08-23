@@ -19,8 +19,7 @@ import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession, type SessionUser } from "@/lib/auth/client";
 import { StaffSidebar, StaffThemeScript, type StaffNavSlug } from "@/components/layout/staff-sidebar";
-
-const STAFF_ROLES = new Set(["MODERATOR", "CUSTODIAN"]);
+import { isStaffRole } from "@/lib/auth/staff-routing";
 
 function activeSlugFromPathname(pathname: string): StaffNavSlug {
   if (pathname.startsWith("/mod/schedule")) return "schedule";
@@ -56,12 +55,12 @@ export default function ModLayout({ children }: { children: React.ReactNode }) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
-    if (!user?.role || !STAFF_ROLES.has(user.role)) {
+    if (!isStaffRole(user?.role)) {
       router.replace("/");
     }
   }, [isPending, data, user?.role, pathname, router]);
 
-  const isAuthorized = !isPending && !!data && !!user?.role && STAFF_ROLES.has(user.role);
+  const isAuthorized = !isPending && !!data && isStaffRole(user?.role);
 
   if (!isAuthorized) {
     return (
@@ -89,7 +88,7 @@ export default function ModLayout({ children }: { children: React.ReactNode }) {
     <>
       <StaffThemeScript />
       <div className="wc-shell">
-        <StaffSidebar active={activeSlugFromPathname(pathname)} />
+        <StaffSidebar active={activeSlugFromPathname(pathname)} role={user?.role} />
         <div className="wc-main">{children}</div>
       </div>
     </>

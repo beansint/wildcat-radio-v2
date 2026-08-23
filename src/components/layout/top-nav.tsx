@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { useSession, type SessionUser } from "@/lib/auth/client";
+import { getStaffPortalPath } from "@/lib/auth/staff-routing";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -24,6 +25,7 @@ export function TopNav({ onMenu }: TopNavProps) {
   const pathname = usePathname();
   const { data, isPending } = useSession();
   const user = data?.user as SessionUser | undefined;
+  const staffPortal = getStaffPortalPath(user?.role);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -82,13 +84,24 @@ export function TopNav({ onMenu }: TopNavProps) {
           {/* Never show any UI while session is pending (avoids layout shift / flash) */}
           {!isPending && (
             user ? (
-              /* Logged-in: avatar → /profile */
-              <Link
-                href="/profile"
-                className="wc-avatar h-9 w-9 block flex-none"
-                aria-label={`Your profile${user.handle ? ` (@${user.handle})` : ''}`}
-                style={user.image ? { backgroundImage: `url(${user.image})`, backgroundSize: 'cover' } : undefined}
-              />
+              /* Logged-in: elevated roles get a direct staff entry, all users keep Profile. */
+              <>
+                {staffPortal && (
+                  <Link
+                    href={staffPortal}
+                    className="wc-btn wc-btn-primary wc-btn-sm hidden md:inline-flex"
+                    data-testid="staff-console-link"
+                  >
+                    Staff console
+                  </Link>
+                )}
+                <Link
+                  href="/profile"
+                  className="wc-avatar h-9 w-9 block flex-none"
+                  aria-label={`Your profile${user.handle ? ` (@${user.handle})` : ''}`}
+                  style={user.image ? { backgroundImage: `url(${user.image})`, backgroundSize: 'cover' } : undefined}
+                />
+              </>
             ) : (
               /* Logged-out: Sign in + Listen live.
                  FE#49: .wc-btn-sm is min-height:36px (globals.css, reserved

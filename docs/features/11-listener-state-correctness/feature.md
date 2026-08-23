@@ -31,4 +31,3 @@
   `LIVE | STATION_ROTATION | OFF_AIR` union.
 - Live radio has no meaningful progress or elapsed timestamp, so those prototype placeholders are
   removed rather than replaced.
-

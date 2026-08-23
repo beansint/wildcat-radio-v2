@@ -736,13 +736,23 @@ export const ClearStationSessionResponse = zod.object({
 /**
  * @summary Get live stream manifest
  */
-export const GetStreamManifestResponse = zod.unknown()
+export const GetStreamManifestResponse = zod.object({
+  "status": zod.enum(['LIVE', 'STATION_ROTATION', 'OFF_AIR']),
+  "reason": zod.enum(['NO_ATTENDANCE', 'SOURCE_STALE', 'SEGMENT_STALE', 'PUBLICATION_STALE', 'CONFIGURATION_ERROR']).nullable(),
+  "type": zod.enum(['hls']),
+  "url": zod.string().nullable(),
+  "dj": zod.array(zod.string()),
+  "episodeId": zod.string().nullable()
+})
 
 
 /**
  * @summary Studio source heartbeat
  */
-export const PostStreamHeartbeatResponse = zod.unknown()
+export const PostStreamHeartbeatResponse = zod.object({
+  "status": zod.enum(['LIVE', 'STATION_ROTATION', 'OFF_AIR']),
+  "reason": zod.enum(['NO_ATTENDANCE', 'SOURCE_STALE', 'SEGMENT_STALE', 'PUBLICATION_STALE', 'CONFIGURATION_ERROR']).nullable()
+})
 
 
 /**

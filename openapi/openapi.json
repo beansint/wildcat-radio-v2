@@ -1219,7 +1219,63 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "reason",
+                    "type",
+                    "url",
+                    "dj",
+                    "episodeId"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "LIVE",
+                        "STATION_ROTATION",
+                        "OFF_AIR"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "nullable": true,
+                      "enum": [
+                        "NO_ATTENDANCE",
+                        "SOURCE_STALE",
+                        "SEGMENT_STALE",
+                        "PUBLICATION_STALE",
+                        "CONFIGURATION_ERROR"
+                      ]
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "hls"
+                      ]
+                    },
+                    "url": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "dj": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "episodeId": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "summary": "Get live stream manifest",
@@ -1234,7 +1290,42 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "reason"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "LIVE",
+                        "STATION_ROTATION",
+                        "OFF_AIR"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "nullable": true,
+                      "enum": [
+                        "NO_ATTENDANCE",
+                        "SOURCE_STALE",
+                        "SEGMENT_STALE",
+                        "PUBLICATION_STALE",
+                        "CONFIGURATION_ERROR"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid, stale, or future-dated publication evidence"
           }
         },
         "summary": "Studio source heartbeat",

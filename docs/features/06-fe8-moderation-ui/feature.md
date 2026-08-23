@@ -14,7 +14,7 @@ M4's backend (#9 the moderation engine, #44 the log-read slice) shipped strikes/
 - **AC-3:** `/mod/logs` exposes two tabs — broadcast activity (episode/time-in/time-out lifecycle events from the 5-point instrumentation) and staff audit (append-only actions incl. queue-issued strikes) — each paginated and filterable by date range.
 - **AC-4:** `/profile/standing` shows the signed-in user's own strikes, active mute (with reason + local-time expiry converted from UTC), and ban state, and lets them submit a written appeal against an active strike/mute.
 - **AC-5:** `/admin/escalations` (CUSTODIAN only) lists pending appeals/reinstatement requests across three tabs and lets the custodian record a decision (uphold/reduce/overturn) with a mandatory written response.
-- **AC-6 (RBAC edge):** a LISTENER hitting any `/mod/*` route is redirected to `/`; anyone other than CUSTODIAN hitting `/admin/escalations` is redirected to `/`; an unauthenticated visitor to any of these routes is redirected to `/login?next=<path>`.
+- **AC-6 (RBAC edge):** a LISTENER hitting any `/mod/*` route is redirected to `/`; a MODERATOR hitting a custodian-only `/admin/*` route is returned to `/mod/roster`; anyone else hitting `/admin/escalations` is redirected to `/`; an unauthenticated visitor to any of these routes is redirected to `/login?next=<path>`.
 - **AC-7 (end-to-end acceptance):** a moderator issues a strike from `/mod/queue` → the struck user's `/profile/standing` shows the strike with reason + expiry → the user submits an appeal → the custodian records a written response on `/admin/escalations`, which is then reflected in the affected user's standing (strike removed/mute cleared on Overturn).
 
 ## Scope

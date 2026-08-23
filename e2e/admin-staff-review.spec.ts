@@ -111,12 +111,12 @@ async function loginCustodian(page: Page) {
 // ── RBAC (SR-W-07 / SR-X-01d) ───────────────────────────────────────────
 
 test.describe('admin staff review — authorization at the UI', () => {
-  test('SR-W-07/SR-X-01d edge: MODERATOR visiting /admin/staff is redirected to / and the table never renders', async ({
+  test('SR-W-07/SR-X-01d edge: MODERATOR visiting /admin/staff returns to the staff console and the table never renders', async ({
     page,
   }) => {
     await loginAs(page, 'moderator');
     await page.goto(`${WEB_BASE}/admin/staff`);
-    await expect(page).toHaveURL(new RegExp(`^${WEB_BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/?$`), {
+    await expect(page).toHaveURL(new RegExp(`^${WEB_BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/mod/roster$`), {
       timeout: 8_000,
     });
     await expect(page.getByTestId('admin-staff-active-table')).toHaveCount(0);

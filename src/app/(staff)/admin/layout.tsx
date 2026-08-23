@@ -11,7 +11,7 @@
  *
  * - isPending          → skeleton chrome (no layout shift)
  * - !data               → redirect to /login?next=<pathname>
- * - role !== CUSTODIAN  → redirect to / (moderators can't see /admin)
+ * - role !== CUSTODIAN  → moderators return to /mod/roster; listeners go to /
  *
  * NOTE: This is a UX gate only — real protection is the Nest RolesGuard on
  * every admin endpoint (SessionGuard first, per the plan's RBAC constraint).
@@ -20,8 +20,7 @@ import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession, type SessionUser } from "@/lib/auth/client";
 import { StaffSidebar, StaffThemeScript } from "@/components/layout/staff-sidebar";
-
-const CUSTODIAN_ROLES = new Set(["CUSTODIAN"]);
+import { getStaffPortalPath, isCustodianRole } from "@/lib/auth/staff-routing";
 
 function activeSlugFromPathname(pathname: string): "escalations" | "staff-review" {
   // Two routes live under `/admin` today; extend this switch as more
@@ -50,12 +49,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
-    if (!user?.role || !CUSTODIAN_ROLES.has(user.role)) {
-      router.replace("/");
+    if (!isCustodianRole(user?.role)) {
+      router.replace(getStaffPortalPath(user?.role) ?? "/");
     }
   }, [isPending, data, user?.role, pathname, router]);
 
-  const isAuthorized = !isPending && !!data && !!user?.role && CUSTODIAN_ROLES.has(user.role);
+  const isAuthorized = !isPending && !!data && isCustodianRole(user?.role);
 
   if (!isAuthorized) {
     return (
@@ -83,7 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <>
       <StaffThemeScript />
       <div className="wc-shell">
-        <StaffSidebar active={activeSlugFromPathname(pathname)} />
+        <StaffSidebar active={activeSlugFromPathname(pathname)} role={user?.role} />
         <div className="wc-main">{children}</div>
       </div>
     </>

@@ -11,12 +11,13 @@
 - **Better Auth client** (`src/lib/auth/client.ts`): `createAuthClient` + `inferAdditionalFields` for `class`, `role`, `handle`; exports `authClient`, `useSession`, `signIn`, `signUp`, `signOut`.
 - **CSS ports** (`globals.css`): `wc-auth-grid`, `wc-auth-brand/form/formcard/glass/check/avatars`, `wc-mono*`, `wc-bottomnav`, `wc-switch`, `wc-pill/ok/warn/bad/neutral`, `wc-divider`, `wc-typeicon/wc-ti-*`, `hide-scrollbar`.
 - **`(auth)` route group** — no TopNav; `wc-auth-grid` split pane; brand pane extracted to `AuthBrandPane` (`login`/`register` variants).
-  - `/login` — email+password, CIT button disabled with "coming soon", redirect to `?next=` or `/`.
+  - `/login` — email+password, CIT button disabled with "coming soon"; valid internal `?next=` wins, otherwise moderators and custodians enter `/mod/roster` while listeners return to `/`.
   - `/register` — email+handle+password+confirm+terms, success → verify-banner state (user logged in).
   - `/verify-email?token=` — calls `verifyEmail`; success/error/resend.
   - `/forgot-password` — calls `forgetPassword`; "check inbox" state.
   - `/reset-password?token=` — calls `resetPassword`; success → redirect to `/login`.
 - **`(app)` route group** — client-side auth guard (`useSession` → isPending: skeleton, !data: redirect `/login?next=`, data: render children).
+- **Role-aware public navigation** — authenticated moderators and custodians see a Staff console action in the desktop header and mobile drawer, both targeting `/mod/roster`; listeners do not.
   - `/profile` — profile card, verification banner, about-you (year/college/age/gender), demographics consent, notifications toggles, quick-links, sign-out.
   - `/notifications` — static shell + placeholder items; live receipts deferred to M3/M4.
 - **Nav updates**:

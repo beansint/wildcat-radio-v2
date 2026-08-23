@@ -67,11 +67,10 @@ export async function loginAs(page: Page, role: Role): Promise<void> {
   await page.getByTestId('auth-email').fill(ACCOUNTS[role]);
   await page.getByTestId('auth-password').fill(PASSWORD);
   await page.getByTestId('auth-submit').click();
-  await page.waitForURL(new RegExp(`^${escapeRegExp(WEB_BASE)}(/)?($|\\?)`), { timeout: 10_000 });
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const expectedPath = role === 'moderator' || role === 'custodian' ? '/mod/roster' : '/';
+  await page.waitForURL((url) => url.origin === new URL(WEB_BASE).origin && url.pathname === expectedPath, {
+    timeout: 10_000,
+  });
 }
 
 async function expectOk(res: { ok(): boolean; status(): number; text(): Promise<string> }, what: string) {

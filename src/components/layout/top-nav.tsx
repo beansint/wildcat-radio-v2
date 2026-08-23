@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { useSession, type SessionUser } from "@/lib/auth/client";
 import { getStaffPortalPath } from "@/lib/auth/staff-routing";
+import { useHydrated } from "@/lib/use-hydrated";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -26,6 +27,7 @@ export function TopNav({ onMenu }: TopNavProps) {
   const { data, isPending } = useSession();
   const user = data?.user as SessionUser | undefined;
   const staffPortal = getStaffPortalPath(user?.role);
+  const mounted = useHydrated();
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -81,8 +83,8 @@ export function TopNav({ onMenu }: TopNavProps) {
 
         {/* CTA area — session-aware */}
         <div className="ml-auto flex items-center gap-2">
-          {/* Never show any UI while session is pending (avoids layout shift / flash) */}
-          {!isPending && (
+          {/* Match SSR on the first client render, then reveal session-aware actions. */}
+          {mounted && !isPending && (
             user ? (
               /* Logged-in: elevated roles get a direct staff entry, all users keep Profile. */
               <>

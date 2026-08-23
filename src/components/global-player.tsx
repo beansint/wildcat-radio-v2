@@ -25,8 +25,19 @@ import { Flame, Loader2, Pause, Play, Users, Volume2, VolumeX } from "lucide-rea
  * live listener count. No seek bar — see the activity strip note below.
  */
 export function GlobalPlayer() {
-  const { status, djs, listeners, isPlaying, phase, upNext, episodeId, play, pause, audioRef } =
-    useStream();
+  const {
+    status,
+    djs,
+    listeners,
+    manifestAvailability,
+    isPlaying,
+    phase,
+    upNext,
+    episodeId,
+    play,
+    pause,
+    audioRef,
+  } = useStream();
   const pathname = usePathname();
 
   const [volume, setVolume] = useState(1);
@@ -41,14 +52,18 @@ export function GlobalPlayer() {
     audio.muted = muted;
   }, [volume, muted, audioRef]);
 
-  const canPlay = status !== "OFF_AIR";
+  const canPlay = manifestAvailability === "ready" && status !== "OFF_AIR";
   const isListenPage = pathname === "/listen";
 
   const showTitle =
     status === "LIVE" && djs.length > 0 ? djs[0] : "Wildcat Radio";
 
   const showSub =
-    status === "LIVE"
+    manifestAvailability === "loading"
+      ? "Checking station status"
+      : manifestAvailability === "unavailable"
+        ? "Station status unavailable"
+        : status === "LIVE"
       ? djs.length > 1
         ? djs.slice(1).join(", ")
         : "Live on air"
@@ -171,7 +186,7 @@ export function GlobalPlayer() {
         {/* Up next — only exists while listening, because the queue arrives over
             the socket that only listening opens (see useStreamPresence). Absent
             rather than stale when idle. */}
-        {upNext && (
+        {status === "LIVE" && upNext && (
           <span className="wc-player-upnext" data-testid="player-upnext">
             <span className="label">Up next</span>
             <span className="text">{upNext.text}</span>
@@ -181,7 +196,7 @@ export function GlobalPlayer() {
         {/* Listener count — real presence data, the one number a radio bar earns.
             Null until the presence socket reports, so it stays hidden rather
             than flashing a placeholder "0 listening". */}
-        {listeners != null && listeners > 0 ? (
+        {canPlay && listeners != null && listeners > 0 ? (
           <span
             className="wc-player-listeners"
             data-testid="player-listeners"
@@ -202,7 +217,7 @@ export function GlobalPlayer() {
 
         {/* Status badge (for test targeting) */}
         <span data-testid="player-status" className="sr-only">
-          {status}
+          {manifestAvailability === "unavailable" ? "UNAVAILABLE" : status}
         </span>
 
         {/* React from anywhere — REST, no socket, so it costs no connection on
@@ -269,7 +284,7 @@ export function GlobalPlayer() {
           }
           data-testid="player-play"
           onClick={handlePlayPause}
-          disabled={!canPlay && !isPlaying}
+          disabled={!canPlay && phase === "idle"}
           className="wc-play"
         >
           <span>

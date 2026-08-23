@@ -18,7 +18,7 @@ export interface ChatMsg extends ChatMessageProps {
 interface ChatColumnProps {
   messages: ChatMsg[];
   onSend: (text: string) => Promise<void>;
-  listenerCount: number;
+  listenerCount: number | null;
   polls: PollResponseDto[];
   selectedOptions: Record<string, string>;
   onVote: (input: { pollId: string; optionId: string }) => Promise<unknown>;
@@ -92,11 +92,12 @@ export function ChatColumn({
           <MessagesSquare className="w-[18px] h-[18px] text-maroon" aria-hidden="true" />
           Live chat
         </div>
-        {/* TODO(M5/M6): wire listener count from useStream().listeners */}
-        <span className="wc-chip-ghost tnum">
-          <Users className="w-3.5 h-3.5" aria-hidden="true" />
-          {listenerCount}
-        </span>
+        {isLive && listenerCount !== null && (
+          <span className="wc-chip-ghost tnum">
+            <Users className="w-3.5 h-3.5" aria-hidden="true" />
+            {listenerCount}
+          </span>
+        )}
       </header>
 
       {/* Feed */}
@@ -111,7 +112,9 @@ export function ChatColumn({
       >
         {messages.length === 0 ? (
           <div className="wc-muted text-sm px-2 py-3">
-            Chat will appear here when listeners and the booth post during the episode.
+            {isLive
+              ? "Chat will appear here when listeners and the booth post during the episode."
+              : "Chat is available during a live episode."}
           </div>
         ) : (
           messages.map((msg) => (
@@ -125,20 +128,22 @@ export function ChatColumn({
           ))
         )}
         {/* Inline poll placed after messages, matching prototype order */}
-        <InlinePoll
-          polls={polls}
-          selectedOptions={selectedOptions}
-          onVote={onVote}
-          votePending={votePending}
-          voteError={voteError}
-          loading={pollsLoading}
-          error={pollsError}
-          disabled={!isLive || gate !== "ok"}
-        />
+        {isLive && (
+          <InlinePoll
+            polls={polls}
+            selectedOptions={selectedOptions}
+            onVote={onVote}
+            votePending={votePending}
+            voteError={voteError}
+            loading={pollsLoading}
+            error={pollsError}
+            disabled={gate !== "ok"}
+          />
+        )}
       </div>
 
       {/* Desktop-only input - gated */}
-      {!mounted ? (
+      {!isLive ? null : !mounted ? (
         <div
           className="hidden lg:flex border-t"
           style={{ borderColor: "var(--border)" }}

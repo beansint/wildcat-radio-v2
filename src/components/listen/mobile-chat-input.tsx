@@ -27,6 +27,8 @@ export function MobileChatInput({ onOpenSheet, onSend, onReact, reacting, isLive
   // very first client render must match the server's neutral shell.
   const mounted = useHydrated();
 
+  if (!isLive) return null;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const text = value.trim();

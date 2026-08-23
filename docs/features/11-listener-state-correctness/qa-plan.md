@@ -26,4 +26,3 @@
 - Render true OFF_AIR and assert no DJ, track, count, progress, timestamp, or on-air claim.
 
 Run browser coverage twice. Record screenshots for OFF_AIR, unavailable, and LIVE/cancel states.
-

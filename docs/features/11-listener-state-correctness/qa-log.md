@@ -19,10 +19,11 @@
 | Delayed receipt cannot cross episode | Yes | `engagement-state.spec.ts`, backend `engagement.e2e-spec.ts` | Socket receipt now carries episodeId |
 | Navigation while playing | Yes | `listener-state.spec.ts` | Same audio DOM instance survives `/listen` to `/shows` |
 | Generated manifest client is typed | Yes | `pnpm api:refresh`, `pnpm typecheck` | Unsafe stream cast removed |
-| Unit regression | Yes | `pnpm exec vitest run` | 230 of 230 passed |
-| Production build | Yes | `NEXT_PUBLIC_API_URL=... pnpm build` | Next.js 16.2.9, 37 routes |
+| Unit regression | Yes | `pnpm exec vitest run` | 231 of 231 passed |
+| Production build | Yes | `NEXT_PUBLIC_API_URL=... pnpm build` | Next.js 16.2.11, 37 routes |
 | Lint | Yes | `pnpm lint` | No errors; four pre-existing warnings |
-| Full #64 browser file, twice | Yes | `listener-state.spec.ts` | 4 of 4 on both production-server runs; deterministic plus real local services |
+| Dependency audit | Yes | `pnpm audit --audit-level high` | No known vulnerabilities |
+| Full #64 browser file, twice | Yes | `listener-state.spec.ts` | 6 of 6 on both production-server runs; deterministic plus real local services |
 
 ## Bugs found and fixed
 
@@ -40,7 +41,12 @@
   waits for hydration before rendering session actions, matching the existing engagement pattern.
 - Adversarial review found cached LIVE data surviving a failed manifest poll, delayed queue receipts
   crossing episodes, and an unmounted A sheet completing against B. Manifest failure now clears and
-  pauses, receipts are episode-scoped end to end, and unmounted sheets ignore completion.
+  pauses, receipts are episode-scoped end to end, and unmounted sheets ignore completion. The final
+  lifetime guard uses an `AbortController`, avoiding render-time ref access while retaining the
+  episode-turnover protection.
+- The final dependency gate found newly published high-severity advisories. Next.js and its ESLint
+  config moved to 16.2.11, and narrowly scoped pnpm overrides reuse the backend's patched transitive
+  dependency policy. The frozen install, full suite, production build, and audit passed afterward.
 
 ## Runtime evidence
 
@@ -48,6 +54,8 @@
   PostgreSQL `wildcat_73_e2e`, and a continuously refreshed publication heartbeat.
 - Playwright screenshots were captured and visually inspected for OFF_AIR, unavailable, and
   cancelled-LIVE states under each test's output directory.
+- The complete six-scenario file passed twice against the production Next.js server. Both local
+  services and the heartbeat loop were stopped afterward, and the disposable database was dropped.
 
 ## External limits
 

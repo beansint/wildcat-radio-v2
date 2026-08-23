@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
-import { disconnectSocket, getExistingSocket, getSocket } from "./socket";
+import type { GetStreamManifest200Reason } from "@/lib/api/model";
+import { acquireSocket, type SocketLease } from "./socket";
 import { computePresenceTransition } from "./presence-actions";
 
 interface StreamStatusEvent {
   episodeId: string | null;
   status: "LIVE" | "STATION_ROTATION" | "OFF_AIR";
+  reason: GetStreamManifest200Reason;
   listeners: number;
 }
 
@@ -21,6 +23,7 @@ export interface UpNextPeek {
 interface PresenceState {
   listeners: number | null;
   socketStatus: "LIVE" | "STATION_ROTATION" | "OFF_AIR" | null;
+  socketEpisodeId: string | null | undefined;
   /**
    * The most recent queue item, for the global player's "up next" peek.
    *
@@ -54,6 +57,7 @@ export function useStreamPresence(
   const [state, setState] = useState<PresenceState>({
     listeners: null,
     socketStatus: null,
+    socketEpisodeId: undefined,
     upNext: null,
   });
 
@@ -68,33 +72,40 @@ export function useStreamPresence(
     });
 
     if (!transition.shouldConnect) {
-      // Not listening: leave through the existing connection (if any) and
-      // tear it down. Never create a connection just to say goodbye.
-      const existing = getExistingSocket();
-      if (existing && transition.leave) {
-        existing.emit("listening:leave", { episodeId: transition.leave });
-      }
       prevEpisodeId.current = transition.nextPrevEpisodeId;
-      // Drop the peek with the connection — showing a queue item from a
-      // broadcast you are no longer listening to would go stale silently.
-      setState((prev) => (prev.upNext ? { ...prev, upNext: null } : prev));
-      disconnectSocket();
+      setState({ listeners: null, socketStatus: null, socketEpisodeId: undefined, upNext: null });
       return;
     }
 
     let cancelled = false;
     let socket: Socket | null = null;
+    let lease: SocketLease<Socket> | null = null;
+
+    // Never render presence-derived state from a previous episode while the
+    // new room is joining.
+    setState({ listeners: null, socketStatus: null, socketEpisodeId: undefined, upNext: null });
 
     function onStreamStatus(event: StreamStatusEvent) {
+      if (episodeId && event.episodeId && event.episodeId !== episodeId) return;
       setState((prev) => ({
         ...prev,
         listeners: event.listeners,
         socketStatus: event.status,
+        socketEpisodeId: event.episodeId,
       }));
     }
 
     function onQueueUpNext(event: UpNextPeek) {
       setState((prev) => ({ ...prev, upNext: event }));
+    }
+
+    function onDisconnect() {
+      setState({
+        listeners: null,
+        socketStatus: null,
+        socketEpisodeId: undefined,
+        upNext: null,
+      });
     }
 
     // Re-join presence after any (re)connect — the server drops room
@@ -107,45 +118,50 @@ export function useStreamPresence(
       }
     }
 
-    getSocket().then((s) => {
-      if (cancelled) return;
-      socket = s;
+    acquireSocket()
+      .then((nextLease) => {
+        if (cancelled) {
+          nextLease.release();
+          return;
+        }
+        lease = nextLease;
+        socket = nextLease.socket;
+        const s = nextLease.socket;
 
-      s.on("stream:status", onStreamStatus);
-      s.on("queue:up-next", onQueueUpNext);
-      s.on("connect", onConnect);
+        s.on("stream:status", onStreamStatus);
+        s.on("queue:up-next", onQueueUpNext);
+        s.on("connect", onConnect);
+        s.on("disconnect", onDisconnect);
 
-      if (transition.leave) {
-        s.emit("listening:leave", { episodeId: transition.leave });
-      }
-      if (transition.join) {
-        s.emit("listening:join", { episodeId: transition.join });
-      }
-      prevEpisodeId.current = transition.nextPrevEpisodeId;
-    });
+        prevEpisodeId.current = transition.nextPrevEpisodeId;
+        if (s.connected) {
+          if (transition.leave) {
+            s.emit("listening:leave", { episodeId: transition.leave });
+          }
+          if (transition.join) {
+            s.emit("listening:join", { episodeId: transition.join });
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) onDisconnect();
+      });
 
     return () => {
       cancelled = true;
       if (socket) {
+        if (prevEpisodeId.current) {
+          socket.emit("listening:leave", { episodeId: prevEpisodeId.current });
+        }
         socket.off("stream:status", onStreamStatus);
         socket.off("queue:up-next", onQueueUpNext);
         socket.off("connect", onConnect);
+        socket.off("disconnect", onDisconnect);
       }
+      prevEpisodeId.current = null;
+      lease?.release();
     };
   }, [episodeId, active]);
-
-  // Leave on unmount — say goodbye through the existing connection only;
-  // getExistingSocket() never creates one, so an unmount that never
-  // connected (e.g. the listener never pressed play) is a no-op.
-  useEffect(() => {
-    return () => {
-      if (prevEpisodeId.current) {
-        const socket = getExistingSocket();
-        socket?.emit("listening:leave", { episodeId: prevEpisodeId.current });
-        prevEpisodeId.current = null;
-      }
-    };
-  }, []);
 
   return state;
 }

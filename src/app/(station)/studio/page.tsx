@@ -43,7 +43,8 @@ import type {
   StudioQueueItemResponseDtoType,
   StudioTodayDto,
 } from "@/lib/api/model";
-import { getSocket } from "@/lib/realtime/socket";
+import { acquireSocket, type SocketLease } from "@/lib/realtime/socket";
+import type { Socket } from "socket.io-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -241,7 +242,9 @@ export default function StudioPage() {
   useEffect(() => {
     if (!episodeId) return;
     let cancelled = false;
-    let socket: Awaited<ReturnType<typeof getSocket>> | null = null;
+    let socket: Socket | null = null;
+    let lease: SocketLease<Socket> | null = null;
+    let joinEpisode: (() => void) | null = null;
     function onPollUpdated(poll: PollResponseDto) {
       setPolls((prev) => {
         const exists = prev.some((item) => item.id === poll.id);
@@ -257,24 +260,37 @@ export default function StudioPage() {
     function onChatNew(event: ChatMessageResponseDto) {
       addChatMessage(event);
     }
-    getSocket().then((s) => {
-      if (cancelled) return;
-      socket = s;
-      s.emit("episode:join", { episodeId });
-      s.on("poll:updated", onPollUpdated);
-      s.on("hype:tick", onHypeTick);
-      s.on("topic:pinned", onTopicPinned);
-      s.on("chat:new", onChatNew);
-    });
+    acquireSocket()
+      .then((nextLease) => {
+        if (cancelled) {
+          nextLease.release();
+          return;
+        }
+        lease = nextLease;
+        socket = nextLease.socket;
+        const s = nextLease.socket;
+        joinEpisode = () => s.emit("episode:join", { episodeId });
+        s.on("connect", joinEpisode);
+        if (s.connected) joinEpisode();
+        s.on("poll:updated", onPollUpdated);
+        s.on("hype:tick", onHypeTick);
+        s.on("topic:pinned", onTopicPinned);
+        s.on("chat:new", onChatNew);
+      })
+      .catch((error) => {
+        if (!cancelled) setStatus(getApiErrorMessage(error));
+      });
     return () => {
       cancelled = true;
       if (socket) {
         socket.emit("episode:leave", { episodeId });
+        if (joinEpisode) socket.off("connect", joinEpisode);
         socket.off("poll:updated", onPollUpdated);
         socket.off("hype:tick", onHypeTick);
         socket.off("topic:pinned", onTopicPinned);
         socket.off("chat:new", onChatNew);
       }
+      lease?.release();
     };
   }, [episodeId, addChatMessage]);
 

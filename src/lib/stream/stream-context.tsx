@@ -62,15 +62,16 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     : isPending
       ? "loading"
       : "ready";
-  const manifestStatus: StreamStatus = manifest?.status ?? "OFF_AIR";
-  const manifestUrl: string | null = manifest?.url ?? null;
+  const manifestReady = manifestAvailability === "ready";
+  const manifestStatus: StreamStatus = manifestReady ? (manifest?.status ?? "OFF_AIR") : "OFF_AIR";
+  const manifestUrl: string | null = manifestReady ? (manifest?.url ?? null) : null;
   // FE#47 — `manifest?.dj ?? []` produced a NEW array identity on every render.
   // The manifest query polls every 15s, so that alone re-rendered every
   // consumer (including `GlobalPlayer`, which is in the root layout and
   // therefore on every route) even when the DJ list had not changed.
-  const rawDjs = manifest?.dj;
+  const rawDjs = manifestReady ? manifest?.dj : undefined;
   const djs: string[] = useMemo(() => rawDjs ?? [], [rawDjs]);
-  const episodeId: string | null = manifest?.episodeId ?? null;
+  const episodeId: string | null = manifestReady ? (manifest?.episodeId ?? null) : null;
 
   const [phase, setPhase] = useState<PlayerPhase>("idle");
   // Presence must count people who can actually HEAR the stream — a listener
@@ -197,7 +198,8 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   }, [destroyHls]);
 
   useEffect(() => {
-    if (manifestAvailability !== "ready" || status !== "OFF_AIR") return;
+    if (manifestAvailability === "loading") return;
+    if (manifestAvailability === "ready" && status !== "OFF_AIR") return;
     const timer = window.setTimeout(pause, 0);
     return () => window.clearTimeout(timer);
   }, [manifestAvailability, pause, status]);

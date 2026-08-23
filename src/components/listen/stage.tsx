@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, Mic, Play, Pause, Pin } from "lucide-react";
+import { Users, Mic, Play, Pause, Pin, Radio, WifiOff, LoaderCircle } from "lucide-react";
 import { useStream } from "@/lib/stream/stream-context";
 import { ReactionBar } from "./reaction-bar";
 import { EngagementTiles } from "./engagement-tiles";
@@ -29,18 +29,45 @@ export function Stage({
   reactionError,
   isLive,
 }: StageProps) {
-  const { isPlaying, play, pause, djs, listeners } = useStream();
+  const {
+    isPlaying,
+    phase,
+    play,
+    pause,
+    djs,
+    listeners,
+    status,
+    manifestUrl,
+    manifestAvailability,
+  } = useStream();
 
   function handlePlayPause() {
-    if (isPlaying) {
+    if (phase !== "idle") {
       pause();
     } else {
       play();
     }
   }
 
-  const djName = djs?.[0] ?? "DJ Mara";
-  const listenerCount = listeners ?? 142;
+  const canPlay = manifestAvailability === "ready" && status !== "OFF_AIR" && Boolean(manifestUrl);
+  const headline =
+    manifestAvailability === "loading"
+      ? "Checking the broadcast"
+      : manifestAvailability === "unavailable"
+        ? "Broadcast status unavailable"
+        : status === "LIVE"
+          ? "Live on air"
+          : status === "STATION_ROTATION"
+            ? "Station rotation"
+            : "Off air";
+  const description =
+    manifestAvailability === "unavailable"
+      ? "We could not reach the station status service. Try again shortly."
+      : status === "LIVE"
+        ? "Streaming live from the Wildcat Radio booth."
+        : status === "STATION_ROTATION"
+          ? "Automated station audio is currently playing."
+          : "There is no listener stream available right now.";
 
   return (
     <section className="wc-grad-maroon wc-watermark text-white rounded-2xl relative overflow-hidden shadow-xl lg:sticky lg:top-[72px]">
@@ -48,36 +75,45 @@ export function Stage({
 
         {/* Live badge + listener count */}
         <div className="flex items-center justify-between mb-4">
-          <span className="wc-badge-live">
-            <span className="dot" aria-hidden="true" />
-            On air
+          <span className={status === "LIVE" && manifestAvailability === "ready" ? "wc-badge-live" : "wc-chip"}>
+            {manifestAvailability === "loading" ? (
+              <LoaderCircle className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+            ) : status === "OFF_AIR" || manifestAvailability === "unavailable" ? (
+              <WifiOff className="w-3.5 h-3.5" aria-hidden="true" />
+            ) : (
+              <Radio className="w-3.5 h-3.5" aria-hidden="true" />
+            )}
+            {headline}
           </span>
-          <span
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-bold"
-            style={{ background: "rgba(255,255,255,.12)" }}
-          >
-            <Users className="w-3.5 h-3.5 text-gold" aria-hidden="true" />
-            <span className="tnum">{listenerCount}</span> listening
-          </span>
+          {canPlay && listeners !== null && (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-bold"
+              style={{ background: "rgba(255,255,255,.12)" }}
+            >
+              <Users className="w-3.5 h-3.5 text-gold" aria-hidden="true" />
+              <span className="tnum">{listeners}</span> listening
+            </span>
+          )}
         </div>
 
         {/* Now playing */}
         <div className="flex items-center gap-4">
           <div className="wc-art rounded-2xl w-24 h-24 md:w-28 md:h-28 flex-none shadow-lg" role="img" aria-label="Show art" />
           <div className="min-w-0">
-            <div className="text-[.68rem] font-bold uppercase tracking-[.12em] text-white/55">
-              On air now
-            </div>
-            {/* TODO(M5/M6): wire to live show title from manifest/API */}
             <h1 className="text-2xl md:text-[1.75rem] font-extrabold leading-tight truncate">
-              Afternoon Vibes
+              {headline}
             </h1>
-            {/* TODO(M5/M6): wire to now-playing track from API */}
-            <div className="text-white/75 truncate text-sm">&ldquo;Golden Hour&rdquo; - JVKE</div>
-            <span className="wc-chip mt-2 text-[.72rem]">
-              <Mic className="w-3.5 h-3.5" aria-hidden="true" />
-              {djName}
-            </span>
+            <div className="text-white/75 text-sm mt-1">{description}</div>
+            {status === "LIVE" && djs.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {djs.map((dj) => (
+                  <span key={dj} className="wc-chip text-[.72rem]">
+                    <Mic className="w-3.5 h-3.5" aria-hidden="true" />
+                    {dj}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -86,54 +122,44 @@ export function Stage({
           <button
             className="wc-play w-14 h-14 flex-none"
             onClick={handlePlayPause}
-            aria-label={isPlaying ? "Pause live stream" : "Play live stream"}
+            aria-label={phase !== "idle" ? "Pause live stream" : "Play live stream"}
+            disabled={!canPlay && phase === "idle"}
           >
-            {isPlaying ? (
+            {phase !== "idle" ? (
               <Pause className="w-6 h-6" aria-hidden="true" />
             ) : (
               <Play className="w-6 h-6" aria-hidden="true" />
             )}
           </button>
           <div className="flex-1 min-w-0">
-            {/* TODO(M5/M6): replace static 66% with real stream progress if available */}
-            <div
-              className="h-1.5 rounded-full overflow-hidden"
-              style={{ background: "rgba(255,255,255,.16)" }}
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={66}
-              aria-label="Stream progress"
-            >
-              <div className="h-full" style={{ width: "66%", background: "var(--gold)" }} />
-            </div>
-            <div className="flex items-center justify-between text-[.7rem] font-semibold text-white/55 mt-1.5">
-              <span className="flex items-center gap-1.5">
-                {isPlaying && (
-                  <span className="eq text-gold" aria-hidden="true">
-                    <i /><i /><i /><i />
-                  </span>
-                )}
-                Live · streaming
-              </span>
-              <span className="tnum">2:14 / live</span>
+            <div className="text-sm font-semibold text-white/70">
+              {phase === "connecting"
+                ? "Connecting…"
+                : phase === "reconnecting"
+                  ? "Reconnecting…"
+                  : isPlaying
+                    ? "Playing live audio"
+                    : canPlay
+                      ? "Ready to play"
+                      : "Playback unavailable"}
             </div>
           </div>
         </div>
 
-        {/* Reaction bar (hype meter + emoji reactions) */}
-        <ReactionBar
-          hype={hype}
-          onReact={onReact}
-          reacting={reacting}
-          error={reactionError}
-          isLive={isLive}
-        />
+        {isLive && (
+          <>
+            <ReactionBar
+              hype={hype}
+              onReact={onReact}
+              reacting={reacting}
+              error={reactionError}
+              isLive={isLive}
+            />
+            <EngagementTiles onOpen={onOpenSheet} />
+          </>
+        )}
 
-        {/* Engagement tiles */}
-        <EngagementTiles onOpen={onOpenSheet} />
-
-        {upNext.length > 0 && (
+        {isLive && upNext.length > 0 && (
           <div
             className="mt-5 rounded-xl p-3"
             style={{ background: "rgba(255,255,255,.10)", border: "1px solid rgba(255,255,255,.16)" }}
@@ -155,21 +181,23 @@ export function Stage({
         )}
 
         {/* Pinned topic */}
-        <div
-          className="mt-5 rounded-xl p-3 flex items-start gap-2.5"
-          style={{ background: "rgba(255,255,255,.10)", border: "1px solid rgba(255,255,255,.16)" }}
-          data-testid="engagement-pinned-topic"
-        >
-          <Pin className="w-4 h-4 mt-0.5 flex-none text-gold" aria-hidden="true" />
-          <div>
-            <div className="text-[.62rem] font-bold uppercase tracking-[.12em] text-white/55">
-              Pinned by the booth
-            </div>
-            <div className="text-sm">
-              {pinnedTopic?.text ?? "No pinned topic yet. The booth can pin prompts during the show."}
+        {isLive && (
+          <div
+            className="mt-5 rounded-xl p-3 flex items-start gap-2.5"
+            style={{ background: "rgba(255,255,255,.10)", border: "1px solid rgba(255,255,255,.16)" }}
+            data-testid="engagement-pinned-topic"
+          >
+            <Pin className="w-4 h-4 mt-0.5 flex-none text-gold" aria-hidden="true" />
+            <div>
+              <div className="text-[.62rem] font-bold uppercase tracking-[.12em] text-white/55">
+                Pinned by the booth
+              </div>
+              <div className="text-sm">
+                {pinnedTopic?.text ?? "No pinned topic yet."}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
       </div>
     </section>

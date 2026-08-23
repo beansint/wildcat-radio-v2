@@ -12,24 +12,33 @@ import { pushToast } from "@/components/listen/toast";
 import type { SheetTab } from "@/components/listen/engagement-tiles";
 
 export function ListenClient() {
-  const { listeners, episodeId } = useStream();
+  const { listeners, episodeId, status, manifestAvailability } = useStream();
   const { data: session } = useSession();
-  const engagement = useEngagementRoom(episodeId, pushToast, session?.user?.id ?? null);
+  const isLive = manifestAvailability === "ready" && status === "LIVE" && Boolean(episodeId);
+  const engagementEpisodeId = isLive ? episodeId : null;
+  const engagement = useEngagementRoom(
+    engagementEpisodeId,
+    pushToast,
+    session?.user?.id ?? null,
+  );
 
-  // Sheet state
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetTab, setSheetTab] = useState<SheetTab>("req");
+  const [sheetState, setSheetState] = useState<{
+    scope: string;
+    open: boolean;
+    tab: SheetTab;
+  }>({ scope: "", open: false, tab: "req" });
 
   function openSheet(tab: SheetTab) {
-    setSheetTab(tab);
-    setSheetOpen(true);
+    setSheetState({ scope: episodeScope, open: true, tab });
   }
 
   function closeSheet() {
-    setSheetOpen(false);
+    setSheetState((current) => ({ ...current, open: false }));
   }
 
-  const listenerCount = listeners ?? 142;
+  const episodeScope = engagementEpisodeId ?? `${manifestAvailability}:${status}`;
+  const sheetOpen = sheetState.scope === episodeScope && sheetState.open;
+  const sheetTab = sheetState.scope === episodeScope ? sheetState.tab : "req";
 
   return (
     /* muted background matches prototype `body{background:var(--muted)}` for listen page */
@@ -44,14 +53,15 @@ export function ListenClient() {
           onReact={engagement.react}
           reacting={engagement.reacting}
           reactionError={engagement.reactionError}
-          isLive={Boolean(episodeId)}
+          isLive={isLive}
         />
 
         {/* Chat column - right column */}
         <ChatColumn
+          key={`chat:${episodeScope}`}
           messages={engagement.messages}
           onSend={engagement.sendChat}
-          listenerCount={listenerCount}
+          listenerCount={listeners}
           polls={engagement.polls}
           selectedOptions={engagement.selectedOptions}
           onVote={engagement.vote}
@@ -59,30 +69,32 @@ export function ListenClient() {
           voteError={engagement.voteError}
           pollsLoading={engagement.pollsLoading}
           pollsError={engagement.pollsError}
-          isLive={Boolean(episodeId)}
+          isLive={isLive}
         />
       </main>
 
       {/* Mobile sticky chat input */}
       <MobileChatInput
+        key={`mobile-chat:${episodeScope}`}
         onOpenSheet={openSheet}
         onSend={engagement.sendChat}
         onReact={() => engagement.react("🔥")}
         reacting={engagement.reacting}
-        isLive={Boolean(episodeId)}
+        isLive={isLive}
       />
 
       {/* Engagement bottom sheet + overlay */}
       <EngagementSheet
+        key={`sheet:${episodeScope}`}
         open={sheetOpen}
         tab={sheetTab}
-        onTabChange={setSheetTab}
+        onTabChange={(tab) => setSheetState({ scope: episodeScope, open: true, tab })}
         onClose={closeSheet}
         pushToast={pushToast}
         onSubmitQueue={engagement.submitQueue}
         submitting={engagement.submitQueuePending}
         submitError={engagement.submitQueueError}
-        disabled={!episodeId}
+        disabled={!isLive}
       />
 
       {/* Toast portal */}

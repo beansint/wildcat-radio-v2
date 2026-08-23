@@ -5,9 +5,9 @@
  *
  * Date + show filters over `GET /api/attendance`. The backend synthesizes
  * ABSENT rows (recordId: null, episodeId: null, timeIn/timeOut: null) for
- * every roster member scheduled that date with no attendance record — those
- * fields are treated as nullable throughout, rendered as an "Absent" pill,
- * and never get an edit trigger (there's nothing to PATCH).
+ * every roster member scheduled that date with no attendance record. Staff can
+ * open those rows to create a reasoned, audited correction for the exact show
+ * occurrence.
  *
  * FE#51: search + pagination are client-side. `GET /api/attendance` (see
  * `AttendanceControllerListParams`) takes only `date`/`showId` — no `q` or
@@ -17,7 +17,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Pencil } from "lucide-react";
+import { ClipboardPlus, Pencil } from "lucide-react";
 import { useAttendanceControllerList, getAttendanceControllerListQueryKey } from "@/lib/api/endpoints/attendance/attendance";
 import { useListShowsAdmin } from "@/lib/api/endpoints/shows/shows";
 import type { AttendanceRowDto, ShowDto } from "@/lib/api/model";
@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { AttendanceEditDialog } from "@/components/mod/attendance-edit-dialog";
 import { stationDate, stationHhmm } from "@/lib/time/station";
+import { overtimeStatusLabel } from "@/lib/time/attendance";
 
 const ALL_SHOWS = "all";
 const PAGE_SIZE = 20;
@@ -66,7 +67,6 @@ const STATUS_META: Record<AttendanceRowDtoStatus, { label: string; pillClass: st
   [AttendanceRowDtoStatus.ON_TIME]: { label: "On time", pillClass: "wc-pill-ok" },
   [AttendanceRowDtoStatus.LATE]: { label: "Late", pillClass: "wc-pill-warn" },
   [AttendanceRowDtoStatus.ABSENT]: { label: "Absent", pillClass: "wc-pill-bad" },
-  [AttendanceRowDtoStatus.AGREED_OVERTIME]: { label: "Agreed overtime", pillClass: "wc-pill-neutral" },
 };
 
 function statusLabel(row: AttendanceRowDto): string {
@@ -144,6 +144,16 @@ export default function AttendancePage() {
       cell: (r) => <span className="tnum">{r.onAirHours ?? 0}</span>,
     },
     {
+      key: "overtime",
+      header: "Overtime",
+      cell: (r) => (
+        <div className="flex flex-col gap-1">
+          <span className="tnum">{r.overtimeMinutes > 0 ? `${r.overtimeMinutes}m` : "—"}</span>
+          <span className="wc-muted text-xs">{overtimeStatusLabel(r.overtimeStatus)}</span>
+        </div>
+      ),
+    },
+    {
       key: "status",
       header: "Status",
       cell: (r) => (
@@ -154,21 +164,18 @@ export default function AttendancePage() {
     {
       key: "actions",
       header: "Actions",
-      cell: (r) =>
-        r.recordId ? (
-          <Button
-            variant="outline"
-            size="sm"
-            data-testid="mod-attendance-edit"
-            aria-label={`Edit attendance for ${r.displayName}`}
-            onClick={() => setEditRow(r)}
-          >
-            <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
-            Edit
-          </Button>
-        ) : (
-          <span className="wc-muted text-sm">—</span>
-        ),
+      cell: (r) => (
+        <Button
+          variant="outline"
+          size="sm"
+          data-testid={r.recordId ? "mod-attendance-edit" : "mod-attendance-create"}
+          aria-label={`${r.recordId ? "Edit attendance for" : "Record missed attendance for"} ${r.displayName}`}
+          onClick={() => setEditRow(r)}
+        >
+          {r.recordId ? <Pencil className="w-3.5 h-3.5" aria-hidden="true" /> : <ClipboardPlus className="w-3.5 h-3.5" aria-hidden="true" />}
+          {r.recordId ? "Edit" : "Record"}
+        </Button>
+      ),
     },
   ];
 

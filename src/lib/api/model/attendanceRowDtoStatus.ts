@@ -13,5 +13,4 @@ export const AttendanceRowDtoStatus = {
   ON_TIME: 'ON_TIME',
   LATE: 'LATE',
   ABSENT: 'ABSENT',
-  AGREED_OVERTIME: 'AGREED_OVERTIME',
 } as const;

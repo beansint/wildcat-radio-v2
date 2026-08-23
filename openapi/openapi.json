@@ -2415,6 +2415,36 @@
         "tags": [
           "attendance"
         ]
+      },
+      "post": {
+        "operationId": "AttendanceController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAttendanceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created attendance row",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceRowDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create attendance for a scheduled occurrence that currently has no record",
+        "tags": [
+          "attendance"
+        ]
       }
     },
     "/api/attendance/{recordId}": {
@@ -2430,6 +2460,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectAttendanceDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Corrected attendance row",
@@ -2443,6 +2483,47 @@
           }
         },
         "summary": "Correct an attendance record (time in/out, note)",
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/attendance/{recordId}/overtime": {
+      "post": {
+        "operationId": "AttendanceController_decideOvertime",
+        "parameters": [
+          {
+            "name": "recordId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideOvertimeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attendance row with its overtime decision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceRowDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Approve or revoke completed DJ overtime",
         "tags": [
           "attendance"
         ]
@@ -5273,6 +5354,11 @@
             "type": "string",
             "nullable": true
           },
+          "scheduledFor": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
           "rosterId": {
             "type": "string"
           },
@@ -5280,6 +5366,14 @@
             "type": "string"
           },
           "scheduled": {
+            "type": "string",
+            "nullable": true
+          },
+          "scheduledEnd": {
+            "type": "string",
+            "nullable": true
+          },
+          "showId": {
             "type": "string",
             "nullable": true
           },
@@ -5302,12 +5396,32 @@
             "enum": [
               "ON_TIME",
               "LATE",
-              "ABSENT",
-              "AGREED_OVERTIME"
+              "ABSENT"
             ]
           },
           "lateMinutes": {
             "type": "number"
+          },
+          "overtimeMinutes": {
+            "type": "number"
+          },
+          "overtimeStatus": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "PENDING",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "overtimeApprovedById": {
+            "type": "string",
+            "nullable": true
+          },
+          "overtimeApprovedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           },
           "note": {
             "type": "string",
@@ -5317,15 +5431,98 @@
         "required": [
           "recordId",
           "episodeId",
+          "scheduledFor",
           "rosterId",
           "displayName",
           "scheduled",
+          "scheduledEnd",
+          "showId",
           "timeIn",
           "timeOut",
           "onAirHours",
           "status",
           "lateMinutes",
+          "overtimeMinutes",
+          "overtimeStatus",
+          "overtimeApprovedById",
+          "overtimeApprovedAt",
           "note"
+        ]
+      },
+      "CreateAttendanceDto": {
+        "type": "object",
+        "properties": {
+          "showId": {
+            "type": "string"
+          },
+          "rosterId": {
+            "type": "string"
+          },
+          "scheduledFor": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The exact scheduled show occurrence identity"
+          },
+          "timeIn": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timeOut": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "note": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "showId",
+          "rosterId",
+          "scheduledFor",
+          "timeIn",
+          "reason"
+        ]
+      },
+      "CorrectAttendanceDto": {
+        "type": "object",
+        "properties": {
+          "timeIn": {
+            "type": "string"
+          },
+          "timeOut": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "note": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "DecideOvertimeDto": {
+        "type": "object",
+        "properties": {
+          "approved": {
+            "type": "boolean",
+            "description": "true approves recorded overtime, false rejects or revokes it"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "approved",
+          "reason"
         ]
       },
       "ResolvedActorDto": {

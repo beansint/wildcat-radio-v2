@@ -13,6 +13,7 @@ import {
 import { useGetStreamManifest } from "@/lib/api/endpoints/stream/stream";
 import { useStreamPresence, type UpNextPeek } from "@/lib/realtime/use-stream-presence";
 import { ToastHost, pushToast } from "@/components/listen/toast";
+import { PlayAttemptTracker } from "./play-attempt";
 
 type StreamStatus = "LIVE" | "STATION_ROTATION" | "OFF_AIR";
 
@@ -28,12 +29,7 @@ type StreamStatus = "LIVE" | "STATION_ROTATION" | "OFF_AIR";
  */
 export type PlayerPhase = "idle" | "connecting" | "playing" | "reconnecting";
 
-interface ManifestData {
-  status?: StreamStatus;
-  url?: string | null;
-  dj?: string[];
-  episodeId?: string | null;
-}
+export type ManifestAvailability = "loading" | "ready" | "unavailable";
 
 export interface StreamState {
   /** Status resolved from socket (preferred) or manifest poll */
@@ -43,6 +39,7 @@ export interface StreamState {
   episodeId: string | null;
   /** Listener count from socket (null if no socket data yet) */
   listeners: number | null;
+  manifestAvailability: ManifestAvailability;
   isPlaying: boolean;
   /** Finer-grained than `isPlaying` — drives the buffering/reconnecting UI. */
   phase: PlayerPhase;
@@ -56,11 +53,15 @@ export interface StreamState {
 const StreamContext = createContext<StreamState | null>(null);
 
 export function StreamProvider({ children }: { children: ReactNode }) {
-  const { data } = useGetStreamManifest({
+  const { data: manifest, isPending, isError } = useGetStreamManifest({
     query: { refetchInterval: 15_000 },
   });
 
-  const manifest = data as unknown as ManifestData | undefined;
+  const manifestAvailability: ManifestAvailability = isError
+    ? "unavailable"
+    : isPending
+      ? "loading"
+      : "ready";
   const manifestStatus: StreamStatus = manifest?.status ?? "OFF_AIR";
   const manifestUrl: string | null = manifest?.url ?? null;
   // FE#47 — `manifest?.dj ?? []` produced a NEW array identity on every render.
@@ -83,10 +84,21 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hlsRef = useRef<any>(null);
+  const playAttempts = useRef(new PlayAttemptTracker());
 
-  const { listeners, socketStatus, upNext } = useStreamPresence(episodeId, isPlaying);
+  const { listeners, socketStatus, socketEpisodeId, upNext } = useStreamPresence(
+    episodeId,
+    isPlaying,
+  );
 
-  const status: StreamStatus = socketStatus ?? manifestStatus;
+  const socketMatchesCurrentStream =
+    socketEpisodeId === null || socketEpisodeId === episodeId;
+  const status: StreamStatus =
+    manifestAvailability !== "ready" || manifestStatus === "OFF_AIR"
+      ? manifestStatus
+      : socketMatchesCurrentStream
+        ? (socketStatus ?? manifestStatus)
+        : manifestStatus;
 
   const destroyHls = useCallback(() => {
     if (hlsRef.current) {
@@ -97,7 +109,8 @@ export function StreamProvider({ children }: { children: ReactNode }) {
 
   const play = useCallback(async () => {
     const audio = audioRef.current;
-    if (!audio || !manifestUrl) return;
+    if (!audio || !manifestUrl || manifestAvailability !== "ready") return;
+    const attempt = playAttempts.current.start();
 
     // Before anything awaits: HLS setup + first segment is 1-3s of silence, and
     // the old build showed nothing at all in that window.
@@ -105,6 +118,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
 
     // Lazy-import hls.js to avoid SSR issues
     const { default: Hls } = await import("hls.js");
+    if (!attempt.isCurrent()) return;
 
     if (Hls.isSupported()) {
       destroyHls();
@@ -113,6 +127,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       hls.loadSource(manifestUrl);
       hls.attachMedia(audio);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (!attempt.isCurrent()) return;
         // MANIFEST_PARSED fires asynchronously, outside the click's original
         // user-gesture window — autoplay rejection is a real scenario here,
         // not just in the native-HLS branch below. Mirror that branch's
@@ -120,8 +135,11 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         // of optimistically flipping to "playing" over dead air.
         audio
           .play()
-          .then(() => setIsPlaying(true))
+          .then(() => {
+            if (attempt.isCurrent()) setIsPlaying(true);
+          })
           .catch(() => {
+            if (!attempt.isCurrent()) return;
             setIsPlaying(false);
             pushToast("Playback couldn't start — tap play again");
           });
@@ -129,7 +147,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       hls.on(
         Hls.Events.ERROR,
         (_: unknown, d: { fatal?: boolean; type?: string }) => {
-          if (!d.fatal) return;
+          if (!d.fatal || !attempt.isCurrent()) return;
           // A campus stream drops. Previously ANY fatal error tore the player
           // down silently, so a recoverable 10-second wifi blip looked exactly
           // like the user having pressed stop. hls.js can recover the two
@@ -154,8 +172,11 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       audio.src = manifestUrl;
       audio
         .play()
-        .then(() => setIsPlaying(true))
+        .then(() => {
+          if (attempt.isCurrent()) setIsPlaying(true);
+        })
         .catch(() => {
+          if (!attempt.isCurrent()) return;
           setIsPlaying(false);
           pushToast("Playback couldn't start — tap play again");
         });
@@ -163,15 +184,23 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       // Neither hls.js nor native HLS is supported — play() would otherwise
       // silently no-op with no feedback at all.
       pushToast("This browser can't play the live stream");
+      if (attempt.isCurrent()) setPhase("idle");
     }
-  }, [manifestUrl, destroyHls, pushToast]);
+  }, [manifestAvailability, manifestUrl, destroyHls, setIsPlaying]);
 
   const pause = useCallback(() => {
+    playAttempts.current.cancel();
     const audio = audioRef.current;
     if (audio) audio.pause();
     destroyHls();
     setPhase("idle");
   }, [destroyHls]);
+
+  useEffect(() => {
+    if (manifestAvailability !== "ready" || status !== "OFF_AIR") return;
+    const timer = window.setTimeout(pause, 0);
+    return () => window.clearTimeout(timer);
+  }, [manifestAvailability, pause, status]);
 
   /**
    * The <audio> element is the only thing that actually knows whether sound is
@@ -182,7 +211,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onPlaying = () => setPhase("playing");
+    const onPlaying = () => setPhase((current) => (current === "idle" ? current : "playing"));
     // `waiting` fires both for the initial buffer and for a mid-stream
     // underrun; only the latter is a "reconnect".
     const onWaiting = () =>
@@ -249,6 +278,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         djs,
         episodeId,
         listeners,
+        manifestAvailability,
         isPlaying,
         phase,
         upNext,

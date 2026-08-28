@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash, createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, request as pwRequest, test, type APIRequestContext, type Page } from '@playwright/test';
 
 // FE#55 — these were locally redeclared with stale defaults (3000/3001 instead of
 // 3011/3010) and a third env-var spelling (`PLAYWRIGHT_API_BASE`) used nowhere
@@ -10,9 +10,10 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 import { API_BASE, WEB_BASE } from './_fixtures';
 const BACKEND_DIR = process.env.WILDCAT_BACKEND_DIR ?? path.resolve(process.cwd(), '../wildcat-radio-v2-backend');
 const STATION_TOKEN = process.env.STATION_DEVICE_TOKEN ?? 'dev-studio-token-change-me';
-const STATION_DEVICE_ID = process.env.WC_DEVICE_ID ?? 'e2e-fe7-device-3011';
+const STATION_DEVICE_ID = process.env.WC_DEVICE_ID ?? 'e2e-browser-device-3011';
 const TOKEN_HASH = createHash('sha256').update(STATION_TOKEN).digest('hex');
 const ROSTER_ID = 'e2e-fe7-roster-3011';
+const STATION_SESSION_ID = 'seed-studio-pc-0001';
 const PASSWORD = 'Password123!';
 
 function uniqueId() {
@@ -68,9 +69,9 @@ function runBackendFixture() {
         create: { id: ${JSON.stringify(ROSTER_ID)}, displayName: 'FE7 Studio', isActive: true },
       });
       await prisma.stationSession.upsert({
-        where: { id: 'e2e-fe7-station-3011' },
+        where: { id: ${JSON.stringify(STATION_SESSION_ID)} },
         update: { tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true, deviceId: ${JSON.stringify(STATION_DEVICE_ID)}, generation: 1, revokedAt: null, leaseExpiresAt: null, label: 'FE7 Studio Token' },
-        create: { id: 'e2e-fe7-station-3011', label: 'FE7 Studio Token', tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true, deviceId: ${JSON.stringify(STATION_DEVICE_ID)} },
+        create: { id: ${JSON.stringify(STATION_SESSION_ID)}, label: 'FE7 Studio Token', tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true, deviceId: ${JSON.stringify(STATION_DEVICE_ID)} },
       });
       await prisma.$disconnect();
     }
@@ -107,16 +108,37 @@ async function createVerifiedListener(request: APIRequestContext) {
   return { email, handle };
 }
 
-async function openEpisode(request: APIRequestContext) {
+async function openEpisode(request: APIRequestContext): Promise<string> {
   const timeIn = await request.post(`${API_BASE}/api/studio/time-in`, {
     headers: { Authorization: `Bearer ${STATION_TOKEN}`, 'x-wildcat-device-id': STATION_DEVICE_ID },
     data: { rosterId: ROSTER_ID },
   });
   expect(timeIn.ok()).toBeTruthy();
-  await request.post(`${API_BASE}/api/stream/heartbeat`, {
+  const episodeId = (await timeIn.json() as { episodeId: string }).episodeId;
+  const now = new Date().toISOString();
+  const heartbeat = await request.post(`${API_BASE}/api/stream/heartbeat`, {
     headers: { Authorization: `Bearer ${STATION_TOKEN}`, 'x-wildcat-device-id': STATION_DEVICE_ID },
-    data: { sourceConnected: true },
+    data: { sourceConnected: true, lastSegmentAt: now, lastPublishedAt: now },
   });
+  expect(heartbeat.ok()).toBeTruthy();
+  return episodeId;
+}
+
+function closeFixtureEpisode(episodeId: string) {
+  const script = `
+    import * as dotenv from 'dotenv';
+    import { PrismaPg } from '@prisma/adapter-pg';
+    import { PrismaClient } from '@prisma/client';
+    async function main() {
+      dotenv.config({ path: ${JSON.stringify(path.join(BACKEND_DIR, '.env'))} });
+      const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+      const prisma = new PrismaClient({ adapter });
+      await prisma.episode.updateMany({ where: { id: ${JSON.stringify(episodeId)} }, data: { status: 'OFF_AIR', endedAt: new Date() } });
+      await prisma.$disconnect();
+    }
+    main().catch((error) => { console.error(error); process.exit(1); });
+  `;
+  execFileSync('pnpm', ['--dir', BACKEND_DIR, '--filter', '@wildcat/api', 'exec', 'tsx', '-e', script], { stdio: 'pipe' });
 }
 
 async function login(page: Page, email: string) {
@@ -155,6 +177,7 @@ async function unlockStudio(page: Page, request: APIRequestContext) {
   const { handoff: code } = await handoff.json() as { handoff: string };
   await page.goto(`/listen#station_handoff=${encodeURIComponent(code)}`);
   await page.waitForURL(`${WEB_BASE}/studio`, { timeout: 15_000 });
+  await page.getByTestId('studio-seg-console').click();
   await page.getByTestId('studio-queue').waitFor({ state: 'visible', timeout: 15_000 });
 }
 
@@ -168,6 +191,22 @@ async function actOnQueueItem(page: Page, text: string, action: 'Queue' | 'Decli
 test.describe.configure({ mode: 'serial' });
 
 test.describe('engagement UI', () => {
+  let fixtureEpisodeId = '';
+
+  test.beforeAll(async () => {
+    runBackendFixture();
+    const context = await pwRequest.newContext({ baseURL: API_BASE });
+    try {
+      fixtureEpisodeId = await openEpisode(context);
+    } finally {
+      await context.dispose();
+    }
+  });
+
+  test.afterAll(() => {
+    if (fixtureEpisodeId) closeFixtureEpisode(fixtureEpisodeId);
+  });
+
   test('AC-1/AC-2: anonymous listener sees gated writes and engagement shell', async ({ page }) => {
     await page.goto('/listen');
 
@@ -209,7 +248,7 @@ test.describe('engagement UI', () => {
     await listener.getByTestId('listen-chat-input').first().waitFor({ state: 'visible', timeout: 15_000 });
     await listener.waitForTimeout(1_000);
     await submitRequest(listener, requestText);
-    await expect(listener.getByText(/Sent to the booth/i)).toBeVisible({ timeout: 10_000 });
+    await expect(listener.getByText(/Sent to the booth/i).first()).toBeVisible({ timeout: 10_000 });
 
     await unlockStudio(studio, request);
     await studio.getByText(requestText).waitFor({ state: 'visible', timeout: 15_000 });
@@ -239,7 +278,7 @@ test.describe('engagement UI', () => {
     await listener.getByTestId('listen-chat-input').first().waitFor({ state: 'visible', timeout: 15_000 });
     await listener.waitForTimeout(1_000);
     await submitRequest(listener, declinedText);
-    await expect(listener.getByText(/Sent to the booth/i)).toBeVisible({ timeout: 10_000 });
+    await expect(listener.getByText(/Sent to the booth/i).first()).toBeVisible({ timeout: 10_000 });
 
     await unlockStudio(studio, request);
     await studio.getByText(declinedText).waitFor({ state: 'visible', timeout: 15_000 });
@@ -249,7 +288,7 @@ test.describe('engagement UI', () => {
     await expect(listener.getByText('Your request is up next.')).toHaveCount(0);
 
     await submitRequest(listener, secondText);
-    await expect(listener.getByText(/Sent to the booth/i)).toBeVisible({ timeout: 10_000 });
+    await expect(listener.getByText(/Sent to the booth/i).first()).toBeVisible({ timeout: 10_000 });
     await submitRequest(listener, overBudgetText);
     await expect(listener.getByRole('alert').filter({ hasText: /Queue limit reached/i })).toBeVisible({ timeout: 10_000 });
 

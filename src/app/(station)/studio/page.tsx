@@ -27,7 +27,6 @@ import {
   clearStationSession,
   closePoll,
   createPoll,
-  createStationSession,
   getStationSession,
   getStudioQueue,
   postBoothChat,
@@ -55,12 +54,6 @@ import { KioskHeader } from "@/components/studio/kiosk-header";
 import { SubTimeInDialog } from "@/components/studio/sub-timein-dialog";
 import { pushToast } from "@/components/listen/toast";
 
-const STUDIO_UNLOCKED_KEY = "wc.studioUnlocked";
-
-const tokenSchema = z.object({
-  token: z.string().trim().min(1, "Paste the station token."),
-});
-
 const pollSchema = z.object({
   question: z.string().trim().min(1, "Add a poll question.").max(200),
   options: z
@@ -84,7 +77,6 @@ const chatSchema = z.object({
   content: z.string().trim().min(1, "Add a booth chat message.").max(500),
 });
 
-type TokenForm = z.infer<typeof tokenSchema>;
 type PollForm = z.input<typeof pollSchema>;
 type PinForm = z.infer<typeof pinSchema>;
 type ChatForm = z.infer<typeof chatSchema>;
@@ -136,26 +128,33 @@ export default function StudioPage() {
   const [pinnedTopic, setPinnedTopicState] = useState("");
   const [messages, setMessages] = useState<ChatMessageResponseDto[]>([]);
   const [status, setStatus] = useState<string | null>(null);
-  // Attendance is the default surface (booth kiosk convention) — Console is
-  // the pre-existing unlock-gated panel below, now reachable via the segment.
+  // Attendance is the default surface (booth kiosk convention). Console mode
+  // is available after the cookie-backed station handoff.
   const [mode, setMode] = useState<"attendance" | "console">("attendance");
   // FE#46 — the substitution dialog is owned by the page rather than by
   // `AttendancePanel`, so the kiosk header's "add a DJ" button opens the same
   // dialog the attendance table does. (Toasts go through the app-wide host in
   // `StreamProvider`; see `components/listen/toast.tsx`.)
   const [subDialogOpen, setSubDialogOpen] = useState(false);
+  const feedRef = useRef<HTMLDivElement | null>(null);
+
+  // Cookie-backed session check. `GET /studio/session` always resolves 200 with
+  // `{ active }` — `active: true` means the httpOnly `wc_station` cookie is
+  // present and valid; `active: false` means locked.
+  const sessionQuery = useQuery({
+    queryKey: ["station-session"],
+    queryFn: () => getStationSession(),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const unlocked = sessionQuery.data?.active === true;
+
   // Same query key `AttendancePanel` uses, so React Query dedupes the two
   // callers onto a single request rather than polling `/studio/today` twice.
   const todayQuery = useGetStudioToday<StudioTodayDto>({
-    query: { refetchInterval: 15_000 },
+    query: { enabled: unlocked, refetchInterval: 15_000 },
   });
   const today = todayQuery.data;
-  const feedRef = useRef<HTMLDivElement | null>(null);
-
-  const tokenForm = useForm<TokenForm>({
-    resolver: zodResolver(tokenSchema),
-    defaultValues: { token: "" },
-  });
   const pollForm = useForm<PollForm>({
     resolver: zodResolver(pollSchema),
     defaultValues: { question: "", options: "OPM throwbacks\nLo-fi chill", visibility: "PUBLIC" },
@@ -188,35 +187,9 @@ export default function StudioPage() {
     };
   }, []);
 
-  // Cookie-backed session check. `GET /studio/session` always resolves 200 with
-  // `{ active }` — `active: true` means the httpOnly `wc_station` cookie is
-  // present and valid; `active: false` means locked (no console-noise 401).
-  const sessionQuery = useQuery({
-    queryKey: ["station-session"],
-    queryFn: () => getStationSession(),
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
-  const unlocked = sessionQuery.data?.active === true;
-
-  const unlockMutation = useMutation({
-    mutationFn: (values: TokenForm) =>
-      createStationSession({ headers: { Authorization: `Bearer ${values.token}` } }),
-    onSuccess: async () => {
-      if (typeof window !== "undefined") {
-        window.sessionStorage.setItem(STUDIO_UNLOCKED_KEY, "1");
-      }
-      tokenForm.reset({ token: "" });
-      await queryClient.invalidateQueries({ queryKey: ["station-session"] });
-    },
-  });
-
   const clearSessionMutation = useMutation({
     mutationFn: () => clearStationSession(),
     onSuccess: async () => {
-      if (typeof window !== "undefined") {
-        window.sessionStorage.removeItem(STUDIO_UNLOCKED_KEY);
-      }
       setStatus(null);
       await queryClient.invalidateQueries({ queryKey: ["station-session"] });
     },
@@ -359,18 +332,10 @@ export default function StudioPage() {
     onError: (error) => setStatus(getApiErrorMessage(error)),
   });
 
-  function saveToken(values: TokenForm) {
-    unlockMutation.mutate(values);
-  }
-
-  function clearToken() {
+  function clearSession() {
     clearSessionMutation.mutate();
   }
 
-  const tokenAlert = firstError(
-    tokenForm.formState.errors.token?.message,
-    unlockMutation.error ? getApiErrorMessage(unlockMutation.error) : null,
-  );
   const pollAlert = firstError(
     pollForm.formState.errors.question?.message,
     pollForm.formState.errors.options?.message,
@@ -405,39 +370,13 @@ export default function StudioPage() {
               <Radio className="h-5 w-5 text-gold" aria-hidden="true" />
               Studio console
             </h1>
-            <form onSubmit={tokenForm.handleSubmit(saveToken)} noValidate>
-              <Label htmlFor="station-token">Station token</Label>
-              {/* FE#54 — masked. The booth is a shared kiosk, so a Bearer token
-                  rendered in plaintext is readable by anyone standing at the
-                  desk. The token is never persisted (it is posted once and the
-                  field is reset), so the on-screen moment during paste was the
-                  whole exposure — which is exactly what type="password" closes.
-                  autoComplete/spellCheck off so it never lands in a browser
-                  credential store or a spellcheck service. */}
-              <Input
-                id="station-token"
-                type="password"
-                autoComplete="off"
-                spellCheck={false}
-                autoCapitalize="none"
-                className="mt-2"
-                placeholder="Paste station Bearer token"
-                data-testid="studio-token-input"
-                aria-invalid={Boolean(tokenAlert)}
-                {...tokenForm.register("token")}
-              />
-              <div className="mt-2">
-                <FormAlert message={tokenAlert} />
-              </div>
-              <Button
-                type="submit"
-                className="mt-4 wc-btn-block"
-                data-testid="studio-token-save"
-                disabled={unlockMutation.isPending}
-              >
-                Unlock console
-              </Button>
-            </form>
+            <p className="text-sm wc-muted" data-testid="studio-handoff-required">
+              Open the dashboard from WildCat Studio on the enrolled booth computer.
+            </p>
+            <p className="mt-3 text-sm wc-muted">
+              This page never accepts or stores a station bearer token. If the handoff expired,
+              open the dashboard from the Studio app again.
+            </p>
           </div>
         </div>
       </main>
@@ -487,9 +426,9 @@ export default function StudioPage() {
                 <RefreshCw className="h-4 w-4" aria-hidden="true" />
                 Refresh
               </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={clearToken}>
+              <Button type="button" variant="ghost" size="sm" onClick={clearSession}>
                 <LogOut className="h-4 w-4" aria-hidden="true" />
-                Clear token
+                End session
               </Button>
             </div>
           </header>

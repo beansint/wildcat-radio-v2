@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 // FE#5 studio golden path (AC-6): /studio defaults to the Attendance segment,
 // a slot-roster row's `studio-timein` flips it to a timed-in pill, and the
@@ -18,8 +19,10 @@ import { expect, test } from '@playwright/test';
 // "Afternoon Vibes" show / "DJ Carla" roster entry.
 
 // FE#55 — was locally redeclared with a stale 3000 default; the web app runs on 3011.
-import { WEB_BASE } from './_fixtures';
+import { API_BASE, WEB_BASE } from './_fixtures';
 const STATION_TOKEN = process.env.STATION_DEVICE_TOKEN ?? 'dev-studio-token-change-me';
+const STATION_DEVICE_ID = process.env.WC_DEVICE_ID ?? 'e2e-fe5-device-3011';
+const TOKEN_HASH = createHash('sha256').update(STATION_TOKEN).digest('hex');
 const BACKEND_DIR = process.env.WILDCAT_BACKEND_DIR ?? path.resolve(process.cwd(), '../wildcat-radio-v2-backend');
 const SHOW_ID = 'seed-show-av';
 const EPISODE_ID = 'e2e-fe5-episode-studio';
@@ -49,6 +52,11 @@ function openSlotEpisode() {
       const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
       const prisma = new PrismaClient({ adapter });
       const now = new Date();
+      await prisma.stationSession.upsert({
+        where: { id: 'e2e-fe5-station-3011' },
+        update: { tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true, deviceId: ${JSON.stringify(STATION_DEVICE_ID)}, generation: 1, revokedAt: null, leaseExpiresAt: null, label: 'FE5 Studio Token' },
+        create: { id: 'e2e-fe5-station-3011', label: 'FE5 Studio Token', tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true, deviceId: ${JSON.stringify(STATION_DEVICE_ID)} },
+      });
       await prisma.episode.upsert({
         where: { id: ${JSON.stringify(EPISODE_ID)} },
         update: { showId: ${JSON.stringify(SHOW_ID)}, unscheduled: false, status: 'OFF_AIR', startedAt: now, endedAt: null, scheduledFor: now },
@@ -60,6 +68,28 @@ function openSlotEpisode() {
     main().catch((error) => { console.error(error); process.exit(1); });
   `;
   runBackendScript(script);
+}
+
+async function unlockStudio(page: Page): Promise<void> {
+  const heartbeat = await page.request.post(`${API_BASE}/api/stream/heartbeat`, {
+    headers: {
+      Authorization: `Bearer ${STATION_TOKEN}`,
+      'x-wildcat-device-id': STATION_DEVICE_ID,
+    },
+    data: { sourceConnected: false },
+  });
+  expect(heartbeat.ok()).toBeTruthy();
+
+  const handoff = await page.request.post(`${API_BASE}/api/studio/handoff`, {
+    headers: {
+      Authorization: `Bearer ${STATION_TOKEN}`,
+      'x-wildcat-device-id': STATION_DEVICE_ID,
+    },
+  });
+  expect(handoff.ok()).toBeTruthy();
+  const { handoff: code } = await handoff.json() as { handoff: string };
+  await page.goto(`${WEB_BASE}/listen#station_handoff=${encodeURIComponent(code)}`);
+  await page.waitForURL(`${WEB_BASE}/studio`, { timeout: 15_000 });
 }
 
 /** Closes the fixture episode so it stops being the "open episode" for later runs/specs. */
@@ -204,8 +234,7 @@ test.describe('studio attendance', () => {
   test('AC-6 golden: attendance is default, time-in flips the pill, segments toggle', async ({ page }) => {
     await page.goto(`${WEB_BASE}/studio`);
 
-    await page.getByTestId('studio-token-input').fill(STATION_TOKEN);
-    await page.getByTestId('studio-token-save').click();
+    await unlockStudio(page);
 
     // Attendance is the default segment once unlocked.
     const attendanceTab = page.getByTestId('studio-seg-attendance');
@@ -242,8 +271,7 @@ test.describe('studio attendance', () => {
 
     try {
       await page.goto(`${WEB_BASE}/studio`);
-      await page.getByTestId('studio-token-input').fill(STATION_TOKEN);
-      await page.getByTestId('studio-token-save').click();
+      await unlockStudio(page);
 
       const carlaRow = page.getByTestId('studio-slot-row').filter({ hasText: 'DJ Carla' });
       const dj2Row = page.getByTestId('studio-slot-row').filter({ hasText: SECOND_DJ_NAME });
@@ -282,8 +310,7 @@ test.describe('studio attendance', () => {
     openSlotEpisode();
 
     await page.goto(`${WEB_BASE}/studio`);
-    await page.getByTestId('studio-token-input').fill(STATION_TOKEN);
-    await page.getByTestId('studio-token-save').click();
+    await unlockStudio(page);
 
     const carlaRow = page.getByTestId('studio-slot-row').filter({ hasText: 'DJ Carla' });
     await expect(carlaRow).toBeVisible({ timeout: 15_000 });
@@ -322,8 +349,7 @@ test.describe('studio attendance', () => {
 
     try {
       await page.goto(`${WEB_BASE}/studio`);
-      await page.getByTestId('studio-token-input').fill(STATION_TOKEN);
-      await page.getByTestId('studio-token-save').click();
+      await unlockStudio(page);
       await expect(page.getByTestId('studio-seg-attendance')).toBeVisible({ timeout: 15_000 });
 
       // No open episode yet, so the "no slot" empty state shows first.

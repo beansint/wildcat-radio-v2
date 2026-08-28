@@ -10,6 +10,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 import { API_BASE, WEB_BASE } from './_fixtures';
 const BACKEND_DIR = process.env.WILDCAT_BACKEND_DIR ?? path.resolve(process.cwd(), '../wildcat-radio-v2-backend');
 const STATION_TOKEN = process.env.STATION_DEVICE_TOKEN ?? 'dev-studio-token-change-me';
+const STATION_DEVICE_ID = process.env.WC_DEVICE_ID ?? 'e2e-fe7-device-3011';
 const TOKEN_HASH = createHash('sha256').update(STATION_TOKEN).digest('hex');
 const ROSTER_ID = 'e2e-fe7-roster-3011';
 const PASSWORD = 'Password123!';
@@ -68,8 +69,8 @@ function runBackendFixture() {
       });
       await prisma.stationSession.upsert({
         where: { id: 'e2e-fe7-station-3011' },
-        update: { tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true, label: 'FE7 Studio Token' },
-        create: { id: 'e2e-fe7-station-3011', label: 'FE7 Studio Token', tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true },
+        update: { tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true, deviceId: ${JSON.stringify(STATION_DEVICE_ID)}, generation: 1, revokedAt: null, leaseExpiresAt: null, label: 'FE7 Studio Token' },
+        create: { id: 'e2e-fe7-station-3011', label: 'FE7 Studio Token', tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true, deviceId: ${JSON.stringify(STATION_DEVICE_ID)} },
       });
       await prisma.$disconnect();
     }
@@ -108,12 +109,12 @@ async function createVerifiedListener(request: APIRequestContext) {
 
 async function openEpisode(request: APIRequestContext) {
   const timeIn = await request.post(`${API_BASE}/api/studio/time-in`, {
-    headers: { Authorization: `Bearer ${STATION_TOKEN}` },
+    headers: { Authorization: `Bearer ${STATION_TOKEN}`, 'x-wildcat-device-id': STATION_DEVICE_ID },
     data: { rosterId: ROSTER_ID },
   });
   expect(timeIn.ok()).toBeTruthy();
   await request.post(`${API_BASE}/api/stream/heartbeat`, {
-    headers: { Authorization: `Bearer ${STATION_TOKEN}` },
+    headers: { Authorization: `Bearer ${STATION_TOKEN}`, 'x-wildcat-device-id': STATION_DEVICE_ID },
     data: { sourceConnected: true },
   });
 }
@@ -146,9 +147,14 @@ async function submitRequest(page: Page, text: string) {
   await page.getByTestId('engagement-submit').evaluate((element) => (element as HTMLButtonElement).click());
 }
 
-async function unlockStudio(page: Page) {
-  await page.addInitScript((token) => window.localStorage.setItem('wildcat.stationToken', token), STATION_TOKEN);
-  await page.goto('/studio');
+async function unlockStudio(page: Page, request: APIRequestContext) {
+  const handoff = await request.post(`${API_BASE}/api/studio/handoff`, {
+    headers: { Authorization: `Bearer ${STATION_TOKEN}`, 'x-wildcat-device-id': STATION_DEVICE_ID },
+  });
+  expect(handoff.ok()).toBeTruthy();
+  const { handoff: code } = await handoff.json() as { handoff: string };
+  await page.goto(`/listen#station_handoff=${encodeURIComponent(code)}`);
+  await page.waitForURL(`${WEB_BASE}/studio`, { timeout: 15_000 });
   await page.getByTestId('studio-queue').waitFor({ state: 'visible', timeout: 15_000 });
 }
 
@@ -179,12 +185,12 @@ test.describe('engagement UI', () => {
     await expect(page.getByTestId('engagement-poll')).toBeVisible();
   });
 
-  test('AC-8: studio console locks behind station token entry', async ({ page }) => {
+  test('AC-8: studio console locks behind the Electron handoff', async ({ page }) => {
     await page.goto('/studio');
 
     await expect(page.getByRole('heading', { name: 'Studio console' })).toBeVisible();
-    await expect(page.getByTestId('studio-token-input')).toBeVisible();
-    await expect(page.getByTestId('studio-token-save')).toBeVisible();
+    await expect(page.getByTestId('studio-handoff-required')).toBeVisible();
+    await expect(page.getByTestId('studio-token-input')).not.toBeVisible();
     await expect(page.getByTestId('studio-queue')).not.toBeVisible();
   });
 
@@ -205,7 +211,7 @@ test.describe('engagement UI', () => {
     await submitRequest(listener, requestText);
     await expect(listener.getByText(/Sent to the booth/i)).toBeVisible({ timeout: 10_000 });
 
-    await unlockStudio(studio);
+    await unlockStudio(studio, request);
     await studio.getByText(requestText).waitFor({ state: 'visible', timeout: 15_000 });
     await actOnQueueItem(studio, requestText, 'Queue');
     await expect(studio.getByText(/sent receipt/i)).toBeVisible({ timeout: 10_000 });
@@ -235,7 +241,7 @@ test.describe('engagement UI', () => {
     await submitRequest(listener, declinedText);
     await expect(listener.getByText(/Sent to the booth/i)).toBeVisible({ timeout: 10_000 });
 
-    await unlockStudio(studio);
+    await unlockStudio(studio, request);
     await studio.getByText(declinedText).waitFor({ state: 'visible', timeout: 15_000 });
     await actOnQueueItem(studio, declinedText, 'Decline');
     await expect(studio.getByText(/Declined silently/i)).toBeVisible({ timeout: 10_000 });

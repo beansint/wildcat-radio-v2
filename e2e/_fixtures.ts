@@ -291,16 +291,21 @@ export async function createEpisodeViaStudio(
   options: { close?: boolean } = {},
 ): Promise<void> {
   const stationToken = process.env.STATION_DEVICE_TOKEN ?? 'dev-studio-token-change-me';
+  const stationDeviceId = process.env.WC_DEVICE_ID;
+  const stationHeaders = {
+    Authorization: `Bearer ${stationToken}`,
+    ...(stationDeviceId ? { 'x-wildcat-device-id': stationDeviceId } : {}),
+  };
   const context = await pwRequest.newContext({ baseURL: API_BASE });
   try {
     const timeIn = await context.post('/api/studio/time-in', {
-      headers: { Authorization: `Bearer ${stationToken}` },
+      headers: stationHeaders,
       data: { rosterId },
     });
     await expectOk(timeIn, `createEpisodeViaStudio time-in(${rosterId})`);
     if (options.close) {
       const timeOut = await context.post('/api/studio/time-out', {
-        headers: { Authorization: `Bearer ${stationToken}` },
+        headers: stationHeaders,
         data: { rosterId },
       });
       await expectOk(timeOut, `createEpisodeViaStudio time-out(${rosterId})`);

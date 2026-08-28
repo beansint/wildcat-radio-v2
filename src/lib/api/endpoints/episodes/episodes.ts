@@ -20,10 +20,114 @@ import type {
   UseQueryResult
 } from '@tanstack/react-query';
 
+import type {
+  EpisodeEngagementSnapshotDto
+} from '../../model';
+
 import { customFetch } from '../../fetcher';
 
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+
+
+export const getGetEpisodeEngagementSnapshotUrl = (id: string,) => {
+
+
+
+
+  return `/api/episodes/${id}/engagement-snapshot`
+}
+
+/**
+ * @summary Get the public engagement snapshot for an episode
+ */
+export const getEpisodeEngagementSnapshot = async (id: string, options?: RequestInit): Promise<EpisodeEngagementSnapshotDto> => {
+
+  return customFetch<EpisodeEngagementSnapshotDto>(getGetEpisodeEngagementSnapshotUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEpisodeEngagementSnapshotQueryKey = (id: string,) => {
+    return [
+    `/api/episodes/${id}/engagement-snapshot`
+    ] as const;
+    }
+
+
+export const getGetEpisodeEngagementSnapshotQueryOptions = <TData = Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEpisodeEngagementSnapshotQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>> = ({ signal }) => getEpisodeEngagementSnapshot(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetEpisodeEngagementSnapshotQueryResult = NonNullable<Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>>
+export type GetEpisodeEngagementSnapshotQueryError = unknown
+
+
+export function useGetEpisodeEngagementSnapshot<TData = Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>,
+          TError,
+          Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEpisodeEngagementSnapshot<TData = Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>,
+          TError,
+          Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEpisodeEngagementSnapshot<TData = Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get the public engagement snapshot for an episode
+ */
+
+export function useGetEpisodeEngagementSnapshot<TData = Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEpisodeEngagementSnapshot>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetEpisodeEngagementSnapshotQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
 
 
 

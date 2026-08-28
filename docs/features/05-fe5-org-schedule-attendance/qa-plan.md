@@ -9,8 +9,8 @@
   - `mod@example.com` / `Password123!` — role **MODERATOR** (drives all `/mod/*` golden paths).
   - `test@example.com` / `Password123!` — role **LISTENER** (drives the 403 / redirect edge).
 - **Seed rows:** ≥2 `RosterEntry` (one active, one archived), ≥1 `WEEKLY` `Show` with cadence + roster assignment, ≥1 `AttendanceRecord` for today.
-- **Station token:** mint as in `e2e/engagement.spec.ts` (`STATION_DEVICE_TOKEN`, sha256-hashed) for `/studio`; reference the seeded `ROSTER_ID`.
-- **Env:** backend on `:3001`, Next on `:3000`, Neon dev branch `DATABASE_URL`; stream stack not required for these flows.
+- **Station device:** use the enrolled `STATION_DEVICE_TOKEN` plus matching `WC_DEVICE_ID` to mint a one-time handoff for `/studio`; reference the seeded `ROSTER_ID`.
+- **Env:** backend on `:3010`, Next on `:3011`, Neon dev branch `DATABASE_URL`; stream stack not required for these flows.
 - **Backend e2e:** authenticate the Better Auth session with each account, assert RBAC on every mod endpoint.
 
 ## Golden path (mod admin) → proves AC-1, AC-2, AC-3, AC-4, AC-5
@@ -23,7 +23,7 @@
 
 ## Golden path (studio attendance) → proves AC-6
 
-1. Open `/studio` with the station token → **assert** it defaults to **Attendance** mode (`studio-seg-attendance` active).
+1. Mint a one-time handoff with the enrolled station device, open `/listen#station_handoff=<code>`, and assert `/studio` defaults to **Attendance** mode (`studio-seg-attendance` active).
 2. For a rostered DJ row (`studio-att-row`), click `studio-timein` → **assert** `POST /api/studio/time-in` fires and the row flips to the "Timed in ✓" pill; the console-unlock CTA reflects "N timed in".
 3. Click `studio-timein-sub`, pick a non-slot roster entry → **assert** it times in and appears as a sub.
 - **Assert (DB):** `attendance_records` upsert on `(episodeId, rosterId)`; an `episodes` row exists and is the single active episode.

@@ -88,5 +88,5 @@ The v2.2 org/attendance layer is designed but only its **studio time-in/out** en
 - **On-air hours** in this slice = `duration(timeIn, timeOut)`; the refined *timed-in ∧ source-connected* overlap metric (decision #25) is deferred to analytics/Slice 6 — noted, not built.
 - **Migrations use Prisma scripts** (`pnpm --filter <db> migrate:dev`) if any schema tweak is ever needed — **no raw SQL**. This slice expects **no** migration.
 - **shadcn/ui primitives emitting `wc-*` classes** per frontend `AGENTS.md`; `Dialog` (installed, unused) drives create/edit modals; install shadcn `table` and theme to `wc-table` for the sheet/grid. Black+gold, dark-default staff register. `data-testid` selectors, generated orval hooks (profile pattern), one `role="alert"` per form.
-- **Studio placement:** `/studio` stays in the `(station)` route group (station token, not user session); `/mod/*` in `(app)` with an added role check; `/schedule` in `(public)`.
+- **Studio placement:** `/studio` stays in the `(station)` route group (station handoff to an httpOnly station cookie, not a user session); `/mod/*` in `(app)` with an added role check; `/schedule` in `(public)`.
 - **e2e needs a seeded MODERATOR** account (`mod@example.com` / `Password123!`) + a couple roster entries and a show, added to `packages/db/seed.mjs`.

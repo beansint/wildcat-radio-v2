@@ -33,7 +33,7 @@ feature/scenario is covered by a passing test.
 | Attendance: correction-form validation (time-out before time-in) | Yes | `mod-org-schedule-attendance.spec.ts::edge: attendance correction validation — time-out before time-in is rejected` | Asserts `role="alert"`, dialog stays open, the row's rendered time-out cell is byte-identical before/after |
 | Attendance: date filter | Yes (implicitly) | every attendance test relies on the default "today" station-local date filter (`mod-attendance-date`) | The station-TZ edge test is the strongest exercise of it |
 | Attendance: show filter | Yes | `mod-org-schedule-attendance.spec.ts::edge: the attendance show filter narrows the sheet to the selected show` | Seeds two shows airing today (each with its own DJ + attendance record), selects one in `mod-attendance-show`, asserts only that show's DJ row remains and the other is filtered out server-side |
-| Studio: token unlock | Yes | `studio-attendance.spec.ts::AC-6 golden` | |
+| Studio: Electron handoff unlock | Yes | `studio-attendance.spec.ts::AC-6 golden` | API-issued handoff exchanges for the httpOnly station cookie; no bearer token is entered in the browser |
 | Studio: Attendance is default segment, Console/Attendance toggle | Yes | `studio-attendance.spec.ts::AC-6 golden` | |
 | Studio: time-in (slot roster row) | Yes | `studio-attendance.spec.ts::AC-6 golden` | |
 | Studio: time-out | Yes (was an open bug, now fixed + tested) | `studio-attendance.spec.ts::edge: time a slot DJ out — pill disappears and the time-in button returns` | The missing UI was added (a `studio-timeout` button next to the timed-in pill, wired to `timeOutStudio`) after this QA pass first surfaced the gap; see "Bugs found" |

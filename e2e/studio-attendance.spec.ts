@@ -21,7 +21,7 @@ import { expect, test, type Page } from '@playwright/test';
 // FE#55 — was locally redeclared with a stale 3000 default; the web app runs on 3011.
 import { API_BASE, WEB_BASE } from './_fixtures';
 const STATION_TOKEN = process.env.STATION_DEVICE_TOKEN ?? 'dev-studio-token-change-me';
-const STATION_DEVICE_ID = process.env.WC_DEVICE_ID ?? 'e2e-fe5-device-3011';
+const STATION_DEVICE_ID = process.env.WC_DEVICE_ID ?? 'e2e-browser-device-3011';
 const TOKEN_HASH = createHash('sha256').update(STATION_TOKEN).digest('hex');
 const BACKEND_DIR = process.env.WILDCAT_BACKEND_DIR ?? path.resolve(process.cwd(), '../wildcat-radio-v2-backend');
 const SHOW_ID = 'seed-show-av';
@@ -53,9 +53,9 @@ function openSlotEpisode() {
       const prisma = new PrismaClient({ adapter });
       const now = new Date();
       await prisma.stationSession.upsert({
-        where: { id: 'e2e-fe5-station-3011' },
+        where: { id: 'seed-studio-pc-0001' },
         update: { tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true, deviceId: ${JSON.stringify(STATION_DEVICE_ID)}, generation: 1, revokedAt: null, leaseExpiresAt: null, label: 'FE5 Studio Token' },
-        create: { id: 'e2e-fe5-station-3011', label: 'FE5 Studio Token', tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true, deviceId: ${JSON.stringify(STATION_DEVICE_ID)} },
+        create: { id: 'seed-studio-pc-0001', label: 'FE5 Studio Token', tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true, deviceId: ${JSON.stringify(STATION_DEVICE_ID)} },
       });
       await prisma.episode.upsert({
         where: { id: ${JSON.stringify(EPISODE_ID)} },

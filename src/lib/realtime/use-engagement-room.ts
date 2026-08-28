@@ -9,6 +9,7 @@ import {
   votePoll,
   useListPolls,
 } from "@/lib/api/endpoints/engagement/engagement";
+import { useGetEpisodeEngagementSnapshot } from "@/lib/api/endpoints/episodes/episodes";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import type { Socket } from "socket.io-client";
 import type {
@@ -20,6 +21,7 @@ import type {
 import { acquireSocket, type SocketLease } from "./socket";
 import {
   emptyEngagementState,
+  mergeEngagementSnapshot,
   receiptMatchesEpisode,
   type HypeState,
   type LiveChatMessage,
@@ -49,8 +51,8 @@ function toChatMessage(event: ChatEvent): LiveChatMessage {
   const author = event.author?.handle ?? event.author?.name ?? "@listener";
   return {
     id: event.id,
-    // TODO: the listener manifest doesn't yet expose the live show name
-    // (M5/M6) — fall back to a neutral "Booth" label until it does.
+    // TODO: the listener manifest doesn't yet expose the live show name.
+    // Fall back to a neutral booth label until it does.
     name: event.asBooth ? "🎙 Booth" : author,
     body: event.content,
     time: formatTime(event.createdAt),
@@ -100,13 +102,69 @@ export function useEngagementRoom(
   // effect cleanup (which fires before the async acquireSocket().then() might
   // have resolved) can detach the *right* handler instance.
   const joinEpisodeRef = useRef<(() => void) | null>(null);
+  const pendingLiveEventsRef = useRef({
+    episodeId: null as string | null,
+    ids: new Set<string>(),
+    removedIds: new Set<string>(),
+    preserveScalars: false,
+  });
+  const markLiveEvent = useCallback(
+    (event: { id?: string; removed?: boolean; scalar?: boolean }) => {
+      if (!episodeId) return;
+      let pending = pendingLiveEventsRef.current;
+      if (pending.episodeId !== episodeId) {
+        pending = {
+          episodeId,
+          ids: new Set<string>(),
+          removedIds: new Set<string>(),
+          preserveScalars: false,
+        };
+        pendingLiveEventsRef.current = pending;
+      }
+      if (event.id) {
+        if (event.removed) pending.removedIds.add(event.id);
+        else pending.ids.add(event.id);
+      }
+      if (event.scalar) pending.preserveScalars = true;
+    },
+    [episodeId],
+  );
 
   const pollsQuery = useListPolls(episodeId ?? "", {
+    query: {
+      // Anonymous listeners get the public snapshot. The list endpoint is
+      // intentionally session-protected because voting is authenticated.
+      enabled: Boolean(episodeId) && Boolean(authSessionKey),
+      refetchOnWindowFocus: false,
+    },
+  });
+  const snapshotQuery = useGetEpisodeEngagementSnapshot(episodeId ?? "", {
     query: {
       enabled: Boolean(episodeId),
       refetchOnWindowFocus: false,
     },
   });
+  const { data: snapshot, refetch: refetchSnapshot } = snapshotQuery;
+
+  useEffect(() => {
+    if (!snapshot) return;
+    const pending = pendingLiveEventsRef.current.episodeId === snapshot.episodeId
+      ? pendingLiveEventsRef.current
+      : { ids: new Set<string>(), removedIds: new Set<string>(), preserveScalars: false };
+    updateState((current) =>
+      mergeEngagementSnapshot(current, snapshot, {
+        preserveLiveIds: pending.ids,
+        removedIds: pending.removedIds,
+        preserveLiveScalars: pending.preserveScalars,
+      }),
+    );
+    pendingLiveEventsRef.current = {
+      episodeId: snapshot.episodeId,
+      ids: new Set<string>(),
+      removedIds: new Set<string>(),
+      preserveScalars: false,
+    };
+  }, [snapshot, updateState]);
 
   const polls = useMemo(() => {
     return livePolls.reduce(
@@ -122,6 +180,7 @@ export function useEngagementRoom(
     let lease: SocketLease<Socket> | null = null;
 
     function onChatNew(event: ChatEvent) {
+      markLiveEvent({ id: event.id });
       updateState((current) => {
         if (current.messages.some((message) => message.id === event.id)) return current;
         return { ...current, messages: [...current.messages, toChatMessage(event)] };
@@ -129,6 +188,7 @@ export function useEngagementRoom(
     }
 
     function onChatHidden(event: { id: string }) {
+      markLiveEvent({ id: event.id, removed: true });
       updateState((current) => ({
         ...current,
         messages: current.messages.filter((message) => message.id !== event.id),
@@ -146,6 +206,7 @@ export function useEngagementRoom(
     }
 
     function onQueueUpNext(event: UpNextItem) {
+      markLiveEvent({ id: event.id });
       updateState((current) => {
         if (current.upNext.some((item) => item.id === event.id)) return current;
         return { ...current, upNext: [event, ...current.upNext].slice(0, 5) };
@@ -153,6 +214,7 @@ export function useEngagementRoom(
     }
 
     function onPollUpdated(event: PollResponseDto) {
+      markLiveEvent({ id: event.id });
       updateState((current) => ({
         ...current,
         livePolls: mergePoll(current.livePolls, event),
@@ -163,10 +225,12 @@ export function useEngagementRoom(
     }
 
     function onHypeTick(event: HypeState) {
+      markLiveEvent({ scalar: true });
       updateState((current) => ({ ...current, hype: event }));
     }
 
     function onTopicPinned(event: PinnedTopic) {
+      markLiveEvent({ scalar: true });
       updateState((current) => ({ ...current, pinnedTopic: event }));
     }
 
@@ -180,32 +244,42 @@ export function useEngagementRoom(
         socket = nextLease.socket;
         const s = nextLease.socket;
 
-      s.on("chat:new", onChatNew);
-      s.on("chat:hidden", onChatHidden);
-      s.on("queue:receipt", onQueueReceipt);
-      s.on("queue:up-next", onQueueUpNext);
-      s.on("poll:updated", onPollUpdated);
-      s.on("hype:tick", onHypeTick);
-      s.on("topic:pinned", onTopicPinned);
+        s.on("chat:new", onChatNew);
+        s.on("chat:hidden", onChatHidden);
+        s.on("queue:receipt", onQueueReceipt);
+        s.on("queue:up-next", onQueueUpNext);
+        s.on("poll:updated", onPollUpdated);
+        s.on("hype:tick", onHypeTick);
+        s.on("topic:pinned", onTopicPinned);
 
-      const joinEpisode = () => s.emit("episode:join", { episodeId });
-      // Persistent (not `once`) so episode room membership is restored after
-      // ANY reconnect — including one triggered by the auth-session cycling
-      // below — not just the very first connection.
-      s.on("connect", joinEpisode);
-      joinEpisodeRef.current = joinEpisode;
+        let hasJoined = false;
+        let refreshNextJoin = false;
+        const joinEpisode = () => {
+          s.emit("episode:join", { episodeId });
+          if (hasJoined || refreshNextJoin) {
+            refreshNextJoin = false;
+            void refetchSnapshot();
+          }
+          hasJoined = true;
+        };
+        // Persistent (not `once`) so episode room membership is restored after
+        // ANY reconnect — including one triggered by the auth-session cycling
+        // below — not just the very first connection.
+        s.on("connect", joinEpisode);
+        joinEpisodeRef.current = joinEpisode;
 
-      // Only force a disconnect/reconnect when the auth session identity has
-      // actually transitioned on an already-live socket. Re-running this
-      // effect for unrelated reasons (e.g. episodeId changing) must not
-      // gratuitously cycle the shared socket, since that also knocks out
-      // stream-presence room membership until it self-heals on `connect`.
-      const sessionChanged =
-        prevAuthSessionKeyRef.current !== undefined &&
-        prevAuthSessionKeyRef.current !== (authSessionKey ?? null);
-      prevAuthSessionKeyRef.current = authSessionKey ?? null;
+        // Only force a disconnect/reconnect when the auth session identity has
+        // actually transitioned on an already-live socket. Re-running this
+        // effect for unrelated reasons (e.g. episodeId changing) must not
+        // gratuitously cycle the shared socket, since that also knocks out
+        // stream-presence room membership until it self-heals on `connect`.
+        const sessionChanged =
+          prevAuthSessionKeyRef.current !== undefined &&
+          prevAuthSessionKeyRef.current !== (authSessionKey ?? null);
+        prevAuthSessionKeyRef.current = authSessionKey ?? null;
 
         if (s.connected && sessionChanged) {
+          refreshNextJoin = true;
           s.disconnect();
           s.connect();
         } else if (s.connected) {
@@ -235,7 +309,7 @@ export function useEngagementRoom(
       joinEpisodeRef.current = null;
       lease?.release();
     };
-  }, [authSessionKey, episodeId, pushToast, queryClient, updateState]);
+  }, [authSessionKey, episodeId, markLiveEvent, pushToast, queryClient, refetchSnapshot, updateState]);
 
   const submitQueueMutation = useMutation({
     mutationFn: async ({

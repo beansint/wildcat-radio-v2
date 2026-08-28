@@ -1151,10 +1151,41 @@
         ]
       }
     },
-    "/api/studio/session": {
+    "/api/studio/handoff": {
       "post": {
-        "operationId": "createStationSession",
+        "operationId": "StudioConsoleController_createHandoff",
         "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationHandoffResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/handoff/consume": {
+      "post": {
+        "operationId": "StudioConsoleController_consumeHandoff",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsumeStationHandoffDto"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "",
@@ -1167,11 +1198,12 @@
             }
           }
         },
-        "summary": "Start a cookie-based station session",
         "tags": [
           "studio"
         ]
-      },
+      }
+    },
+    "/api/studio/session": {
       "get": {
         "operationId": "getStationSession",
         "parameters": [],
@@ -1334,6 +1366,107 @@
         ]
       }
     },
+    "/api/studio/device/enroll": {
+      "post": {
+        "operationId": "StudioController_enroll",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StationDeviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationCredentialResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/device/transfer/{id}": {
+      "post": {
+        "operationId": "StudioController_transfer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StationDeviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationCredentialResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/device/revoke/{id}": {
+      "post": {
+        "operationId": "StudioController_revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationRevokeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "studio"
+        ]
+      }
+    },
     "/api/studio/today": {
       "get": {
         "operationId": "getStudioToday",
@@ -1408,6 +1541,38 @@
         "summary": "DJ time-out (tap out)",
         "tags": [
           "studio"
+        ]
+      }
+    },
+    "/api/episodes/{id}/engagement-snapshot": {
+      "get": {
+        "operationId": "getEpisodeEngagementSnapshot",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Episode id (cuid)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public engagement snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EpisodeEngagementSnapshotDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get the public engagement snapshot for an episode",
+        "tags": [
+          "episodes"
         ]
       }
     },
@@ -4201,6 +4366,35 @@
           "author"
         ]
       },
+      "StationHandoffResponseDto": {
+        "type": "object",
+        "properties": {
+          "handoff": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "expiresAt": {
+            "type": "number",
+            "description": "Unix epoch milliseconds."
+          }
+        },
+        "required": [
+          "handoff",
+          "expiresAt"
+        ]
+      },
+      "ConsumeStationHandoffDto": {
+        "type": "object",
+        "properties": {
+          "handoff": {
+            "type": "string",
+            "description": "Short-lived single-use Electron-to-browser handoff code."
+          }
+        },
+        "required": [
+          "handoff"
+        ]
+      },
       "StudioSessionResponseDto": {
         "type": "object",
         "properties": {
@@ -4248,6 +4442,68 @@
         },
         "required": [
           "ok"
+        ]
+      },
+      "StationDeviceDto": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "description": "Stable installation identity registered for the booth."
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable booth label."
+          }
+        },
+        "required": [
+          "deviceId",
+          "label"
+        ]
+      },
+      "StationCredentialResponseDto": {
+        "type": "object",
+        "properties": {
+          "credential": {
+            "type": "string",
+            "description": "Returned once. The API stores only its hash.",
+            "writeOnly": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "generation": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "credential",
+          "id",
+          "label",
+          "generation"
+        ]
+      },
+      "StationRevokeResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "revokedAt"
         ]
       },
       "StudioEpisodeDto": {
@@ -4427,6 +4683,163 @@
         "required": [
           "id",
           "displayName"
+        ]
+      },
+      "PublicSnapshotAuthorDto": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "handle",
+          "name"
+        ]
+      },
+      "EpisodeSnapshotChatMessageDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "asBooth": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "author": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PublicSnapshotAuthorDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "content",
+          "asBooth",
+          "createdAt",
+          "author"
+        ]
+      },
+      "EpisodeSnapshotReactionDto": {
+        "type": "object",
+        "properties": {
+          "emoji": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "emoji",
+          "count"
+        ]
+      },
+      "EpisodeSnapshotUpNextDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "REQUEST",
+              "DEDICATION",
+              "QUESTION"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "recipient": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "text",
+          "recipient",
+          "createdAt",
+          "by"
+        ]
+      },
+      "EpisodeEngagementSnapshotDto": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recentChat": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EpisodeSnapshotChatMessageDto"
+            }
+          },
+          "polls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PollResponseDto"
+            }
+          },
+          "pinnedTopic": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PinnedTopicResponseDto"
+              }
+            ]
+          },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EpisodeSnapshotReactionDto"
+            }
+          },
+          "upNext": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EpisodeSnapshotUpNextDto"
+            }
+          }
+        },
+        "required": [
+          "episodeId",
+          "capturedAt",
+          "recentChat",
+          "polls",
+          "pinnedTopic",
+          "reactions",
+          "upNext"
         ]
       },
       "StrikeDto": {

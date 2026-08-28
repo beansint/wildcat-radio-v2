@@ -23,12 +23,17 @@ import type {
 import type {
   BoothChatDto,
   ChatMessageResponseDto,
+  ConsumeStationHandoffDto,
   CreatePollDto,
   PinTopicDto,
   PinnedTopicResponseDto,
   PollResponseDto,
   QueueActDto,
   QueueActionResponseDto,
+  StationCredentialResponseDto,
+  StationDeviceDto,
+  StationHandoffResponseDto,
+  StationRevokeResponseDto,
   StudioQueueResponseDto,
   StudioRosterEntryDto,
   StudioSessionClearResponseDto,
@@ -651,20 +656,17 @@ export function usePostBoothChat<TData = Awaited<ReturnType<typeof postBoothChat
 
 
 
-export const getCreateStationSessionUrl = () => {
+export const getStudioConsoleControllerCreateHandoffUrl = () => {
 
 
 
 
-  return `/api/studio/session`
+  return `/api/studio/handoff`
 }
 
-/**
- * @summary Start a cookie-based station session
- */
-export const createStationSession = async ( options?: RequestInit): Promise<StudioSessionResponseDto> => {
+export const studioConsoleControllerCreateHandoff = async ( options?: RequestInit): Promise<StationHandoffResponseDto> => {
 
-  return customFetch<StudioSessionResponseDto>(getCreateStationSessionUrl(),
+  return customFetch<StationHandoffResponseDto>(getStudioConsoleControllerCreateHandoffUrl(),
   {
     ...options,
     method: 'POST'
@@ -677,69 +679,160 @@ export const createStationSession = async ( options?: RequestInit): Promise<Stud
 
 
 
-export const getCreateStationSessionQueryKey = () => {
+export const getStudioConsoleControllerCreateHandoffQueryKey = () => {
     return [
-    'POST', `/api/studio/session`
+    'POST', `/api/studio/handoff`
     ] as const;
     }
 
 
-export const getCreateStationSessionQueryOptions = <TData = Awaited<ReturnType<typeof createStationSession>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createStationSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getStudioConsoleControllerCreateHandoffQueryOptions = <TData = Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getCreateStationSessionQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getStudioConsoleControllerCreateHandoffQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof createStationSession>>> = ({ signal }) => createStationSession({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>> = ({ signal }) => studioConsoleControllerCreateHandoff({ signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof createStationSession>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type CreateStationSessionQueryResult = NonNullable<Awaited<ReturnType<typeof createStationSession>>>
-export type CreateStationSessionQueryError = unknown
+export type StudioConsoleControllerCreateHandoffQueryResult = NonNullable<Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>>
+export type StudioConsoleControllerCreateHandoffQueryError = unknown
 
 
-export function useCreateStationSession<TData = Awaited<ReturnType<typeof createStationSession>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof createStationSession>>, TError, TData>> & Pick<
+export function useStudioConsoleControllerCreateHandoff<TData = Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof createStationSession>>,
+          Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>,
           TError,
-          Awaited<ReturnType<typeof createStationSession>>
+          Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>
         > , 'initialData'
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useCreateStationSession<TData = Awaited<ReturnType<typeof createStationSession>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createStationSession>>, TError, TData>> & Pick<
+export function useStudioConsoleControllerCreateHandoff<TData = Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof createStationSession>>,
+          Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>,
           TError,
-          Awaited<ReturnType<typeof createStationSession>>
+          Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>
         > , 'initialData'
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useCreateStationSession<TData = Awaited<ReturnType<typeof createStationSession>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createStationSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export function useStudioConsoleControllerCreateHandoff<TData = Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Start a cookie-based station session
- */
 
-export function useCreateStationSession<TData = Awaited<ReturnType<typeof createStationSession>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof createStationSession>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export function useStudioConsoleControllerCreateHandoff<TData = Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioConsoleControllerCreateHandoff>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getCreateStationSessionQueryOptions(options)
+  const queryOptions = getStudioConsoleControllerCreateHandoffQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getStudioConsoleControllerConsumeHandoffUrl = () => {
+
+
+
+
+  return `/api/studio/handoff/consume`
+}
+
+export const studioConsoleControllerConsumeHandoff = async (consumeStationHandoffDto: ConsumeStationHandoffDto, options?: RequestInit): Promise<StudioSessionResponseDto> => {
+
+  return customFetch<StudioSessionResponseDto>(getStudioConsoleControllerConsumeHandoffUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(consumeStationHandoffDto)
+  }
+);}
+
+
+
+
+
+export const getStudioConsoleControllerConsumeHandoffQueryKey = (consumeStationHandoffDto?: ConsumeStationHandoffDto,) => {
+    return [
+    'POST', `/api/studio/handoff/consume`, consumeStationHandoffDto
+    ] as const;
+    }
+
+
+export const getStudioConsoleControllerConsumeHandoffQueryOptions = <TData = Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>, TError = unknown>(consumeStationHandoffDto: ConsumeStationHandoffDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getStudioConsoleControllerConsumeHandoffQueryKey(consumeStationHandoffDto);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>> = ({ signal }) => studioConsoleControllerConsumeHandoff(consumeStationHandoffDto, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type StudioConsoleControllerConsumeHandoffQueryResult = NonNullable<Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>>
+export type StudioConsoleControllerConsumeHandoffQueryError = unknown
+
+
+export function useStudioConsoleControllerConsumeHandoff<TData = Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>, TError = unknown>(
+ consumeStationHandoffDto: ConsumeStationHandoffDto, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>,
+          TError,
+          Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStudioConsoleControllerConsumeHandoff<TData = Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>, TError = unknown>(
+ consumeStationHandoffDto: ConsumeStationHandoffDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>,
+          TError,
+          Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStudioConsoleControllerConsumeHandoff<TData = Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>, TError = unknown>(
+ consumeStationHandoffDto: ConsumeStationHandoffDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useStudioConsoleControllerConsumeHandoff<TData = Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>, TError = unknown>(
+ consumeStationHandoffDto: ConsumeStationHandoffDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioConsoleControllerConsumeHandoff>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getStudioConsoleControllerConsumeHandoffQueryOptions(consumeStationHandoffDto,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -940,6 +1033,295 @@ export function useClearStationSession<TData = Awaited<ReturnType<typeof clearSt
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getClearStationSessionQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getStudioControllerEnrollUrl = () => {
+
+
+
+
+  return `/api/studio/device/enroll`
+}
+
+export const studioControllerEnroll = async (stationDeviceDto: StationDeviceDto, options?: RequestInit): Promise<StationCredentialResponseDto> => {
+
+  return customFetch<StationCredentialResponseDto>(getStudioControllerEnrollUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(stationDeviceDto)
+  }
+);}
+
+
+
+
+
+export const getStudioControllerEnrollQueryKey = (stationDeviceDto?: StationDeviceDto,) => {
+    return [
+    'POST', `/api/studio/device/enroll`, stationDeviceDto
+    ] as const;
+    }
+
+
+export const getStudioControllerEnrollQueryOptions = <TData = Awaited<ReturnType<typeof studioControllerEnroll>>, TError = unknown>(stationDeviceDto: StationDeviceDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerEnroll>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getStudioControllerEnrollQueryKey(stationDeviceDto);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof studioControllerEnroll>>> = ({ signal }) => studioControllerEnroll(stationDeviceDto, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof studioControllerEnroll>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type StudioControllerEnrollQueryResult = NonNullable<Awaited<ReturnType<typeof studioControllerEnroll>>>
+export type StudioControllerEnrollQueryError = unknown
+
+
+export function useStudioControllerEnroll<TData = Awaited<ReturnType<typeof studioControllerEnroll>>, TError = unknown>(
+ stationDeviceDto: StationDeviceDto, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerEnroll>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof studioControllerEnroll>>,
+          TError,
+          Awaited<ReturnType<typeof studioControllerEnroll>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStudioControllerEnroll<TData = Awaited<ReturnType<typeof studioControllerEnroll>>, TError = unknown>(
+ stationDeviceDto: StationDeviceDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerEnroll>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof studioControllerEnroll>>,
+          TError,
+          Awaited<ReturnType<typeof studioControllerEnroll>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStudioControllerEnroll<TData = Awaited<ReturnType<typeof studioControllerEnroll>>, TError = unknown>(
+ stationDeviceDto: StationDeviceDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerEnroll>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useStudioControllerEnroll<TData = Awaited<ReturnType<typeof studioControllerEnroll>>, TError = unknown>(
+ stationDeviceDto: StationDeviceDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerEnroll>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getStudioControllerEnrollQueryOptions(stationDeviceDto,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getStudioControllerTransferUrl = (id: string,) => {
+
+
+
+
+  return `/api/studio/device/transfer/${id}`
+}
+
+export const studioControllerTransfer = async (id: string,
+    stationDeviceDto: StationDeviceDto, options?: RequestInit): Promise<StationCredentialResponseDto> => {
+
+  return customFetch<StationCredentialResponseDto>(getStudioControllerTransferUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(stationDeviceDto)
+  }
+);}
+
+
+
+
+
+export const getStudioControllerTransferQueryKey = (id: string,
+    stationDeviceDto?: StationDeviceDto,) => {
+    return [
+    'POST', `/api/studio/device/transfer/${id}`, stationDeviceDto
+    ] as const;
+    }
+
+
+export const getStudioControllerTransferQueryOptions = <TData = Awaited<ReturnType<typeof studioControllerTransfer>>, TError = unknown>(id: string,
+    stationDeviceDto: StationDeviceDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerTransfer>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getStudioControllerTransferQueryKey(id,stationDeviceDto);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof studioControllerTransfer>>> = ({ signal }) => studioControllerTransfer(id,stationDeviceDto, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof studioControllerTransfer>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type StudioControllerTransferQueryResult = NonNullable<Awaited<ReturnType<typeof studioControllerTransfer>>>
+export type StudioControllerTransferQueryError = unknown
+
+
+export function useStudioControllerTransfer<TData = Awaited<ReturnType<typeof studioControllerTransfer>>, TError = unknown>(
+ id: string,
+    stationDeviceDto: StationDeviceDto, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerTransfer>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof studioControllerTransfer>>,
+          TError,
+          Awaited<ReturnType<typeof studioControllerTransfer>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStudioControllerTransfer<TData = Awaited<ReturnType<typeof studioControllerTransfer>>, TError = unknown>(
+ id: string,
+    stationDeviceDto: StationDeviceDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerTransfer>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof studioControllerTransfer>>,
+          TError,
+          Awaited<ReturnType<typeof studioControllerTransfer>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStudioControllerTransfer<TData = Awaited<ReturnType<typeof studioControllerTransfer>>, TError = unknown>(
+ id: string,
+    stationDeviceDto: StationDeviceDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerTransfer>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useStudioControllerTransfer<TData = Awaited<ReturnType<typeof studioControllerTransfer>>, TError = unknown>(
+ id: string,
+    stationDeviceDto: StationDeviceDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerTransfer>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getStudioControllerTransferQueryOptions(id,stationDeviceDto,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getStudioControllerRevokeUrl = (id: string,) => {
+
+
+
+
+  return `/api/studio/device/revoke/${id}`
+}
+
+export const studioControllerRevoke = async (id: string, options?: RequestInit): Promise<StationRevokeResponseDto> => {
+
+  return customFetch<StationRevokeResponseDto>(getStudioControllerRevokeUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getStudioControllerRevokeQueryKey = (id: string,) => {
+    return [
+    'POST', `/api/studio/device/revoke/${id}`
+    ] as const;
+    }
+
+
+export const getStudioControllerRevokeQueryOptions = <TData = Awaited<ReturnType<typeof studioControllerRevoke>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerRevoke>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getStudioControllerRevokeQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof studioControllerRevoke>>> = ({ signal }) => studioControllerRevoke(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof studioControllerRevoke>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type StudioControllerRevokeQueryResult = NonNullable<Awaited<ReturnType<typeof studioControllerRevoke>>>
+export type StudioControllerRevokeQueryError = unknown
+
+
+export function useStudioControllerRevoke<TData = Awaited<ReturnType<typeof studioControllerRevoke>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerRevoke>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof studioControllerRevoke>>,
+          TError,
+          Awaited<ReturnType<typeof studioControllerRevoke>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStudioControllerRevoke<TData = Awaited<ReturnType<typeof studioControllerRevoke>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerRevoke>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof studioControllerRevoke>>,
+          TError,
+          Awaited<ReturnType<typeof studioControllerRevoke>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStudioControllerRevoke<TData = Awaited<ReturnType<typeof studioControllerRevoke>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerRevoke>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useStudioControllerRevoke<TData = Awaited<ReturnType<typeof studioControllerRevoke>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof studioControllerRevoke>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getStudioControllerRevokeQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

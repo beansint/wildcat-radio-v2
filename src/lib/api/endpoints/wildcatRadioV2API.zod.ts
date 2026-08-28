@@ -707,10 +707,17 @@ export const PostBoothChatResponse = zod.object({
 })
 
 
-/**
- * @summary Start a cookie-based station session
- */
-export const CreateStationSessionResponse = zod.object({
+export const StudioConsoleControllerCreateHandoffResponse = zod.object({
+  "handoff": zod.string(),
+  "expiresAt": zod.number().describe('Unix epoch milliseconds.')
+})
+
+
+export const StudioConsoleControllerConsumeHandoffBody = zod.object({
+  "handoff": zod.string().describe('Short-lived single-use Electron-to-browser handoff code.')
+})
+
+export const StudioConsoleControllerConsumeHandoffResponse = zod.object({
   "ok": zod.literal(true),
   "expiresAt": zod.number().describe('Session expiry, epoch milliseconds')
 })
@@ -752,6 +759,47 @@ export const GetStreamManifestResponse = zod.object({
 export const PostStreamHeartbeatResponse = zod.object({
   "status": zod.enum(['LIVE', 'STATION_ROTATION', 'OFF_AIR']),
   "reason": zod.enum(['NO_ATTENDANCE', 'SOURCE_STALE', 'SEGMENT_STALE', 'PUBLICATION_STALE', 'CONFIGURATION_ERROR']).nullable()
+})
+
+
+export const StudioControllerEnrollBody = zod.object({
+  "deviceId": zod.string().describe('Stable installation identity registered for the booth.'),
+  "label": zod.string().describe('Human-readable booth label.')
+})
+
+export const StudioControllerEnrollResponse = zod.object({
+  "credential": zod.string().describe('Returned once. The API stores only its hash.'),
+  "id": zod.string(),
+  "label": zod.string(),
+  "generation": zod.number()
+})
+
+
+export const StudioControllerTransferParams = zod.object({
+  "id": zod.string()
+})
+
+export const StudioControllerTransferBody = zod.object({
+  "deviceId": zod.string().describe('Stable installation identity registered for the booth.'),
+  "label": zod.string().describe('Human-readable booth label.')
+})
+
+export const StudioControllerTransferResponse = zod.object({
+  "credential": zod.string().describe('Returned once. The API stores only its hash.'),
+  "id": zod.string(),
+  "label": zod.string(),
+  "generation": zod.number()
+})
+
+
+export const StudioControllerRevokeParams = zod.object({
+  "id": zod.string()
+})
+
+export const StudioControllerRevokeResponse = zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "revokedAt": zod.iso.datetime({"offset":true})
 })
 
 
@@ -810,6 +858,59 @@ export const TimeInStudioResponse = zod.unknown()
  * @summary DJ time-out (tap out)
  */
 export const TimeOutStudioResponse = zod.unknown()
+
+
+/**
+ * @summary Get the public engagement snapshot for an episode
+ */
+export const GetEpisodeEngagementSnapshotParams = zod.object({
+  "id": zod.string().describe('Episode id (cuid)')
+})
+
+export const GetEpisodeEngagementSnapshotResponse = zod.object({
+  "episodeId": zod.string(),
+  "capturedAt": zod.iso.datetime({"offset":true}),
+  "recentChat": zod.array(zod.object({
+  "id": zod.string(),
+  "content": zod.string(),
+  "asBooth": zod.boolean(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "author": zod.object({
+  "handle": zod.string(),
+  "name": zod.string()
+}).nullable()
+})),
+  "polls": zod.array(zod.object({
+  "id": zod.string().describe('Poll id (cuid)'),
+  "question": zod.string(),
+  "visibility": zod.enum(['PUBLIC', 'ANONYMOUS']),
+  "isActive": zod.boolean(),
+  "totalVotes": zod.number(),
+  "options": zod.array(zod.object({
+  "id": zod.string().describe('Poll option id (cuid)'),
+  "text": zod.string(),
+  "voteCount": zod.number()
+}))
+})),
+  "pinnedTopic": zod.object({
+  "episodeId": zod.string().describe('Active episode id (cuid)'),
+  "text": zod.string(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAtEpisodeEnd": zod.boolean().describe('Whether this pin auto-clears when the episode ends')
+}).nullable(),
+  "reactions": zod.array(zod.object({
+  "emoji": zod.string(),
+  "count": zod.number()
+})),
+  "upNext": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['REQUEST', 'DEDICATION', 'QUESTION']),
+  "text": zod.string(),
+  "recipient": zod.string().nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "by": zod.string().nullable()
+}))
+})
 
 
 /**

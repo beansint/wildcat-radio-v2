@@ -11,6 +11,9 @@
 function resolveSiteUrl(): string {
   const raw = process.env.NEXT_PUBLIC_SITE_URL;
   if (!raw) {
+    // Vercel preview builds (deferred #12 — not the launch path) have no
+    // NEXT_PUBLIC_SITE_URL; derive from the deployment URL instead of failing.
+    if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
     if (process.env.NODE_ENV === "production") {
       throw new Error(
         "NEXT_PUBLIC_SITE_URL is required for production builds — sitemap/robots/OG URLs derive from it",

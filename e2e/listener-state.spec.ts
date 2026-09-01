@@ -84,6 +84,22 @@ test("#64: a failed poll clears prior LIVE data and stops playback", async ({ pa
   await page.route("**/api/episodes/*/polls", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
   );
+  // Late-joiner recovery fetches the engagement snapshot for the (stubbed)
+  // episode; without a stub the API 404s and trips the console guard.
+  await page.route("**/api/episodes/*/engagement-snapshot", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        episodeId: "e2e-live-episode",
+        chat: [],
+        polls: [],
+        pinnedTopic: null,
+        hype: { count: 0, trend: "steady" },
+        upNext: [],
+      }),
+    }),
+  );
   await page.route("**/api/auth/get-session", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "null" }),
   );
@@ -175,6 +191,22 @@ test("#64: an episode-A submission cannot toast or close episode B", async ({ pa
   await page.route("**/api/episodes/*/polls", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
   );
+  // Late-joiner recovery fetches the engagement snapshot for the (stubbed)
+  // episode; without a stub the API 404s and trips the console guard.
+  await page.route("**/api/episodes/*/engagement-snapshot", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        episodeId: "e2e-live-episode",
+        chat: [],
+        polls: [],
+        pinnedTopic: null,
+        hype: { count: 0, trend: "steady" },
+        upNext: [],
+      }),
+    }),
+  );
   await page.route("**/api/episodes/listener-state-episode-a/queue", async (route) => {
     submissionStarted();
     await submissionGate;
@@ -213,6 +245,22 @@ test("#64: cancelling while the HLS manifest is pending never starts late audio"
   await manifest(page, LIVE_MANIFEST);
   await page.route("**/api/episodes/*/polls", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
+  );
+  // Late-joiner recovery fetches the engagement snapshot for the (stubbed)
+  // episode; without a stub the API 404s and trips the console guard.
+  await page.route("**/api/episodes/*/engagement-snapshot", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        episodeId: "e2e-live-episode",
+        chat: [],
+        polls: [],
+        pinnedTopic: null,
+        hype: { count: 0, trend: "steady" },
+        upNext: [],
+      }),
+    }),
   );
   await page.route("**/api/auth/get-session", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "null" }),

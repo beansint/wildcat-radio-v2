@@ -74,6 +74,9 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const episodeId: string | null = manifestReady ? (manifest?.episodeId ?? null) : null;
 
   const [phase, setPhase] = useState<PlayerPhase>("idle");
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
   // Presence must count people who can actually HEAR the stream — a listener
   // stuck buffering or reconnecting is not an audience member.
   const isPlaying = phase === "playing";
@@ -96,6 +99,8 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const MAX_RECOVERY_ATTEMPTS = 3;
   /** URL the current playback session was started with (FE#66 url-change reattach). */
   const playingUrlRef = useRef<string | null>(null);
+  /** Mirror of `phase` for event handlers that must not run effects in updaters. */
+  const phaseRef = useRef<PlayerPhase>("idle");
 
   const { listeners, socketStatus, socketEpisodeId, upNext } = useStreamPresence(
     episodeId,
@@ -234,19 +239,20 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     // FE#66 — native-HLS (Safari) parity: hls.js handles its own errors, but
     // the native pipeline surfaces failures only through the media element.
     // Retry with the same bounded ladder, then fall terminal with the toast.
+    // Side effects stay OUTSIDE the setPhase updater (React may run updaters
+    // more than once); the current phase is read from phaseRef instead.
     const onError = () => {
       if (hlsRef.current) return; // hls.js branch owns its errors
-      setPhase((current) => {
-        if (current === "idle") return current;
-        if (recoveryAttempts.current < MAX_RECOVERY_ATTEMPTS) {
-          recoveryAttempts.current += 1;
-          audio.load();
-          void audio.play().catch(() => {});
-          return "reconnecting";
-        }
-        pushToast("The stream dropped — tap play to reconnect");
-        return "idle";
-      });
+      if (phaseRef.current === "idle") return;
+      if (recoveryAttempts.current < MAX_RECOVERY_ATTEMPTS) {
+        recoveryAttempts.current += 1;
+        audio.load();
+        void audio.play().catch(() => {});
+        setPhase((p) => (p === "idle" ? p : "reconnecting"));
+        return;
+      }
+      pushToast("The stream dropped — tap play to reconnect");
+      setPhase("idle");
     };
     // `waiting` fires both for the initial buffer and for a mid-stream
     // underrun; only the latter is a "reconnect".

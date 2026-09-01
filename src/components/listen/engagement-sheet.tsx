@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { HelpCircle, Megaphone, Music, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { z } from "zod";
 import type { SheetTab } from "./engagement-tiles";
@@ -57,7 +57,7 @@ function errorText(errors: FieldErrors) {
     .join(" ");
 }
 
-export function EngagementSheet({
+export const EngagementSheet = memo(function EngagementSheet({
   open,
   tab,
   onTabChange,
@@ -337,4 +337,4 @@ export function EngagementSheet({
       </SheetContent>
     </Sheet>
   );
-}
+});

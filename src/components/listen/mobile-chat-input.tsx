@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Send } from "lucide-react";
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { SheetTab } from "./engagement-tiles";
 import { useEngagementGate, EngagementGateNotice } from "./engagement-gate";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -17,7 +17,7 @@ interface MobileChatInputProps {
   isLive: boolean;
 }
 
-export function MobileChatInput({ onOpenSheet, onSend, onReact, reacting, isLive }: MobileChatInputProps) {
+export const MobileChatInput = memo(function MobileChatInput({ onOpenSheet, onSend, onReact, reacting, isLive }: MobileChatInputProps) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -47,7 +47,12 @@ export function MobileChatInput({ onOpenSheet, onSend, onReact, reacting, isLive
 
   return (
     <div
-      className="sticky bottom-0 z-30 border-t lg:hidden"
+      // FE#66 — the GlobalPlayer is `position:fixed; bottom:0; z-60` and
+      // always mounted on public routes, so a plain `bottom-0` sticky bar
+      // sat UNDERNEATH it on phones. Offset by the player's reserved height
+      // (72px mobile / 56px md — the same values public-shell pads for),
+      // plus the safe-area inset the player itself absorbs.
+      className="sticky bottom-[calc(72px+env(safe-area-inset-bottom,0px))] md:bottom-[calc(56px+env(safe-area-inset-bottom,0px))] z-30 border-t lg:hidden"
       style={{ background: "var(--card)", borderColor: "var(--border)" }}
     >
       {!mounted ? (
@@ -107,4 +112,4 @@ export function MobileChatInput({ onOpenSheet, onSend, onReact, reacting, isLive
       )}
     </div>
   );
-}
+});

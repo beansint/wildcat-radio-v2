@@ -4,6 +4,22 @@ import { WEB_BASE } from './_fixtures';
 // FE#55 — was a hardcoded, stale `http://localhost:3000` (the web app runs on 3011).
 const BASE = WEB_BASE;
 
+// The chat surface only exists during a live episode ("truthful broadcast
+// states"), so gate tests stub the one non-deterministic boundary — the
+// manifest — same pattern as player-live-states.spec.ts.
+const LIVE_MANIFEST = {
+  status: 'LIVE',
+  url: 'https://example.invalid/stream/index.m3u8',
+  dj: ['DJ Mara'],
+  episodeId: 'e2e-live-episode',
+};
+
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/stream/manifest', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(LIVE_MANIFEST) }),
+  );
+});
+
 // AC-5 golden: anon user → /listen chat shows gate CTA; reactions stay open
 // Note: the gate renders in multiple slots (desktop chat, mobile input, engagement sheet)
 // so we use .first() to satisfy Playwright strict-mode.

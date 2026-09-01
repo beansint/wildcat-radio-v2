@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth/client";
 import { useStream } from "@/lib/stream/stream-context";
@@ -63,15 +63,20 @@ export function ListenClient() {
     tab: SheetTab;
   }>({ scope: "", open: false, tab: "req" });
 
-  function openSheet(tab: SheetTab) {
-    setSheetState({ scope: episodeScope, open: true, tab });
-  }
-
-  function closeSheet() {
-    setSheetState((current) => ({ ...current, open: false }));
-  }
-
   const episodeScope = engagementEpisodeId ?? `${manifestAvailability}:${status}`;
+
+  // FE#47 — leaf components below are `memo()`d; these handlers must keep a
+  // stable identity or every chat/hype tick re-renders all four leaves anyway.
+  const openSheet = useCallback(
+    (tab: SheetTab) => setSheetState({ scope: episodeScope, open: true, tab }),
+    [episodeScope],
+  );
+  const closeSheet = useCallback(
+    () => setSheetState((current) => ({ ...current, open: false })),
+    [],
+  );
+  const { react } = engagement;
+  const reactFire = useCallback(() => react("🔥"), [react]);
   const sheetOpen = sheetState.scope === episodeScope && sheetState.open;
   const sheetTab = sheetState.scope === episodeScope ? sheetState.tab : "req";
 
@@ -121,7 +126,7 @@ export function ListenClient() {
         key={`mobile-chat:${episodeScope}`}
         onOpenSheet={openSheet}
         onSend={engagement.sendChat}
-        onReact={() => engagement.react("🔥")}
+        onReact={reactFire}
         reacting={engagement.reacting}
         isLive={isLive}
       />
@@ -131,7 +136,7 @@ export function ListenClient() {
         key={`sheet:${episodeScope}`}
         open={sheetOpen}
         tab={sheetTab}
-        onTabChange={(tab) => setSheetState({ scope: episodeScope, open: true, tab })}
+        onTabChange={openSheet}
         onClose={closeSheet}
         pushToast={pushToast}
         onSubmitQueue={engagement.submitQueue}

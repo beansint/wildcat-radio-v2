@@ -12,11 +12,14 @@ import Link from 'next/link';
 import { useSession, type SessionUser } from '@/lib/auth/client';
 import { usePathname } from 'next/navigation';
 
-export type GateState = 'anon' | 'unverified' | 'ok';
+export type GateState = 'pending' | 'anon' | 'unverified' | 'ok';
 
 export function useEngagementGate(): GateState {
   const { data, isPending } = useSession();
-  if (isPending) return 'ok'; // don't block while loading
+  // Session still loading is PENDING, not authorized (FE#65): treating it as
+  // 'ok' briefly showed the composer to signed-out users, whose first send
+  // then failed with an unexplained auth error.
+  if (isPending) return 'pending';
   if (!data) return 'anon';
   const user = data.user as SessionUser;
   if (!user.emailVerified) return 'unverified';
@@ -32,6 +35,12 @@ interface EngagementGateNoticeProps {
 export function EngagementGateNotice({ gate, next }: EngagementGateNoticeProps) {
   const pathname = usePathname();
   const nextParam = encodeURIComponent(next ?? pathname);
+
+  if (gate === 'pending') {
+    // Neutral placeholder while the session resolves — same footprint as the
+    // sign-in notice so the layout doesn't jump when the real state lands.
+    return <div className="p-2.5 text-sm text-muted-foreground" aria-hidden="true" />;
+  }
 
   if (gate === 'anon') {
     return (

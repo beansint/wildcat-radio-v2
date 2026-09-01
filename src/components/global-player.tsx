@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useStream } from "@/lib/stream/stream-context";
 import { react } from "@/lib/api/endpoints/engagement/engagement";
@@ -24,7 +24,7 @@ import { Flame, Loader2, Pause, Play, Users, Volume2, VolumeX } from "lucide-rea
  * there: volume (desktop, where the OS isn't already one gesture away) and a
  * live listener count. No seek bar — see the activity strip note below.
  */
-export function GlobalPlayer() {
+export const GlobalPlayer = memo(function GlobalPlayer() {
   const {
     status,
     djs,
@@ -300,4 +300,4 @@ export function GlobalPlayer() {
       </div>
     </div>
   );
-}
+});

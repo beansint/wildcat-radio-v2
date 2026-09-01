@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 import { Users, Mic, Play, Pause, Pin, Radio, WifiOff, LoaderCircle } from "lucide-react";
 import { useStream } from "@/lib/stream/stream-context";
 import { ReactionBar } from "./reaction-bar";
@@ -19,7 +21,7 @@ interface StageProps {
   isLive: boolean;
 }
 
-export function Stage({
+export const Stage = memo(function Stage({
   onOpenSheet,
   pinnedTopic,
   hype,
@@ -202,4 +204,4 @@ export function Stage({
       </div>
     </section>
   );
-}
+});

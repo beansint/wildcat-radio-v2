@@ -1,7 +1,7 @@
 "use client";
 
 import { MessagesSquare, Send, Users } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { ChatMessage, type ChatMessageProps } from "./chat-message";
 import { InlinePoll } from "./inline-poll";
 import { useEngagementGate, EngagementGateNotice } from "./engagement-gate";
@@ -29,7 +29,7 @@ interface ChatColumnProps {
   isLive: boolean;
 }
 
-export function ChatColumn({
+export const ChatColumn = memo(function ChatColumn({
   messages,
   onSend,
   listenerCount,
@@ -190,4 +190,4 @@ export function ChatColumn({
       )}
     </section>
   );
-}
+});

@@ -189,6 +189,24 @@ async function actOnQueueItem(page: Page, text: string, action: 'Queue' | 'Decli
 
 test.describe.configure({ mode: 'serial' });
 
+/**
+ * The engagement shell, its sign-in gate, and chat submission all require the
+ * station to be on air (open episode + configured, freshly-publishing
+ * broadcast plane — `deriveStreamState`). CI runs the API alone: no
+ * STREAM_PUBLIC_URL and no studio app publishing heartbeats, so its manifest
+ * can only ever be OFF_AIR or fail to build. Tests that present broadcast
+ * state call this first and skip with the observed reason when it is absent
+ * (same guard idea as stream-playback.spec.ts).
+ */
+async function requireOnAir(page: Page): Promise<void> {
+  const res = await page.request.get('/api/stream/manifest');
+  const manifest = res.ok() ? ((await res.json().catch(() => null)) as { status?: string; reason?: string }) : null;
+  test.skip(
+    !res.ok() || manifest?.status === 'OFF_AIR',
+    `station is not on air (${!res.ok() ? `manifest ${res.status()}` : `status=${manifest?.status}, reason=${manifest?.reason}`}) — the broadcast plane is out of scope for CI`,
+  );
+}
+
 test.describe('engagement UI', () => {
   let fixtureEpisodeId = '';
 
@@ -207,18 +225,7 @@ test.describe('engagement UI', () => {
   });
 
   test('AC-1/AC-2: anonymous listener sees gated writes and engagement shell', async ({ page }) => {
-    // The engagement shell (and its sign-in gate) only mounts while the
-    // station is on air (STATION_ROTATION/LIVE — an open episode plus a
-    // configured, freshly-publishing broadcast plane). CI runs the API alone:
-    // no STREAM_PUBLIC_URL and no studio app publishing heartbeats, so the
-    // manifest can only ever be OFF_AIR there. Same guard idea as
-    // stream-playback.spec.ts: assert the state, skip what it can't present.
-    const res = await page.request.get('/api/stream/manifest');
-    const manifest = res.ok() ? ((await res.json()) as { status?: string; reason?: string }) : null;
-    test.skip(
-      !manifest || manifest.status === 'OFF_AIR',
-      `station is not on air (${!res.ok() ? `manifest ${res.status()}` : `status=${manifest?.status}, reason=${manifest?.reason}`}) — the engagement shell needs the broadcast plane`,
-    );
+    await requireOnAir(page);
 
     await page.goto('/listen');
 
@@ -245,7 +252,8 @@ test.describe('engagement UI', () => {
     await expect(page.getByTestId('studio-queue')).not.toBeVisible();
   });
 
-  test('golden: listener submits request, studio queues it, listener gets receipt and up next', async ({ browser, request }) => {
+  test('golden: listener submits request, studio queues it, listener gets receipt and up next', async ({ browser, request, page }) => {
+    await requireOnAir(page);
     const listenerUser = await createVerifiedListener(request);
     await openEpisode(request);
 
@@ -273,7 +281,8 @@ test.describe('engagement UI', () => {
     await studioContext.close();
   });
 
-  test('edge: decline stays silent and guest budget block is clear', async ({ browser, request }) => {
+  test('edge: decline stays silent and guest budget block is clear', async ({ browser, request, page }) => {
+    await requireOnAir(page);
     const listenerUser = await createVerifiedListener(request);
     await openEpisode(request);
 

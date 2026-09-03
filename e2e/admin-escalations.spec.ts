@@ -1,5 +1,5 @@
-import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+import { execBackendTsx } from './_fixtures';
 import { expect, test } from '@playwright/test';
 
 // /admin/escalations — custodian-only review of appeals + reinstatement
@@ -44,9 +44,7 @@ function runPrismaScript(body: string) {
     main().catch((error) => { console.error(error); process.exit(1); });
   `;
   try {
-    execFileSync('pnpm', ['--dir', BACKEND_DIR, '--filter', '@wildcat/api', 'exec', 'tsx', '-e', script], {
-      stdio: 'pipe',
-    });
+    execBackendTsx(script);
   } catch (error) {
     const details =
       error instanceof Error && 'stderr' in error
@@ -91,11 +89,15 @@ async function login(page: import('@playwright/test').Page, email: string, passw
 
 test.describe('admin escalations — RBAC', () => {
   // Edge: a MODERATOR (non-custodian) visiting /admin/escalations is
-  // redirected away — /admin/* is custodian-only, unlike /mod/*.
-  test('edge: MODERATOR visiting /admin/escalations is redirected to /', async ({ page }) => {
+  // redirected to the staff portal — /admin/* is custodian-only, unlike
+  // /mod/*. getStaffPortalPath returns /mod/roster for staff roles; only
+  // listeners fall through to / (src/lib/auth/staff-routing.ts, documented on
+  // (staff)/admin/layout.tsx; admin-staff-review.spec.ts SR-W-07/SR-X-01d
+  // asserts the same destination).
+  test('edge: MODERATOR visiting /admin/escalations is redirected to /mod/roster', async ({ page }) => {
     await login(page, MOD_EMAIL, PASSWORD);
     await page.goto(`${BASE}/admin/escalations`);
-    await expect(page).toHaveURL(new RegExp(`^${BASE}/?$`), { timeout: 8_000 });
+    await expect(page).toHaveURL(new RegExp(`^${BASE}/mod/roster$`), { timeout: 8_000 });
   });
 
   // Edge: a LISTENER visiting /admin/escalations is redirected away too.

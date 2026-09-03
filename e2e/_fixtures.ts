@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
 import { request as pwRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { normalizeFilterWord } from '../src/lib/settings/filter-list';
 
@@ -25,6 +27,26 @@ import { normalizeFilterWord } from '../src/lib/settings/filter-list';
 export const API_BASE = process.env.PLAYWRIGHT_API_URL ?? 'http://localhost:3010';
 export const WEB_BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3011';
 export const PASSWORD = 'Password123!';
+
+/** Backend sibling repo the fixture scripts run against (same default the specs use). */
+export const BACKEND_DIR =
+  process.env.WILDCAT_BACKEND_DIR ?? path.resolve(process.cwd(), '../wildcat-radio-v2-backend');
+
+/**
+ * Runs a TS fixture script inside the backend workspace — the same thing
+ * `pnpm --dir <backend> --filter @wildcat/api exec tsx -e <script>` does,
+ * but spawning `tsx` directly: `pnpm` is a `.cmd` shim on Windows, which
+ * execFileSync cannot exec (ENOENT — and Node's CVE-2024-27980 fix rejects
+ * `.cmd` outright without shell:true). Running tsx's cli.mjs with cwd set to
+ * `apps/api` gives the same module resolution as `pnpm exec` does. Scripts
+ * must wrap async work in a `main().catch()` — tsx `-e` compiles as CJS, so
+ * top-level await is rejected.
+ */
+export function execBackendTsx(script: string): void {
+  const apiDir = path.join(BACKEND_DIR, 'apps', 'api');
+  const tsxEntry = path.join(apiDir, 'node_modules', 'tsx', 'dist', 'cli.mjs');
+  execFileSync(process.execPath, [tsxEntry, '-e', script], { stdio: 'pipe', cwd: apiDir });
+}
 
 export const ACCOUNTS = {
   moderator: 'mod@example.com',

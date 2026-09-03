@@ -531,6 +531,12 @@ test('ANN-E-06b: full R2 round trip — browser PUT to the presigned URL, photo 
   page,
   browser,
 }) => {
+  // Real external-service round trip: it needs the API's live R2 credentials
+  // and network reachability to the bucket. CI's throwaway API has neither,
+  // so the presign step can only fail there — gated behind an explicit opt-out
+  // the CI e2e job sets rather than a blanket `CI` check, so local runs keep
+  // exercising it.
+  test.skip(process.env.SKIP_R2_E2E === '1', 'needs live R2 credentials — CI runs this off');
   const created = await fixtureDraft({ title: `E2E FE9 PhotoR2 ${Date.now()}` });
 
   await loginAs(page, 'moderator');

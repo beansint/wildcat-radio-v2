@@ -1,7 +1,6 @@
-import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { ACCOUNTS, PASSWORD, WEB_BASE, API_BASE, loginAs, apiLoginAs } from './_fixtures';
+import { ACCOUNTS, PASSWORD, WEB_BASE, API_BASE, loginAs, apiLoginAs, execBackendTsx } from './_fixtures';
 import { attachConsoleGuard, appAlerts } from './_console';
 
 /**
@@ -44,9 +43,7 @@ function runPrismaScript(body: string) {
     main().catch((error) => { console.error(error); process.exit(1); });
   `;
   try {
-    execFileSync('pnpm', ['--dir', BACKEND_DIR, '--filter', '@wildcat/api', 'exec', 'tsx', '-e', script], {
-      stdio: 'pipe',
-    });
+    execBackendTsx(script);
   } catch (error) {
     const details =
       error instanceof Error && 'stderr' in error

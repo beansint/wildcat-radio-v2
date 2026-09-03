@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
@@ -19,7 +18,7 @@ import { expect, test, type Page } from '@playwright/test';
 // "Afternoon Vibes" show / "DJ Carla" roster entry.
 
 // FE#55 — was locally redeclared with a stale 3000 default; the web app runs on 3011.
-import { API_BASE, WEB_BASE } from './_fixtures';
+import { API_BASE, WEB_BASE, execBackendTsx } from './_fixtures';
 const STATION_TOKEN = process.env.STATION_DEVICE_TOKEN ?? 'dev-studio-token-change-me';
 const STATION_DEVICE_ID = process.env.WC_DEVICE_ID ?? 'e2e-browser-device-3011';
 const TOKEN_HASH = createHash('sha256').update(STATION_TOKEN).digest('hex');
@@ -29,9 +28,7 @@ const EPISODE_ID = 'e2e-fe5-episode-studio';
 
 function runBackendScript(script: string) {
   try {
-    execFileSync('pnpm', ['--dir', BACKEND_DIR, '--filter', '@wildcat/api', 'exec', 'tsx', '-e', script], {
-      stdio: 'pipe',
-    });
+    execBackendTsx(script);
   } catch (error) {
     const details =
       error instanceof Error && 'stderr' in error

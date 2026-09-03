@@ -359,8 +359,10 @@ test('SET-I-05: filter terms round trip in the UI', async ({ page }) => {
   await page.getByTestId('mod-settings-tabs-moderation').click();
   await expect(page.getByText(stored, { exact: true })).toBeVisible({ timeout: 10_000 });
 
-  const row = page.locator(':scope', { hasText: stored });
-  await row.getByTestId('mod-settings-filter-remove').first().click();
+  // Click THIS term's remove button (aria-label carries the stored word) —
+  // a hasText-scoped first() grabbed whichever row sorted first, which only
+  // matched the fixture term while the dev DB's list order cooperated.
+  await page.getByRole('button', { name: `Remove ${stored}` }).click();
   await page.reload();
   await page.getByTestId('mod-settings-tabs-moderation').click();
   await expect(page.getByText(stored, { exact: true })).toHaveCount(0);

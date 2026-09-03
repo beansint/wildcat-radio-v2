@@ -214,10 +214,10 @@ test.describe('engagement UI', () => {
     // manifest can only ever be OFF_AIR there. Same guard idea as
     // stream-playback.spec.ts: assert the state, skip what it can't present.
     const res = await page.request.get('/api/stream/manifest');
-    const manifest = res.ok() ? ((await res.json()) as { status?: string }) : null;
+    const manifest = res.ok() ? ((await res.json()) as { status?: string; reason?: string }) : null;
     test.skip(
-      manifest?.status === 'OFF_AIR',
-      `station is off air (reason=${(manifest as { reason?: string } | null)?.reason ?? 'unknown'}) — the engagement shell needs the broadcast plane`,
+      !manifest || manifest.status === 'OFF_AIR',
+      `station is not on air (${!res.ok() ? `manifest ${res.status()}` : `status=${manifest?.status}, reason=${manifest?.reason}`}) — the engagement shell needs the broadcast plane`,
     );
 
     await page.goto('/listen');

@@ -211,6 +211,10 @@ test.describe('@contract', () => {
   });
 
   test('ANN-C-05: photo presign/confirm guards reject bad mime, size, cap, and unconfirmed keys', async () => {
+    // The nonexistent-key confirm case depends on a real R2 HeadObject (the
+    // bucket's 404 is what the guard maps to 400) — without live R2
+    // credentials the API can only answer 500. Same gate as ANN-E-06b.
+    test.skip(process.env.SKIP_R2_E2E === '1', 'needs live R2 credentials — CI runs this off');
     const target = await fixtureDraft({ title: `E2E FE9 Photo ${Date.now()}` });
 
     const badMime = await modApi.post(`/api/announcements/${target.id}/photo`, {

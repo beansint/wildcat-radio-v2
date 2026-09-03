@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execBackendTsx } from './_fixtures';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -17,7 +17,7 @@ import { expect, test, type Page } from '@playwright/test';
 // station-TZ correction edge (the bug the golden path's comment calls out),
 // the synthesized ABSENT row, correction-form validation, and the staff
 // dark-mode-doesn't-leak-to-public-site cross-cutting check. Those additions
-// use a small Prisma fixture helper (same `execFileSync`/tsx pattern as
+// use a small Prisma fixture helper (same tsx-spawn pattern as
 // e2e/studio-attendance.spec.ts and e2e/engagement.spec.ts) to seed
 // deterministic rows rather than depending on whatever the DB has
 // accumulated from prior runs.
@@ -51,9 +51,7 @@ function runPrismaScript(body: string) {
     main().catch((error) => { console.error(error); process.exit(1); });
   `;
   try {
-    execFileSync('pnpm', ['--dir', BACKEND_DIR, '--filter', '@wildcat/api', 'exec', 'tsx', '-e', script], {
-      stdio: 'pipe',
-    });
+    execBackendTsx(script);
   } catch (error) {
     const details =
       error instanceof Error && 'stderr' in error

@@ -207,6 +207,19 @@ test.describe('engagement UI', () => {
   });
 
   test('AC-1/AC-2: anonymous listener sees gated writes and engagement shell', async ({ page }) => {
+    // The engagement shell (and its sign-in gate) only mounts while the
+    // station is on air (STATION_ROTATION/LIVE — an open episode plus a
+    // configured, freshly-publishing broadcast plane). CI runs the API alone:
+    // no STREAM_PUBLIC_URL and no studio app publishing heartbeats, so the
+    // manifest can only ever be OFF_AIR there. Same guard idea as
+    // stream-playback.spec.ts: assert the state, skip what it can't present.
+    const res = await page.request.get('/api/stream/manifest');
+    const manifest = res.ok() ? ((await res.json()) as { status?: string }) : null;
+    test.skip(
+      manifest?.status === 'OFF_AIR',
+      `station is off air (reason=${(manifest as { reason?: string } | null)?.reason ?? 'unknown'}) — the engagement shell needs the broadcast plane`,
+    );
+
     await page.goto('/listen');
 
     const signInGate = page.getByTestId('listen-gate-signin').first();

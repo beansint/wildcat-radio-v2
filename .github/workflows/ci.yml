@@ -4,10 +4,12 @@ name: CI
 # that breaks `next build` reached `dev` and sat there, because "it renders
 # locally" was standing in for a real gate. This job is that gate.
 #
-# It deliberately does NOT run Playwright: those specs need a live backend on
-# :3010, a seeded database and a real session, and a gate people learn to
-# ignore is worse than no gate. `pnpm test:e2e` stays a local/manual step —
-# see the backend's docs/conventions/09-ci-and-verification.md.
+# The `e2e` job runs the full Playwright suite against a real backend on a
+# throwaway Postgres (#72). It used to be deliberately excluded ("a gate people
+# learn to ignore is worse than no gate" — the suite needed a live backend and
+# a seeded DB that only existed on a dev machine); the backend's CI workflow
+# already proved the service-container recipe, so the browser suite now gates
+# PRs too. Serial (`workers: 1`) with one CI retry per `playwright.config.ts`.
 
 on:
   pull_request:
@@ -25,7 +27,7 @@ permissions:
 
 jobs:
   verify:
-    name: lint · typecheck · unit tests · build
+    name: lint · typecheck · unit tests + coverage · build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -57,10 +59,145 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
-      - name: Unit tests
-        run: pnpm run test:unit
+      - name: Unit tests + coverage
+        # Report-only for now (#72): no thresholds until a baseline exists.
+        # The v8 report prints in the job log on every PR.
+        run: pnpm run test:coverage
 
       - name: Build
         # Last, because it is the slowest and the cheaper gates above catch
         # most of what would fail here.
         run: pnpm run build
+
+  e2e:
+    name: e2e · playwright against a real backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    # Same recipe as the backend's verify job: a throwaway service-container
+    # Postgres, never the station's real dev database — this job must not be
+    # *able* to reach it, so there is nothing here for a malicious PR to
+    # exfiltrate.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+      NEXT_PUBLIC_API_URL: http://localhost:3010
+      NEXT_PUBLIC_SITE_URL: http://localhost:3011
+      PLAYWRIGHT_API_URL: http://localhost:3010
+      PLAYWRIGHT_BASE_URL: http://localhost:3011
+      # The R2 round-trip spec (ANN-E-06b) does a real browser PUT against the
+      # Cloudflare bucket; this job deliberately has no R2 credentials.
+      SKIP_R2_E2E: '1'
+      # Several specs spawn Prisma fixture scripts against the sibling backend
+      # (e2e/engagement.spec.ts, admin-escalations.spec.ts, …). In CI the
+      # backend is checked out at ./backend, not ../wildcat-radio-v2-backend.
+      WILDCAT_BACKEND_DIR: ${{ github.workspace }}/backend
+      # Boot config for the API (loaded via process.env; apps/api/.env does not
+      # exist in CI). All values are throwaway dev credentials. NODE_ENV=test
+      # matters: the backend's Better Auth limiter multiplies its limits ×200
+      # under test (`authLimit` in auth.factory.ts) precisely so an e2e suite
+      # can sign the same fixtures in dozens of times — without it, sign-in
+      # falls back to the production 5/min and the suite 429s mid-run.
+      NODE_ENV: test
+      PORT: 3010
+      BETTER_AUTH_SECRET: ci-e2e-secret-not-used-outside-this-run
+      BETTER_AUTH_URL: http://localhost:3010
+      CORS_ORIGINS: http://localhost:3011
+      STATION_DEVICE_TOKEN: dev-studio-token-change-me
+      STATION_UTC_OFFSET_MINUTES: 480
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The backend is a sibling repo: the e2e suite drives it as the fixture
+      # API. `dev` is its integration branch and the source the frontend's
+      # committed OpenAPI spec was synced from (`pnpm api:refresh`) — `main`
+      # lags it, and the attendance/episode specs exercise exactly the surface
+      # that differs. Same recipe as the backend's own CI verify job.
+      - uses: actions/checkout@v4
+        with:
+          repository: beansint/wildcat-radio-v2-backend
+          ref: dev
+          path: backend
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client + apply migrations + seed
+        working-directory: backend
+        run: |
+          pnpm run db:generate
+          pnpm --filter @wildcat/db exec prisma migrate deploy
+          node packages/db/seed.mjs
+
+      - name: Build backend API
+        # Only the API is needed — the root `pnpm run build` would also build
+        # the Electron studio app (a slow, Linux-untested download).
+        working-directory: backend
+        run: pnpm --filter @wildcat/api run build
+
+      - name: Start API on :3010
+        run: |
+          node backend/apps/api/dist/main.js &
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:3010/api/health > /dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -fsS http://localhost:3010/api/health
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: pnpm run build
+
+      - name: Start frontend on :3011
+        run: |
+          pnpm exec next start -p 3011 &
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:3011 > /dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -fsS http://localhost:3011 > /dev/null
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run e2e suite
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          # The HTML report (reporter configured in playwright.config.ts) plus
+          # traces/screenshots from the failed run.
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

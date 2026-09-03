@@ -47,13 +47,21 @@ const nextConfig: NextConfig = {
   // inline bootstrap/flight scripts, and the staff layouts add a synchronous
   // pre-hydration theme script (FE#39) that MUST run before first paint —
   // nonce-based CSP would need per-request middleware and would break both.
-  // The CSP still earns its place by locking down where content may be loaded
-  // FROM (`connect-src`, `img-src`, `frame-ancestors`), which is what actually
-  // constrains data exfiltration and clickjacking here.
+  // `'unsafe-eval'` is dev-only: the dev overlay and React refresh need it, but
+  // shipping eval capability in production would blunt the XSS containment the
+  // CSP exists for. It is read inside `headers()` (per call, not at config
+  // import) so tests can assert both environments. The CSP still earns its
+  // place by locking down where content may be loaded FROM (`connect-src`,
+  // `img-src`, `frame-ancestors`), which is what actually constrains data
+  // exfiltration and clickjacking here.
   async headers() {
+    const isDev = process.env.NODE_ENV !== "production";
+    const scriptSrc = isDev
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+      : "script-src 'self' 'unsafe-inline'";
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline'",
       `img-src 'self' data: blob: https://${MEDIA_HOST}`,
       "font-src 'self' data:",
@@ -62,6 +70,10 @@ const nextConfig: NextConfig = {
       `connect-src 'self' ${API_ORIGIN} ${API_ORIGIN.replace(/^http/, "ws")} https://${MEDIA_HOST}`,
       `media-src 'self' blob: ${API_ORIGIN} https://${MEDIA_HOST}`,
       "object-src 'none'",
+      // hls.js builds its transmuxer worker from a blob URL; without an
+      // explicit worker-src the browser falls back to script-src, which has no
+      // blob:, and playback degrades to main-thread transmuxing.
+      "worker-src 'self' blob:",
       "base-uri 'self'",
       "form-action 'self'",
       "frame-ancestors 'none'",

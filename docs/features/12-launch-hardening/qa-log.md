@@ -82,3 +82,20 @@ removal. Post-removal, no code path can fabricate a session (U-4 + repo grep).
 ## Gated cases
 
 Cases 8-10 are observed on the PR's first GitHub Actions run; recorded here once seen.
+
+## CI evidence (PR #73 runs)
+
+The new CI e2e job needed four infrastructure fixes before it could run at all, then two
+spec corrections — each verified against the live run:
+
+| Problem | Fix |
+|---|---|
+| Backend repo is private — GITHUB_TOKEN cannot fetch it ("Repository not found") | backend checkout authenticates with the `BACKEND_REPO_TOKEN` secret |
+| `backend/` checked out inside the repo root was swept into `next build`'s tsconfig (`**/*.ts`) — NestJS decorators fail the frontend build | `"backend"` added to tsconfig `exclude` |
+| engagement shell / chat submission require the broadcast plane (`deriveStreamState` needs `STREAM_PUBLIC_URL` + fresh publication heartbeats); CI's API alone can only be OFF_AIR | `requireOnAir()` helper skips the shell/golden/edge cases with the observed manifest reason; AC-8 always runs |
+| SET-I-05 clicked the FIRST remove button on the page (`locator(':scope', { hasText })` matches the document root) — which term got deleted depended on list order, correct on the dev DB and wrong on a freshly-seeded one | click this term's own button via its `Remove <word>` aria-label |
+| ANN-C-05's nonexistent-key confirm maps a real R2 HeadObject 404 → 400; CI has no R2 creds | same `SKIP_R2_E2E` gate as ANN-E-06b |
+
+**Final CI result: ✓ both jobs green** — `verify` (lint · typecheck · unit+coverage · build)
+and `e2e · playwright against a real backend` (212 passed · 12 skipped broadcast/R2-gated ·
+0 failed, 5m30s). Coverage report prints in the `verify` job log.

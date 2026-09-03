@@ -18,6 +18,13 @@ export default defineConfig({
   // without masking a real failure locally, where retries stay off.
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  // #72 — without an explicit reporter, CI would default to `dot` and the
+  // failed-run `playwright-report/` artifact upload in ci.yml would have
+  // nothing to upload. `github` annotations render failures inline on the PR;
+  // the HTML report is always written but never auto-opened.
+  reporter: process.env.CI
+    ? [['github'], ['html', { open: 'never' }]]
+    : [['list'], ['html', { open: 'never' }]],
   use: {
     // 3011 is this project's frontend port (backend runs on 3010) — the old
     // 3000 default predates that split and silently sent every spec using a

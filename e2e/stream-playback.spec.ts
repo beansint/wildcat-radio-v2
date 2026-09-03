@@ -2,6 +2,17 @@ import { test, expect } from '@playwright/test';
 
 // Issue #4 (Gate A local feasibility): the global player plays the live HLS stream.
 test('AC-3/AC-4: clicking play streams live audio and currentTime advances', async ({ page }) => {
+  // This spec drives a REAL live broadcast — it cannot pass against a bare
+  // backend with nothing on air (CI, a quiet studio). Same guard as
+  // stream-socket-gating.spec.ts; the mocked-manifest specs cover the player
+  // states, this one only adds value when something is actually streaming.
+  const res = await page.request.get('/api/stream/manifest');
+  const manifest = res.ok() ? await res.json().catch(() => null) : null;
+  test.skip(
+    !manifest?.episodeId,
+    `no live episode on air (status=${manifest?.status ?? 'API unreachable'}) — real-stream playback needs a broadcast`,
+  );
+
   await page.goto('/');
 
   // manifest polled → LIVE

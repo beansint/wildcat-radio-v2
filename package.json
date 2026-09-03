@@ -12,6 +12,7 @@
     "api:refresh": "pnpm spec:sync && pnpm api:generate",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test": "pnpm run lint && pnpm run typecheck && pnpm run test:unit"
@@ -40,6 +41,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^3.2.7",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
     "orval": "^8.17.0",

@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { createHash, createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -7,7 +6,7 @@ import { expect, request as pwRequest, test, type APIRequestContext, type Page }
 // FE#55 — these were locally redeclared with stale defaults (3000/3001 instead of
 // 3011/3010) and a third env-var spelling (`PLAYWRIGHT_API_BASE`) used nowhere
 // else. Re-exported from the shared fixtures so there is one source of truth.
-import { API_BASE, WEB_BASE } from './_fixtures';
+import { API_BASE, WEB_BASE, execBackendTsx } from './_fixtures';
 const BACKEND_DIR = process.env.WILDCAT_BACKEND_DIR ?? path.resolve(process.cwd(), '../wildcat-radio-v2-backend');
 const STATION_TOKEN = process.env.STATION_DEVICE_TOKEN ?? 'dev-studio-token-change-me';
 const STATION_DEVICE_ID = process.env.WC_DEVICE_ID ?? 'e2e-browser-device-3011';
@@ -25,7 +24,7 @@ function backendEnv(name: string) {
   for (const envPath of [
     path.join(BACKEND_DIR, 'apps/api/.env'),
     path.join(BACKEND_DIR, 'packages/db/.env'),
-    path.join(BACKEND_DIR, '.env'),
+    path.join(BACKEND_DIR, 'apps', 'api', '.env'),
   ]) {
     try {
       const line = readFileSync(envPath, 'utf8')
@@ -60,7 +59,7 @@ function runBackendFixture() {
     import { PrismaPg } from '@prisma/adapter-pg';
     import { PrismaClient } from '@prisma/client';
     async function main() {
-      dotenv.config({ path: ${JSON.stringify(path.join(BACKEND_DIR, '.env'))} });
+      dotenv.config({ path: ${JSON.stringify(path.join(BACKEND_DIR, 'apps', 'api', '.env'))} });
       const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
       const prisma = new PrismaClient({ adapter });
       await prisma.rosterEntry.upsert({
@@ -81,7 +80,7 @@ function runBackendFixture() {
     });
   `;
   try {
-    execFileSync('pnpm', ['--dir', BACKEND_DIR, '--filter', '@wildcat/api', 'exec', 'tsx', '-e', script], { stdio: 'pipe' });
+    execBackendTsx(script);
   } catch (error) {
     const details = error instanceof Error && 'stderr' in error
       ? String((error as Error & { stderr?: Buffer }).stderr)
@@ -130,7 +129,7 @@ function closeFixtureEpisode(episodeId: string) {
     import { PrismaPg } from '@prisma/adapter-pg';
     import { PrismaClient } from '@prisma/client';
     async function main() {
-      dotenv.config({ path: ${JSON.stringify(path.join(BACKEND_DIR, '.env'))} });
+      dotenv.config({ path: ${JSON.stringify(path.join(BACKEND_DIR, 'apps', 'api', '.env'))} });
       const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
       const prisma = new PrismaClient({ adapter });
       await prisma.episode.updateMany({ where: { id: ${JSON.stringify(episodeId)} }, data: { status: 'OFF_AIR', endedAt: new Date() } });
@@ -138,7 +137,7 @@ function closeFixtureEpisode(episodeId: string) {
     }
     main().catch((error) => { console.error(error); process.exit(1); });
   `;
-  execFileSync('pnpm', ['--dir', BACKEND_DIR, '--filter', '@wildcat/api', 'exec', 'tsx', '-e', script], { stdio: 'pipe' });
+  execBackendTsx(script);
 }
 
 async function login(page: Page, email: string) {
@@ -190,6 +189,24 @@ async function actOnQueueItem(page: Page, text: string, action: 'Queue' | 'Decli
 
 test.describe.configure({ mode: 'serial' });
 
+/**
+ * The engagement shell, its sign-in gate, and chat submission all require the
+ * station to be on air (open episode + configured, freshly-publishing
+ * broadcast plane — `deriveStreamState`). CI runs the API alone: no
+ * STREAM_PUBLIC_URL and no studio app publishing heartbeats, so its manifest
+ * can only ever be OFF_AIR or fail to build. Tests that present broadcast
+ * state call this first and skip with the observed reason when it is absent
+ * (same guard idea as stream-playback.spec.ts).
+ */
+async function requireOnAir(page: Page): Promise<void> {
+  const res = await page.request.get('/api/stream/manifest');
+  const manifest = res.ok() ? ((await res.json().catch(() => null)) as { status?: string; reason?: string }) : null;
+  test.skip(
+    !res.ok() || manifest?.status === 'OFF_AIR',
+    `station is not on air (${!res.ok() ? `manifest ${res.status()}` : `status=${manifest?.status}, reason=${manifest?.reason}`}) — the broadcast plane is out of scope for CI`,
+  );
+}
+
 test.describe('engagement UI', () => {
   let fixtureEpisodeId = '';
 
@@ -208,6 +225,8 @@ test.describe('engagement UI', () => {
   });
 
   test('AC-1/AC-2: anonymous listener sees gated writes and engagement shell', async ({ page }) => {
+    await requireOnAir(page);
+
     await page.goto('/listen');
 
     const signInGate = page.getByTestId('listen-gate-signin').first();
@@ -233,7 +252,8 @@ test.describe('engagement UI', () => {
     await expect(page.getByTestId('studio-queue')).not.toBeVisible();
   });
 
-  test('golden: listener submits request, studio queues it, listener gets receipt and up next', async ({ browser, request }) => {
+  test('golden: listener submits request, studio queues it, listener gets receipt and up next', async ({ browser, request, page }) => {
+    await requireOnAir(page);
     const listenerUser = await createVerifiedListener(request);
     await openEpisode(request);
 
@@ -261,7 +281,8 @@ test.describe('engagement UI', () => {
     await studioContext.close();
   });
 
-  test('edge: decline stays silent and guest budget block is clear', async ({ browser, request }) => {
+  test('edge: decline stays silent and guest budget block is clear', async ({ browser, request, page }) => {
+    await requireOnAir(page);
     const listenerUser = await createVerifiedListener(request);
     await openEpisode(request);
 

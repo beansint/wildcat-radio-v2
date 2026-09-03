@@ -124,15 +124,19 @@ jobs:
       - uses: actions/checkout@v4
 
       # The backend is a sibling repo: the e2e suite drives it as the fixture
-      # API. `dev` is its integration branch and the source the frontend's
-      # committed OpenAPI spec was synced from (`pnpm api:refresh`) — `main`
-      # lags it, and the attendance/episode specs exercise exactly the surface
-      # that differs. Same recipe as the backend's own CI verify job.
+      # API. It is a PRIVATE repo, so the default GITHUB_TOKEN (scoped to this
+      # repository only) cannot fetch it — this step needs a fine-grained PAT
+      # with Contents:Read on wildcat-radio-v2-backend stored as the
+      # BACKEND_REPO_TOKEN secret. `dev` is the backend's integration branch
+      # and the source the frontend's committed OpenAPI spec was synced from
+      # (`pnpm api:refresh`) — `main` lags it, and the attendance/episode
+      # specs exercise exactly the surface that differs.
       - uses: actions/checkout@v4
         with:
           repository: beansint/wildcat-radio-v2-backend
           ref: dev
           path: backend
+          token: ${{ secrets.BACKEND_REPO_TOKEN }}
 
       - uses: pnpm/action-setup@v4
         with:

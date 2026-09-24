@@ -40,6 +40,25 @@ describe('CSP script-src (#72 U-1/U-2)', () => {
   });
 });
 
+describe('CSP connect-src for presigned R2 uploads', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  // Announcement photos are PUT straight from the browser to the presigned R2
+  // S3 URL (virtual-hosted: <bucket>.<account>.r2.cloudflarestorage.com). If
+  // connect-src omits that exact host the browser blocks the upload and the
+  // form only says "Failed to fetch".
+  it('production: allows the exact R2 upload host, never a wildcard', async () => {
+    const csp = await cspFor('production');
+    const connectSrc = csp.split('; ').find((d) => d.startsWith('connect-src'));
+    expect(connectSrc).toContain(
+      'https://wildcat-radio.c0f824ad426a8e5a37e219af9e3f266a.r2.cloudflarestorage.com',
+    );
+    expect(connectSrc).not.toContain('*.r2.cloudflarestorage.com');
+  });
+});
+
 describe('coverage config (#72 U-3)', () => {
   it('excludes generated orval output from coverage', () => {
     const config = readFileSync(path.resolve(__dirname, '../vitest.config.ts'), 'utf8');

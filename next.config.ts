@@ -6,6 +6,8 @@ import type { NextConfig } from "next";
 // bucket host is declared here. Shared with the runtime URL filter so the two
 // cannot disagree about the fallback (see src/lib/content/media-host.ts).
 import { MEDIA_HOST } from "./src/lib/content/media-host";
+// Presigned photo uploads go straight to the R2 S3 host (see upload-host.ts).
+import { UPLOAD_HOST } from "./src/lib/content/upload-host";
 // Shared with the runtime resolver so the CSP `connect-src` can never disagree
 // with the origin the app actually dials. `isProduction: false` is passed
 // deliberately — this runs while the config is being evaluated, and the config
@@ -67,7 +69,7 @@ const nextConfig: NextConfig = {
       "font-src 'self' data:",
       // The API origin is a different host in every environment, and the audio
       // stream + socket both dial it directly from the browser.
-      `connect-src 'self' ${API_ORIGIN} ${API_ORIGIN.replace(/^http/, "ws")} https://${MEDIA_HOST}`,
+      `connect-src 'self' ${API_ORIGIN} ${API_ORIGIN.replace(/^http/, "ws")} https://${MEDIA_HOST} https://${UPLOAD_HOST}`,
       `media-src 'self' blob: ${API_ORIGIN} https://${MEDIA_HOST}`,
       "object-src 'none'",
       // hls.js builds its transmuxer worker from a blob URL; without an

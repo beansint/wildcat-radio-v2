@@ -10,6 +10,10 @@ name: CI
 # a seeded DB that only existed on a dev machine); the backend's CI workflow
 # already proved the service-container recipe, so the browser suite now gates
 # PRs too. Serial (`workers: 1`) with one CI retry per `playwright.config.ts`.
+#
+# e2e runs only on pull requests into `dev`, where code actually changes. The
+# push to `dev` and the `dev` -> `main` promotion carry a tree that PR already
+# tested, so re-running the ~5 min suite there only delayed EC2 deploys.
 
 on:
   pull_request:
@@ -71,6 +75,7 @@ jobs:
 
   e2e:
     name: e2e · playwright against a real backend
+    if: github.event_name == 'pull_request' && github.base_ref == 'dev'
     runs-on: ubuntu-latest
     timeout-minutes: 45
 

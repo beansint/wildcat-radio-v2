@@ -31,7 +31,8 @@ interface ReasonDialogProps {
   destructive?: boolean;
   testid: string;
   onConfirm: (reason: string) => Promise<unknown>;
-  onDone: () => void;
+  /** Awaited before the dialog stops showing "Saving…" — return the refetch promise. */
+  onDone: () => unknown;
 }
 
 export function ReasonDialog({

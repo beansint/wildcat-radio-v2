@@ -38,7 +38,8 @@ type FormValues = z.infer<typeof schema>;
 interface OccurrenceDelayDialogProps {
   occurrence: ShowOccurrenceAdminDto;
   onOpenChange: (open: boolean) => void;
-  onSaved: () => void;
+  /** Awaited before the dialog stops showing "Saving…" — return the refetch promise. */
+  onSaved: () => unknown;
 }
 
 export function OccurrenceDelayDialog({ occurrence, onOpenChange, onSaved }: OccurrenceDelayDialogProps) {

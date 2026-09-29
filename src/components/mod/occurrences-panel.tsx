@@ -45,10 +45,14 @@ export function OccurrencesPanel() {
   const query = useListShowOccurrences<ShowOccurrenceAdminDto[]>({ date });
   const rows = query.data ?? [];
 
-  function refresh() {
+  // Refetch first, then close: the dialog keeps "Saving…" until the list
+  // shows the change, instead of closing onto stale rows (seen in live QA).
+  async function refresh() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListShowOccurrencesQueryKey({ date }) }),
+      queryClient.invalidateQueries({ queryKey: getGetTodayScheduleQueryKey() }),
+    ]);
     setAction(null);
-    queryClient.invalidateQueries({ queryKey: getListShowOccurrencesQueryKey({ date }) });
-    queryClient.invalidateQueries({ queryKey: getGetTodayScheduleQueryKey() });
   }
 
   return (

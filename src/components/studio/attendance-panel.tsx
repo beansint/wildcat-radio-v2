@@ -104,8 +104,11 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
     mutationFn: (rosterId: string) => timeOutStudio({ body: JSON.stringify({ rosterId }) }),
   });
 
+  // Stays pending until today's view has refetched, so the banner never
+  // flashes "Start my show" again with pre-handover data (seen in live QA).
   const handoverMutation = useMutation({
     mutationFn: (rosterId: string) => handoverStudio({ body: JSON.stringify({ rosterId }) }),
+    onSuccess: () => invalidateToday(),
   });
 
   const pending = today?.pendingHandover ?? null;
@@ -128,10 +131,7 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
     const first = pending?.attendees[0];
     if (!first) return;
     handoverMutation.mutate(first.rosterId, {
-      onSuccess: async () => {
-        await invalidateToday();
-        pushToast(`▶ ${pending?.showName ?? "Next show"} is on air`);
-      },
+      onSuccess: () => pushToast(`▶ ${pending?.showName ?? "Next show"} is on air`),
     });
   }
 

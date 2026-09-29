@@ -8,9 +8,9 @@
  * regardless of whether they're on the current slot's roster.
  */
 import { useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { UserPlus } from "lucide-react";
-import { useListStudioRoster, timeInStudio } from "@/lib/api/endpoints/studio/studio";
+import { getGetStudioTodayQueryKey, useListStudioRoster, timeInStudio } from "@/lib/api/endpoints/studio/studio";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import type { StudioRosterEntryDto } from "@/lib/api/model";
 import {
@@ -49,8 +49,12 @@ export function SubTimeInDialog({ open, onOpenChange, onTimedIn }: SubTimeInDial
     return roster.filter((r) => r.displayName.toLowerCase().includes(q));
   }, [roster, search]);
 
+  const queryClient = useQueryClient();
+  // Stay pending until today's view has refetched: a sub who lands in a
+  // pending handover must see the banner as the dialog closes (seen in live QA).
   const timeInMutation = useMutation({
     mutationFn: (rosterId: string) => timeInStudio({ body: JSON.stringify({ rosterId }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetStudioTodayQueryKey() }),
   });
 
   function handlePick(entry: StudioRosterEntryDto) {

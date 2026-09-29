@@ -335,7 +335,10 @@ export default function AttendancePage() {
               ? revokeAttendanceOvertime(overtimeRow.recordId!, { body: JSON.stringify(reason ? { reason } : {}) })
               : approveAttendanceOvertime(overtimeRow.recordId!, { body: JSON.stringify({ reason }) })
           }
-          onDone={handleSaved}
+          onDone={async () => {
+            await queryClient.invalidateQueries({ queryKey: getAttendanceControllerListQueryKey() });
+            setOvertimeRow(null);
+          }}
         />
       )}
     </div>

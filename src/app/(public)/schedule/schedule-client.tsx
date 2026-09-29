@@ -30,6 +30,7 @@ import {
 import {
   toDaypartGrid,
   buildDayItems,
+  clockRangeLabel,
   daypartLabel,
   PUBLIC_WEEKDAYS,
   type ScheduleDto,
@@ -68,8 +69,8 @@ function TodayChip({ mark }: { mark: TodayMark | undefined }) {
     );
   }
   return (
-    <span className="wc-chip text-[.6rem]" data-testid="schedule-today-delayed">
-      Delayed · <span className="tnum">{daypartLabel(mark.start, mark.end)}</span>
+    <span className="wc-chip text-[.6rem] max-w-full whitespace-normal" data-testid="schedule-today-delayed">
+      Delayed · <span className="tnum">{clockRangeLabel(mark.start, mark.end)}</span>
     </span>
   );
 }

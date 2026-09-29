@@ -126,6 +126,10 @@ function cleanup() {
     await prisma.showRosterEntry.deleteMany({ where: { showId: { in: shows } } });
     await prisma.show.deleteMany({ where: { id: { in: shows } } });
     await prisma.rosterEntry.deleteMany({ where: { id: { in: [${JSON.stringify(ids.djA)}, ${JSON.stringify(ids.djB)}] } } });
+    // WEB-E-06 leaves fresh publication evidence; a later spec's
+    // sourceConnected:false heartbeat would then read as SOURCE_STALE and
+    // auto-close its fixture episode. Leave stream health as we found it: empty.
+    await prisma.streamHealth.deleteMany({});
   `);
 }
 
@@ -163,6 +167,10 @@ function trackConsole(page: Page): string[] {
     if (m.type() === 'error') errors.push(m.text());
   });
   page.on('pageerror', (e) => errors.push(String(e)));
+  // Name the request behind any "Failed to load resource" (CI has no traces).
+  page.on('response', (r) => {
+    if (r.status() >= 400) console.log(`[http ${r.status()}] ${r.request().method()} ${r.url()}`);
+  });
   return errors;
 }
 

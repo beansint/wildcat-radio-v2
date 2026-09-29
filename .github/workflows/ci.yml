@@ -124,6 +124,11 @@ jobs:
       CORS_ORIGINS: http://localhost:3011
       STATION_DEVICE_TOKEN: dev-studio-token-change-me
       STATION_UTC_OFFSET_MINUTES: 480
+      # Without a stream URL the backend reports CONFIGURATION_ERROR (always
+      # OFF_AIR), so no spec could observe a real LIVE manifest. A placeholder
+      # is enough: LIVE still requires fresh heartbeat + publication evidence,
+      # and nothing fetches it unless a test presses play (#106 WEB-E-06).
+      STREAM_PUBLIC_URL: https://stream.ci.invalid
 
     steps:
       - uses: actions/checkout@v4

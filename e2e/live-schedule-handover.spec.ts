@@ -322,9 +322,14 @@ test.describe('#106 live schedule, handover, approved overtime', () => {
   test('WEB-E-10: 375px — new panel and today marks never cause horizontal page scroll', async ({ browser }) => {
     const page = await moderatorPage(browser);
     await page.setViewportSize({ width: 375, height: 812 });
-    for (const url of [`${WEB_BASE}/mod/schedule`, `${WEB_BASE}/schedule`]) {
+    // Wait for the rendered content, not 'networkidle': manifest/today polling
+    // and the presence socket keep the network busy, so it never settles in CI.
+    for (const [url, ready] of [
+      [`${WEB_BASE}/mod/schedule`, 'mod-occurrence-row'],
+      [`${WEB_BASE}/schedule`, 'schedule-mobile-panel'],
+    ] as const) {
       await page.goto(url);
-      await page.waitForLoadState('networkidle');
+      await expect(page.getByTestId(ready).first()).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow, `${url} scrolls horizontally by ${overflow}px`).toBeLessThanOrEqual(0);
     }

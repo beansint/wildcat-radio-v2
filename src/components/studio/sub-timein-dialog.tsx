@@ -34,7 +34,8 @@ function monoClassFor(index: number): string {
 interface SubTimeInDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onTimedIn: (displayName: string) => void;
+  /** #106: `pending` when the DJ checked in during another show's overrun. */
+  onTimedIn: (displayName: string, pending: boolean) => void;
 }
 
 export function SubTimeInDialog({ open, onOpenChange, onTimedIn }: SubTimeInDialogProps) {
@@ -54,8 +55,8 @@ export function SubTimeInDialog({ open, onOpenChange, onTimedIn }: SubTimeInDial
 
   function handlePick(entry: StudioRosterEntryDto) {
     timeInMutation.mutate(entry.id, {
-      onSuccess: () => {
-        onTimedIn(entry.displayName);
+      onSuccess: (result) => {
+        onTimedIn(entry.displayName, result.state === "PENDING_HANDOVER");
         setSearch("");
         onOpenChange(false);
       },

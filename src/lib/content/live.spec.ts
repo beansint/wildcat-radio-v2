@@ -3,31 +3,25 @@
  * from a rendered page (this file has no jsdom, no DOM assertions).
  */
 import { describe, it, expect } from "vitest";
-import { episodeTitleLabel, formatEpisodeStats, isShowCurrentlyLive } from "./live";
+import { episodeTitleLabel, formatEpisodeStats, isShowOnAir } from "./live";
 
-describe("isShowCurrentlyLive", () => {
-  it("is false when the station is off air, regardless of roster overlap", () => {
-    expect(isShowCurrentlyLive("OFF_AIR", ["DJ Mara"], ["DJ Mara"])).toBe(false);
+describe("isShowOnAir (WEB-U-01)", () => {
+  it("is true only when LIVE and the manifest showId is this show", () => {
+    expect(isShowOnAir("LIVE", "A", "A")).toBe(true);
   });
 
-  it("is false when the station is in station-rotation", () => {
-    expect(isShowCurrentlyLive("STATION_ROTATION", ["DJ Mara"], ["DJ Mara"])).toBe(false);
+  it("is false in station rotation or off air, even for the matching show", () => {
+    expect(isShowOnAir("STATION_ROTATION", "A", "A")).toBe(false);
+    expect(isShowOnAir("OFF_AIR", "A", "A")).toBe(false);
   });
 
-  it("is false when live but no DJ is timed in", () => {
-    expect(isShowCurrentlyLive("LIVE", [], ["DJ Mara"])).toBe(false);
+  it("is false when a different show is live (shared DJs no longer matter)", () => {
+    expect(isShowOnAir("LIVE", "B", "A")).toBe(false);
   });
 
-  it("is false when live but this show has no roster", () => {
-    expect(isShowCurrentlyLive("LIVE", ["DJ Mara"], [])).toBe(false);
-  });
-
-  it("is true when live and a timed-in DJ name is on this show's roster", () => {
-    expect(isShowCurrentlyLive("LIVE", ["DJ Mara", "DJ Cha"], ["DJ Cha"])).toBe(true);
-  });
-
-  it("is false when live but the timed-in DJs belong to a different show", () => {
-    expect(isShowCurrentlyLive("LIVE", ["DJ Ben"], ["DJ Mara", "DJ Cha"])).toBe(false);
+  it("is false for an unscheduled broadcast (no showId) or a missing show id", () => {
+    expect(isShowOnAir("LIVE", null, "A")).toBe(false);
+    expect(isShowOnAir("LIVE", "A", null)).toBe(false);
   });
 });
 

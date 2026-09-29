@@ -94,8 +94,23 @@ const schema = z
     start: z.string().min(1, "Add a start time."),
     end: z.string().min(1, "Add an end time."),
     rosterIds: z.array(z.string()).min(1, "Assign at least one DJ."),
+    // #106 hiatus (edit only): inclusive station-local dates + audited reason.
+    hiatusOn: z.boolean(),
+    hiatusFrom: z.string(),
+    hiatusUntil: z.string(),
+    hiatusReason: z.string().max(500, "Keep the hiatus reason under 500 characters."),
   })
   .superRefine((val, ctx) => {
+    if (val.hiatusOn) {
+      if (!val.hiatusFrom || !val.hiatusUntil) {
+        ctx.addIssue({ code: "custom", path: ["hiatusFrom"], message: "Pick the first and last day of the hiatus." });
+      } else if (val.hiatusUntil < val.hiatusFrom) {
+        ctx.addIssue({ code: "custom", path: ["hiatusUntil"], message: "The hiatus must end on or after it starts." });
+      }
+      if (!val.hiatusReason.trim()) {
+        ctx.addIssue({ code: "custom", path: ["hiatusReason"], message: "Add a reason for the hiatus." });
+      }
+    }
     if (val.recurrence === "CUSTOM" && val.customDays.length === 0) {
       ctx.addIssue({ code: "custom", path: ["customDays"], message: "Pick at least one day." });
     }
@@ -161,8 +176,13 @@ export function ShowFormDialog({
       start: cadence?.start ?? prefillStart ?? "13:00",
       end: cadence?.end ?? prefillEnd ?? "16:00",
       rosterIds: show?.roster.map((r) => r.id) ?? [],
+      hiatusOn: !!show?.hiatusFrom,
+      hiatusFrom: show?.hiatusFrom ?? "",
+      hiatusUntil: show?.hiatusUntil ?? "",
+      hiatusReason: show?.hiatusReason ?? "",
     },
   });
+  const hiatusOn = watch("hiatusOn");
 
   const recurrence = watch("recurrence");
   const customDays = watch("customDays");
@@ -183,12 +203,20 @@ export function ShowFormDialog({
 
   const saveMutation = useMutation({
     mutationFn: async (values: FormValues) => {
-      const body = {
+      const body: Record<string, unknown> = {
         name: values.name.trim(),
         cadence: cadenceFromForm(values),
         rosterIds: values.rosterIds,
       };
       if (isEdit && show) {
+        if (values.hiatusOn) {
+          body.hiatusFrom = values.hiatusFrom;
+          body.hiatusUntil = values.hiatusUntil;
+          body.hiatusReason = values.hiatusReason.trim();
+        } else if (show.hiatusFrom) {
+          body.hiatusFrom = null;
+          body.hiatusUntil = null;
+        }
         return showsControllerUpdate(show.id, { body: JSON.stringify(body) });
       }
       return showsControllerCreate({ body: JSON.stringify(body) });
@@ -213,6 +241,9 @@ export function ShowFormDialog({
     errors.start?.message ??
     errors.end?.message ??
     errors.rosterIds?.message ??
+    errors.hiatusFrom?.message ??
+    errors.hiatusUntil?.message ??
+    errors.hiatusReason?.message ??
     (saveMutation.isError ? getApiErrorMessage(saveMutation.error) : null) ??
     (deleteMutation.isError ? getApiErrorMessage(deleteMutation.error) : null);
 
@@ -363,6 +394,51 @@ export function ShowFormDialog({
               )}
             </div>
             <p className="wc-help mb-4">DJs are pulled from the active roster.</p>
+
+            {isEdit && (
+              <fieldset className="mb-4 rounded-xl border border-border p-3" data-testid="show-hiatus">
+                <legend className="px-1 text-sm font-bold">Hiatus</legend>
+                <label className="flex items-center gap-2 text-sm mb-2" htmlFor="show-hiatus-on">
+                  <Controller
+                    control={control}
+                    name="hiatusOn"
+                    render={({ field }) => (
+                      <Checkbox
+                        id="show-hiatus-on"
+                        data-testid="show-hiatus-on"
+                        checked={field.value}
+                        onCheckedChange={(c) => field.onChange(c === true)}
+                        disabled={busy}
+                      />
+                    )}
+                  />
+                  Take this show off air for a stretch (e.g. semester break)
+                </label>
+                {hiatusOn && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 mb-2">
+                      <div>
+                        <Label htmlFor="show-hiatus-from">First day off</Label>
+                        <Input id="show-hiatus-from" type="date" className="tnum" data-testid="show-hiatus-from" disabled={busy} {...register("hiatusFrom")} />
+                      </div>
+                      <div>
+                        <Label htmlFor="show-hiatus-until">Last day off</Label>
+                        <Input id="show-hiatus-until" type="date" className="tnum" data-testid="show-hiatus-until" disabled={busy} {...register("hiatusUntil")} />
+                      </div>
+                    </div>
+                    <Label htmlFor="show-hiatus-reason">Reason</Label>
+                    <Input
+                      id="show-hiatus-reason"
+                      placeholder="Semester break"
+                      data-testid="show-hiatus-reason"
+                      disabled={busy}
+                      {...register("hiatusReason")}
+                    />
+                    <p className="wc-help mt-1">Hidden from the public schedule and never marked absent on those days.</p>
+                  </>
+                )}
+              </fieldset>
+            )}
 
             <DialogFooter>
               {isEdit && (

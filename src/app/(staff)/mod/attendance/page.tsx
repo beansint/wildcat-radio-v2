@@ -17,8 +17,13 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Pencil } from "lucide-react";
-import { useAttendanceControllerList, getAttendanceControllerListQueryKey } from "@/lib/api/endpoints/attendance/attendance";
+import { BadgeCheck, Pencil, Undo2 } from "lucide-react";
+import {
+  approveAttendanceOvertime,
+  getAttendanceControllerListQueryKey,
+  revokeAttendanceOvertime,
+  useAttendanceControllerList,
+} from "@/lib/api/endpoints/attendance/attendance";
 import { useListShowsAdmin } from "@/lib/api/endpoints/shows/shows";
 import type { AttendanceRowDto, ShowDto } from "@/lib/api/model";
 import { AttendanceRowDtoStatus } from "@/lib/api/model";
@@ -36,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AttendanceEditDialog } from "@/components/mod/attendance-edit-dialog";
+import { ReasonDialog } from "@/components/mod/reason-dialog";
 import { stationDate, stationHhmm } from "@/lib/time/station";
 
 const ALL_SHOWS = "all";
@@ -66,12 +72,20 @@ const STATUS_META: Record<AttendanceRowDtoStatus, { label: string; pillClass: st
   [AttendanceRowDtoStatus.ON_TIME]: { label: "On time", pillClass: "wc-pill-ok" },
   [AttendanceRowDtoStatus.LATE]: { label: "Late", pillClass: "wc-pill-warn" },
   [AttendanceRowDtoStatus.ABSENT]: { label: "Absent", pillClass: "wc-pill-bad" },
+  // #106: overtime is measured, then explicitly approved — never assumed.
+  [AttendanceRowDtoStatus.OVERTIME_PENDING]: { label: "Overtime pending", pillClass: "wc-pill-warn" },
   [AttendanceRowDtoStatus.AGREED_OVERTIME]: { label: "Agreed overtime", pillClass: "wc-pill-neutral" },
 };
 
 function statusLabel(row: AttendanceRowDto): string {
   if (row.status === AttendanceRowDtoStatus.LATE) return `Late ${row.lateMinutes}m`;
+  if (row.status === AttendanceRowDtoStatus.OVERTIME_PENDING) return `Overtime pending · ${row.overtimeMinutes}m`;
+  if (row.status === AttendanceRowDtoStatus.AGREED_OVERTIME) return `Agreed overtime · ${row.overtimeMinutes}m`;
   return STATUS_META[row.status].label;
+}
+
+function minutes(n: number): string {
+  return n > 0 ? `${n}m` : "—";
 }
 
 export default function AttendancePage() {
@@ -79,6 +93,7 @@ export default function AttendancePage() {
   const [date, setDate] = useState(() => stationDate(new Date()));
   const [showId, setShowId] = useState<string>(ALL_SHOWS);
   const [editRow, setEditRow] = useState<AttendanceRowDto | null>(null);
+  const [overtimeRow, setOvertimeRow] = useState<AttendanceRowDto | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -126,6 +141,7 @@ export default function AttendancePage() {
   function handleSaved() {
     queryClient.invalidateQueries({ queryKey: getAttendanceControllerListQueryKey() });
     setEditRow(null);
+    setOvertimeRow(null);
   }
 
   const columns: DataTableColumn<AttendanceRowDto>[] = [
@@ -144,10 +160,24 @@ export default function AttendancePage() {
       cell: (r) => <span className="tnum">{r.onAirHours ?? 0}</span>,
     },
     {
+      key: "late",
+      header: "Late",
+      numeric: true,
+      cell: (r) => <span className="tnum" data-testid="mod-attendance-late">{minutes(r.lateMinutes)}</span>,
+    },
+    {
+      key: "overtime",
+      header: "Overtime",
+      numeric: true,
+      cell: (r) => <span className="tnum" data-testid="mod-attendance-overtime">{minutes(r.overtimeMinutes)}</span>,
+    },
+    {
       key: "status",
       header: "Status",
       cell: (r) => (
-        <span className={`wc-pill ${STATUS_META[r.status].pillClass}`}>{statusLabel(r)}</span>
+        <span className={`wc-pill ${STATUS_META[r.status].pillClass}`} data-testid="mod-attendance-status">
+          {statusLabel(r)}
+        </span>
       ),
     },
     { key: "note", header: "Note", cell: (r) => <span className="wc-muted">{r.note || "—"}</span> },
@@ -156,16 +186,34 @@ export default function AttendancePage() {
       header: "Actions",
       cell: (r) =>
         r.recordId ? (
-          <Button
-            variant="outline"
-            size="sm"
-            data-testid="mod-attendance-edit"
-            aria-label={`Edit attendance for ${r.displayName}`}
-            onClick={() => setEditRow(r)}
-          >
-            <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
-            Edit
-          </Button>
+          <div className="flex flex-wrap gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="mod-attendance-edit"
+              aria-label={`Edit attendance for ${r.displayName}`}
+              onClick={() => setEditRow(r)}
+            >
+              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+              Edit
+            </Button>
+            {r.overtimeMinutes > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid={r.overtimeApproved ? "mod-attendance-revoke-ot" : "mod-attendance-approve-ot"}
+                aria-label={`${r.overtimeApproved ? "Revoke" : "Approve"} overtime for ${r.displayName}`}
+                onClick={() => setOvertimeRow(r)}
+              >
+                {r.overtimeApproved ? (
+                  <Undo2 className="w-3.5 h-3.5" aria-hidden="true" />
+                ) : (
+                  <BadgeCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                )}
+                {r.overtimeApproved ? "Revoke OT" : "Approve OT"}
+              </Button>
+            )}
+          </div>
         ) : (
           <span className="wc-muted text-sm">—</span>
         ),
@@ -254,6 +302,40 @@ export default function AttendancePage() {
           row={editRow}
           date={date}
           onSaved={handleSaved}
+        />
+      )}
+
+      {overtimeRow?.recordId && (
+        <ReasonDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setOvertimeRow(null);
+          }}
+          testid={overtimeRow.overtimeApproved ? "att-revoke-ot" : "att-approve-ot"}
+          title={`${overtimeRow.overtimeApproved ? "Revoke" : "Approve"} overtime · ${overtimeRow.displayName}`}
+          description={
+            <>
+              Ran <span className="tnum">{overtimeRow.overtimeMinutes}m</span> past the scheduled end
+              {overtimeRow.scheduledEnd ? (
+                <>
+                  {" "}(<span className="tnum">{formatScheduled(overtimeRow.scheduledEnd)}</span>)
+                </>
+              ) : null}
+              .{overtimeRow.overtimeApproved && overtimeRow.overtimeApprovalReason
+                ? ` Approved: “${overtimeRow.overtimeApprovalReason}”.`
+                : ""}
+            </>
+          }
+          confirmLabel={overtimeRow.overtimeApproved ? "Revoke approval" : "Approve overtime"}
+          reasonRequired={!overtimeRow.overtimeApproved}
+          destructive={overtimeRow.overtimeApproved}
+          placeholder={overtimeRow.overtimeApproved ? "Why is the approval withdrawn?" : "e.g. agreed with the station manager"}
+          onConfirm={(reason) =>
+            overtimeRow.overtimeApproved
+              ? revokeAttendanceOvertime(overtimeRow.recordId!, { body: JSON.stringify(reason ? { reason } : {}) })
+              : approveAttendanceOvertime(overtimeRow.recordId!, { body: JSON.stringify({ reason }) })
+          }
+          onDone={handleSaved}
         />
       )}
     </div>

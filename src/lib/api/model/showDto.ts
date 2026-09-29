@@ -18,4 +18,16 @@ export interface ShowDto {
   createdAt: string;
   updatedAt: string;
   roster: RosterRefDto[];
+  /**
+     * #106 hiatus start, YYYY-MM-DD
+     * @nullable
+     */
+  hiatusFrom: string | null;
+  /**
+     * #106 hiatus end (inclusive), YYYY-MM-DD
+     * @nullable
+     */
+  hiatusUntil: string | null;
+  /** @nullable */
+  hiatusReason: string | null;
 }

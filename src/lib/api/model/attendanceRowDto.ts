@@ -12,10 +12,19 @@ export interface AttendanceRowDto {
   recordId: string | null;
   /** @nullable */
   episodeId: string | null;
+  /** @nullable */
+  showId: string | null;
   rosterId: string;
   displayName: string;
   /** @nullable */
   scheduled: string | null;
+  /** @nullable */
+  scheduledFor: string | null;
+  /**
+     * HH:MM scheduled end time
+     * @nullable
+     */
+  scheduledEnd: string | null;
   /** @nullable */
   timeIn: string | null;
   /** @nullable */
@@ -24,6 +33,16 @@ export interface AttendanceRowDto {
   onAirHours: number | null;
   status: AttendanceRowDtoStatus;
   lateMinutes: number;
+  /** Whole minutes past the effective end (measured) */
+  overtimeMinutes: number;
+  /**
+     * Broadcast attribution start; null while waiting for handover
+     * @nullable
+     */
+  onAirStartAt: string | null;
+  overtimeApproved: boolean;
+  /** @nullable */
+  overtimeApprovalReason: string | null;
   /** @nullable */
   note: string | null;
 }

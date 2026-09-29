@@ -730,9 +730,13 @@ export default function StudioPage() {
       <SubTimeInDialog
         open={subDialogOpen}
         onOpenChange={setSubDialogOpen}
-        onTimedIn={(displayName) => {
+        onTimedIn={(displayName, pending) => {
           setSubDialogOpen(false);
-          pushToast(`✓ ${displayName} timed in`);
+          pushToast(
+            pending
+              ? `✓ ${displayName} checked in — waiting for the current show to hand over`
+              : `✓ ${displayName} timed in`,
+          );
           void queryClient.invalidateQueries({ queryKey: getGetStudioTodayQueryKey() });
         }}
       />

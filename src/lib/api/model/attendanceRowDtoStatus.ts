@@ -13,5 +13,6 @@ export const AttendanceRowDtoStatus = {
   ON_TIME: 'ON_TIME',
   LATE: 'LATE',
   ABSENT: 'ABSENT',
+  OVERTIME_PENDING: 'OVERTIME_PENDING',
   AGREED_OVERTIME: 'AGREED_OVERTIME',
 } as const;

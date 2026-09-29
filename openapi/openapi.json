@@ -1262,7 +1262,8 @@
                     "type",
                     "url",
                     "dj",
-                    "episodeId"
+                    "episodeId",
+                    "showId"
                   ],
                   "properties": {
                     "status": {
@@ -1301,6 +1302,10 @@
                       }
                     },
                     "episodeId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "showId": {
                       "type": "string",
                       "nullable": true
                     }
@@ -1520,7 +1525,14 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudioTimeInResultDto"
+                }
+              }
+            }
           }
         },
         "summary": "DJ time-in (tap in)",
@@ -1539,6 +1551,28 @@
           }
         },
         "summary": "DJ time-out (tap out)",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/studio/handover": {
+      "post": {
+        "operationId": "handoverStudio",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudioHandoverResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Incoming DJ starts their show (explicit handover)",
         "tags": [
           "studio"
         ]
@@ -2546,6 +2580,119 @@
         ]
       }
     },
+    "/api/shows/admin/occurrences": {
+      "get": {
+        "operationId": "listShowOccurrences",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "query",
+            "description": "Station-local YYYY-MM-DD",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShowOccurrenceAdminDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "A station date's occurrences with overrides (moderator)",
+        "tags": [
+          "shows"
+        ]
+      }
+    },
+    "/api/shows/{id}/occurrences/{date}": {
+      "put": {
+        "operationId": "upsertShowOccurrence",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "description": "Station-local YYYY-MM-DD",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowOccurrenceAdminDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Delay or cancel one occurrence (moderator, audited)",
+        "tags": [
+          "shows"
+        ]
+      },
+      "delete": {
+        "operationId": "resumeShowOccurrence",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "description": "Station-local YYYY-MM-DD",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowOccurrenceAdminDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Resume a delayed/cancelled occurrence (moderator, audited)",
+        "tags": [
+          "shows"
+        ]
+      }
+    },
     "/api/schedule": {
       "get": {
         "operationId": "getWeeklySchedule",
@@ -2563,6 +2710,28 @@
           }
         },
         "summary": "Get public weekly schedule grid",
+        "tags": [
+          "schedule"
+        ]
+      }
+    },
+    "/api/schedule/today": {
+      "get": {
+        "operationId": "getTodaySchedule",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Today's occurrences in station time",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleTodayDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get today's occurrences (public)",
         "tags": [
           "schedule"
         ]
@@ -2671,6 +2840,26 @@
         "tags": [
           "attendance"
         ]
+      },
+      "post": {
+        "operationId": "AttendanceController_create",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Created attendance row",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceRowDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a new attendance record",
+        "tags": [
+          "attendance"
+        ]
       }
     },
     "/api/attendance/{recordId}": {
@@ -2699,6 +2888,66 @@
           }
         },
         "summary": "Correct an attendance record (time in/out, note)",
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/attendance/{recordId}/overtime-approval": {
+      "post": {
+        "operationId": "approveAttendanceOvertime",
+        "parameters": [
+          {
+            "name": "recordId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Row with AGREED_OVERTIME",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceRowDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Approve measured overtime (#106, audited)",
+        "tags": [
+          "attendance"
+        ]
+      },
+      "delete": {
+        "operationId": "revokeAttendanceOvertime",
+        "parameters": [
+          {
+            "name": "recordId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Row back to OVERTIME_PENDING",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceRowDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Withdraw an overtime approval (#106, audited)",
         "tags": [
           "attendance"
         ]
@@ -4598,7 +4847,9 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "nullable": true,
+            "description": "Episode id once anyone tapped in"
           },
           "showId": {
             "type": "string",
@@ -4607,10 +4858,28 @@
           "scheduledFor": {
             "type": "string",
             "format": "date-time",
-            "nullable": true
+            "nullable": true,
+            "description": "Original (cadence) start"
+          },
+          "effectiveStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveEnd": {
+            "type": "string",
+            "format": "date-time"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "DELAYED",
+              "CANCELLED",
+              "HIATUS",
+              "PENDING_HANDOVER",
+              "ON_AIR",
+              "DONE"
+            ]
           },
           "showName": {
             "type": "string",
@@ -4627,9 +4896,60 @@
           "id",
           "showId",
           "scheduledFor",
+          "effectiveStart",
+          "effectiveEnd",
           "status",
           "showName",
           "djs"
+        ]
+      },
+      "StudioPendingAttendeeDto": {
+        "type": "object",
+        "properties": {
+          "rosterId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "timeIn": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Arrival (tap-in) time"
+          }
+        },
+        "required": [
+          "rosterId",
+          "displayName",
+          "timeIn"
+        ]
+      },
+      "StudioPendingHandoverDto": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string"
+          },
+          "showId": {
+            "type": "string",
+            "nullable": true
+          },
+          "showName": {
+            "type": "string",
+            "nullable": true
+          },
+          "attendees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudioPendingAttendeeDto"
+            }
+          }
+        },
+        "required": [
+          "episodeId",
+          "showId",
+          "showName",
+          "attendees"
         ]
       },
       "StudioTodayDto": {
@@ -4661,13 +4981,23 @@
             "items": {
               "$ref": "#/components/schemas/StudioTodayShowDto"
             }
+          },
+          "pendingHandover": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StudioPendingHandoverDto"
+              }
+            ]
           }
         },
         "required": [
           "episode",
           "attendees",
           "slotRoster",
-          "todayShows"
+          "todayShows",
+          "pendingHandover"
         ]
       },
       "StudioRosterEntryDto": {
@@ -4683,6 +5013,56 @@
         "required": [
           "id",
           "displayName"
+        ]
+      },
+      "StudioTimeInResultDto": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "LIVE",
+              "STATION_ROTATION",
+              "OFF_AIR"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ON_AIR",
+              "PENDING_HANDOVER"
+            ]
+          }
+        },
+        "required": [
+          "episodeId",
+          "status",
+          "state"
+        ]
+      },
+      "StudioHandoverResultDto": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string"
+          },
+          "showId": {
+            "type": "string",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "episodeId",
+          "showId",
+          "startedAt"
         ]
       },
       "PublicSnapshotAuthorDto": {
@@ -5496,6 +5876,20 @@
             "items": {
               "$ref": "#/components/schemas/RosterRefDto"
             }
+          },
+          "hiatusFrom": {
+            "type": "string",
+            "nullable": true,
+            "description": "#106 hiatus start, YYYY-MM-DD"
+          },
+          "hiatusUntil": {
+            "type": "string",
+            "nullable": true,
+            "description": "#106 hiatus end (inclusive), YYYY-MM-DD"
+          },
+          "hiatusReason": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -5506,7 +5900,80 @@
           "cadence",
           "createdAt",
           "updatedAt",
-          "roster"
+          "roster",
+          "hiatusFrom",
+          "hiatusUntil",
+          "hiatusReason"
+        ]
+      },
+      "ShowOccurrenceAdminDto": {
+        "type": "object",
+        "properties": {
+          "showId": {
+            "type": "string"
+          },
+          "showName": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "description": "Station-local YYYY-MM-DD"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "DELAYED",
+              "CANCELLED",
+              "HIATUS"
+            ]
+          },
+          "originalStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "originalEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "episodeId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Episode id once anyone tapped in"
+          },
+          "locked": {
+            "type": "boolean",
+            "description": "An episode exists (started or pending) — changes are locked"
+          }
+        },
+        "required": [
+          "showId",
+          "showName",
+          "slug",
+          "date",
+          "status",
+          "originalStart",
+          "originalEnd",
+          "effectiveStart",
+          "effectiveEnd",
+          "reason",
+          "episodeId",
+          "locked"
         ]
       },
       "ScheduleShowDto": {
@@ -5573,6 +6040,73 @@
         },
         "required": [
           "days"
+        ]
+      },
+      "ScheduleTodayOccurrenceDto": {
+        "type": "object",
+        "properties": {
+          "showId": {
+            "type": "string"
+          },
+          "showName": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "DELAYED",
+              "CANCELLED"
+            ]
+          },
+          "originalStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "originalEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveEnd": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "showId",
+          "showName",
+          "slug",
+          "status",
+          "originalStart",
+          "originalEnd",
+          "effectiveStart",
+          "effectiveEnd"
+        ]
+      },
+      "ScheduleTodayDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "Station-local YYYY-MM-DD"
+          },
+          "occurrences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleTodayOccurrenceDto"
+            }
+          }
+        },
+        "required": [
+          "date",
+          "occurrences"
         ]
       },
       "ShowPublicListItemDto": {
@@ -5777,6 +6311,10 @@
             "type": "string",
             "nullable": true
           },
+          "showId": {
+            "type": "string",
+            "nullable": true
+          },
           "rosterId": {
             "type": "string"
           },
@@ -5786,6 +6324,16 @@
           "scheduled": {
             "type": "string",
             "nullable": true
+          },
+          "scheduledFor": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "scheduledEnd": {
+            "type": "string",
+            "nullable": true,
+            "description": "HH:MM scheduled end time"
           },
           "timeIn": {
             "type": "string",
@@ -5807,11 +6355,29 @@
               "ON_TIME",
               "LATE",
               "ABSENT",
+              "OVERTIME_PENDING",
               "AGREED_OVERTIME"
             ]
           },
           "lateMinutes": {
             "type": "number"
+          },
+          "overtimeMinutes": {
+            "type": "number",
+            "description": "Whole minutes past the effective end (measured)"
+          },
+          "onAirStartAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Broadcast attribution start; null while waiting for handover"
+          },
+          "overtimeApproved": {
+            "type": "boolean"
+          },
+          "overtimeApprovalReason": {
+            "type": "string",
+            "nullable": true
           },
           "note": {
             "type": "string",
@@ -5821,14 +6387,21 @@
         "required": [
           "recordId",
           "episodeId",
+          "showId",
           "rosterId",
           "displayName",
           "scheduled",
+          "scheduledFor",
+          "scheduledEnd",
           "timeIn",
           "timeOut",
           "onAirHours",
           "status",
           "lateMinutes",
+          "overtimeMinutes",
+          "onAirStartAt",
+          "overtimeApproved",
+          "overtimeApprovalReason",
           "note"
         ]
       },

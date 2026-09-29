@@ -5,14 +5,24 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
+import type { StudioTodayShowDtoStatus } from './studioTodayShowDtoStatus.ts';
 
 export interface StudioTodayShowDto {
-  id: string;
+  /**
+     * Episode id once anyone tapped in
+     * @nullable
+     */
+  id: string | null;
   /** @nullable */
   showId: string | null;
-  /** @nullable */
+  /**
+     * Original (cadence) start
+     * @nullable
+     */
   scheduledFor: string | null;
-  status: string;
+  effectiveStart: string;
+  effectiveEnd: string;
+  status: StudioTodayShowDtoStatus;
   /** @nullable */
   showName: string | null;
   djs: string[];

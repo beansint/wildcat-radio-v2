@@ -149,7 +149,7 @@ export function AttendanceEditDialog({ open, onOpenChange, row, date, onSaved }:
             id="att-note"
             rows={3}
             className="mb-4"
-            placeholder="e.g. agreed overtime w/ Mara"
+            placeholder="e.g. bus delay — overtime is approved separately"
             data-testid="att-note"
             disabled={busy}
             {...register("note")}

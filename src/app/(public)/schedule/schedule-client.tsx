@@ -20,10 +20,11 @@
  * (`hidden md:block`); mobile gets a day-tab + card view (`md:hidden`) so a
  * 375px viewport never has to horizontally scroll an 860px table again.
  */
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 import {
+  useGetTodaySchedule,
   useGetWeeklySchedule,
 } from "@/lib/api/endpoints/schedule/schedule";
 import {
@@ -37,7 +38,11 @@ import {
 import type { Weekday } from "@/lib/mod/types";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import { coverClassFor, initialsFor } from "@/lib/content/cover";
-import { stationHhmm, stationWeekday } from "@/lib/time/station";
+import { stationWeekday } from "@/lib/time/station";
+import { useStationNow } from "@/lib/time/use-station-now";
+import { isShowOnAir } from "@/lib/content/live";
+import { todayMarks, type TodayMark } from "@/lib/schedule/today";
+import { useStream } from "@/lib/stream/stream-context";
 
 const DAY_HEADER: Record<Weekday, string> = {
   MON: "Mon",
@@ -49,8 +54,24 @@ const DAY_HEADER: Record<Weekday, string> = {
   SUN: "Sun",
 };
 
-function isAiringNow(cell: ScheduleShowCell, day: Weekday, today: Weekday, nowHhmm: string): boolean {
-  return day === today && cell.start <= nowHhmm && nowHhmm < cell.end;
+/**
+ * Today's delay/cancel marker (#106). The grid itself is the recurring
+ * template; only today's column carries dated changes.
+ */
+function TodayChip({ mark }: { mark: TodayMark | undefined }) {
+  if (!mark || mark.status === "SCHEDULED") return null;
+  if (mark.status === "CANCELLED") {
+    return (
+      <span className="wc-chip-ghost text-[.6rem]" data-testid="schedule-today-cancelled">
+        Cancelled today
+      </span>
+    );
+  }
+  return (
+    <span className="wc-chip text-[.6rem]" data-testid="schedule-today-delayed">
+      Delayed · <span className="tnum">{daypartLabel(mark.start, mark.end)}</span>
+    </span>
+  );
 }
 
 function LiveBadge() {
@@ -62,16 +83,18 @@ function LiveBadge() {
   );
 }
 
-function ShowCard({ cell, live }: { cell: ScheduleShowCell; live: boolean }) {
+function ShowCard({ cell, live, mark }: { cell: ScheduleShowCell; live: boolean; mark?: TodayMark }) {
+  const cancelled = mark?.status === "CANCELLED";
   const body = (
     <div className="flex items-center gap-3">
       <div className={`wc-cover ${coverClassFor(cell.id)} rounded-lg w-14 h-14 flex-none`}>
         <span className="init">{initialsFor(cell.name)}</span>
       </div>
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {live && <LiveBadge />}
-          <span className="font-bold truncate">{cell.name}</span>
+          <span className={`font-bold truncate${cancelled ? " line-through wc-muted" : ""}`}>{cell.name}</span>
+          <TodayChip mark={mark} />
         </div>
         <div className="text-sm wc-muted truncate">
           {(cell.roster.join(", ") || "—") + " · "}
@@ -97,8 +120,16 @@ export function ScheduleClient() {
   const schedule = scheduleQuery.data;
   const grid = schedule ? toDaypartGrid(schedule) : null;
 
-  const today = useMemo(() => stationWeekday(new Date()), []);
-  const nowHhmm = useMemo(() => stationHhmm(new Date()), []);
+  // #106: ticks each minute (the old values were frozen at mount), and "On
+  // air" needs broadcast evidence for that show — stream LIVE + manifest showId.
+  const now = useStationNow();
+  const today = stationWeekday(now);
+  const { status, showId: liveShowId } = useStream();
+  const todayQuery = useGetTodaySchedule({ query: { retry: false, refetchInterval: 60_000 } });
+  const marks = todayMarks(todayQuery.data?.occurrences ?? []);
+  const isOnAir = (cell: ScheduleShowCell, day: Weekday) =>
+    day === today && isShowOnAir(status, liveShowId, cell.id);
+  const markFor = (cell: ScheduleShowCell, day: Weekday) => (day === today ? marks.get(cell.id) : undefined);
   const defaultDay: Weekday = PUBLIC_WEEKDAYS.includes(today) ? today : "MON";
   const [selectedDay, setSelectedDay] = useState<Weekday>(defaultDay);
 
@@ -159,14 +190,23 @@ export function ScheduleClient() {
                               cell.slug ? (
                                 <Link
                                   href={`/shows/${cell.slug}`}
-                                  className={`wc-slot${isAiringNow(cell, day, today, nowHhmm) ? " on" : ""}`}
+                                  className={`wc-slot${isOnAir(cell, day) ? " on" : ""}`}
                                 >
-                                  {isAiringNow(cell, day, today, nowHhmm) && (
+                                  {isOnAir(cell, day) && (
                                     <div className="mb-1">
                                       <LiveBadge />
                                     </div>
                                   )}
-                                  <div className="font-bold text-sm leading-tight">{cell.name}</div>
+                                  {markFor(cell, day) && markFor(cell, day)!.status !== "SCHEDULED" && (
+                                    <div className="mb-1">
+                                      <TodayChip mark={markFor(cell, day)} />
+                                    </div>
+                                  )}
+                                  <div
+                                    className={`font-bold text-sm leading-tight${markFor(cell, day)?.status === "CANCELLED" ? " line-through wc-muted" : ""}`}
+                                  >
+                                    {cell.name}
+                                  </div>
                                   <div className="text-xs wc-muted">
                                     {cell.roster.join(", ") || "—"} ·{" "}
                                     <span className="tnum">{daypartLabel(cell.start, cell.end)}</span>
@@ -223,7 +263,8 @@ export function ScheduleClient() {
                     <ShowCard
                       key={item.cell.id}
                       cell={item.cell}
-                      live={isAiringNow(item.cell, selectedDay, today, nowHhmm)}
+                      live={isOnAir(item.cell, selectedDay)}
+                      mark={markFor(item.cell, selectedDay)}
                     />
                   ) : (
                     <div

@@ -21,7 +21,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  ShowDto
+  ListShowOccurrencesParams,
+  ShowDto,
+  ShowOccurrenceAdminDto
 } from '../../model';
 
 import { customFetch } from '../../fetcher';
@@ -420,6 +422,329 @@ export function useShowsControllerRemove<TData = Awaited<ReturnType<typeof shows
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getShowsControllerRemoveQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getListShowOccurrencesUrl = (params: ListShowOccurrencesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/shows/admin/occurrences?${stringifiedParams}` : `/api/shows/admin/occurrences`
+}
+
+/**
+ * @summary A station date's occurrences with overrides (moderator)
+ */
+export const listShowOccurrences = async (params: ListShowOccurrencesParams, options?: RequestInit): Promise<ShowOccurrenceAdminDto[]> => {
+
+  return customFetch<ShowOccurrenceAdminDto[]>(getListShowOccurrencesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListShowOccurrencesQueryKey = (params?: ListShowOccurrencesParams,) => {
+    return [
+    `/api/shows/admin/occurrences`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListShowOccurrencesQueryOptions = <TData = Awaited<ReturnType<typeof listShowOccurrences>>, TError = unknown>(params: ListShowOccurrencesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listShowOccurrences>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListShowOccurrencesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listShowOccurrences>>> = ({ signal }) => listShowOccurrences(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listShowOccurrences>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListShowOccurrencesQueryResult = NonNullable<Awaited<ReturnType<typeof listShowOccurrences>>>
+export type ListShowOccurrencesQueryError = unknown
+
+
+export function useListShowOccurrences<TData = Awaited<ReturnType<typeof listShowOccurrences>>, TError = unknown>(
+ params: ListShowOccurrencesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listShowOccurrences>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listShowOccurrences>>,
+          TError,
+          Awaited<ReturnType<typeof listShowOccurrences>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListShowOccurrences<TData = Awaited<ReturnType<typeof listShowOccurrences>>, TError = unknown>(
+ params: ListShowOccurrencesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listShowOccurrences>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listShowOccurrences>>,
+          TError,
+          Awaited<ReturnType<typeof listShowOccurrences>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListShowOccurrences<TData = Awaited<ReturnType<typeof listShowOccurrences>>, TError = unknown>(
+ params: ListShowOccurrencesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listShowOccurrences>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary A station date's occurrences with overrides (moderator)
+ */
+
+export function useListShowOccurrences<TData = Awaited<ReturnType<typeof listShowOccurrences>>, TError = unknown>(
+ params: ListShowOccurrencesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listShowOccurrences>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListShowOccurrencesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getUpsertShowOccurrenceUrl = (id: string,
+    date: string,) => {
+
+
+
+
+  return `/api/shows/${id}/occurrences/${date}`
+}
+
+/**
+ * @summary Delay or cancel one occurrence (moderator, audited)
+ */
+export const upsertShowOccurrence = async (id: string,
+    date: string, options?: RequestInit): Promise<ShowOccurrenceAdminDto> => {
+
+  return customFetch<ShowOccurrenceAdminDto>(getUpsertShowOccurrenceUrl(id,date),
+  {
+    ...options,
+    method: 'PUT'
+
+
+  }
+);}
+
+
+
+
+
+export const getUpsertShowOccurrenceQueryKey = (id: string,
+    date: string,) => {
+    return [
+    'PUT', `/api/shows/${id}/occurrences/${date}`
+    ] as const;
+    }
+
+
+export const getUpsertShowOccurrenceQueryOptions = <TData = Awaited<ReturnType<typeof upsertShowOccurrence>>, TError = unknown>(id: string,
+    date: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof upsertShowOccurrence>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getUpsertShowOccurrenceQueryKey(id,date);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof upsertShowOccurrence>>> = ({ signal }) => upsertShowOccurrence(id,date, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined && date !== null && date !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof upsertShowOccurrence>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type UpsertShowOccurrenceQueryResult = NonNullable<Awaited<ReturnType<typeof upsertShowOccurrence>>>
+export type UpsertShowOccurrenceQueryError = unknown
+
+
+export function useUpsertShowOccurrence<TData = Awaited<ReturnType<typeof upsertShowOccurrence>>, TError = unknown>(
+ id: string,
+    date: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof upsertShowOccurrence>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof upsertShowOccurrence>>,
+          TError,
+          Awaited<ReturnType<typeof upsertShowOccurrence>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUpsertShowOccurrence<TData = Awaited<ReturnType<typeof upsertShowOccurrence>>, TError = unknown>(
+ id: string,
+    date: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof upsertShowOccurrence>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof upsertShowOccurrence>>,
+          TError,
+          Awaited<ReturnType<typeof upsertShowOccurrence>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUpsertShowOccurrence<TData = Awaited<ReturnType<typeof upsertShowOccurrence>>, TError = unknown>(
+ id: string,
+    date: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof upsertShowOccurrence>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Delay or cancel one occurrence (moderator, audited)
+ */
+
+export function useUpsertShowOccurrence<TData = Awaited<ReturnType<typeof upsertShowOccurrence>>, TError = unknown>(
+ id: string,
+    date: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof upsertShowOccurrence>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getUpsertShowOccurrenceQueryOptions(id,date,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getResumeShowOccurrenceUrl = (id: string,
+    date: string,) => {
+
+
+
+
+  return `/api/shows/${id}/occurrences/${date}`
+}
+
+/**
+ * @summary Resume a delayed/cancelled occurrence (moderator, audited)
+ */
+export const resumeShowOccurrence = async (id: string,
+    date: string, options?: RequestInit): Promise<ShowOccurrenceAdminDto> => {
+
+  return customFetch<ShowOccurrenceAdminDto>(getResumeShowOccurrenceUrl(id,date),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getResumeShowOccurrenceQueryKey = (id: string,
+    date: string,) => {
+    return [
+    'DELETE', `/api/shows/${id}/occurrences/${date}`
+    ] as const;
+    }
+
+
+export const getResumeShowOccurrenceQueryOptions = <TData = Awaited<ReturnType<typeof resumeShowOccurrence>>, TError = unknown>(id: string,
+    date: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof resumeShowOccurrence>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getResumeShowOccurrenceQueryKey(id,date);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof resumeShowOccurrence>>> = ({ signal }) => resumeShowOccurrence(id,date, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined && date !== null && date !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof resumeShowOccurrence>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ResumeShowOccurrenceQueryResult = NonNullable<Awaited<ReturnType<typeof resumeShowOccurrence>>>
+export type ResumeShowOccurrenceQueryError = unknown
+
+
+export function useResumeShowOccurrence<TData = Awaited<ReturnType<typeof resumeShowOccurrence>>, TError = unknown>(
+ id: string,
+    date: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof resumeShowOccurrence>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof resumeShowOccurrence>>,
+          TError,
+          Awaited<ReturnType<typeof resumeShowOccurrence>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useResumeShowOccurrence<TData = Awaited<ReturnType<typeof resumeShowOccurrence>>, TError = unknown>(
+ id: string,
+    date: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof resumeShowOccurrence>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof resumeShowOccurrence>>,
+          TError,
+          Awaited<ReturnType<typeof resumeShowOccurrence>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useResumeShowOccurrence<TData = Awaited<ReturnType<typeof resumeShowOccurrence>>, TError = unknown>(
+ id: string,
+    date: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof resumeShowOccurrence>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Resume a delayed/cancelled occurrence (moderator, audited)
+ */
+
+export function useResumeShowOccurrence<TData = Awaited<ReturnType<typeof resumeShowOccurrence>>, TError = unknown>(
+ id: string,
+    date: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof resumeShowOccurrence>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getResumeShowOccurrenceQueryOptions(id,date,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

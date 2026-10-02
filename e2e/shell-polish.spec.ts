@@ -92,7 +92,7 @@ test.describe('account menu', () => {
     await page.goto(`${WEB_BASE}/`);
     await page.getByTestId('account-menu-trigger').click();
     await page.getByTestId('account-menu-signout').click();
-    await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('banner').getByRole('link', { name: 'Sign in' })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('account-menu-trigger')).toHaveCount(0);
   });
 });

@@ -179,7 +179,12 @@ a { color: inherit; }
 
 /* ----------------------------------------------------------- patterns */
 /* large, faint mascot watermark for heroes/empty states */
-.wc-watermark { position: relative; isolation: isolate; }
+/* Layered so Tailwind utilities win: unlayered, this `position: relative`
+   beat the listen stage's `lg:sticky`, which turned its `lg:top-[72px]` into a
+   72px relative shove that dropped the card onto the footer. */
+@layer components {
+  .wc-watermark { position: relative; isolation: isolate; }
+}
 .wc-watermark::after {
   content: ""; position: absolute; right: -4%; bottom: -22%; width: 42%; max-width: 360px; aspect-ratio: 1;
   background: url('/brand/logo-mascot-mark.png') center/contain no-repeat;
@@ -444,6 +449,27 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
 }
 @keyframes wc-player-in { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
 
+/* Minimized: the bar collapses to a floating corner pill. It sits within
+   the same bottom clearance the full bar reserves (footer padding, the mobile
+   chat composer offset), so toggling never shifts page layout. */
+.wc-player.is-mini {
+  left: auto; right: max(.75rem, env(safe-area-inset-right));
+  bottom: calc(.6rem + env(safe-area-inset-bottom));
+  padding: .25rem .25rem .25rem .35rem;
+  display: flex; align-items: center; gap: .15rem;
+  border: 1px solid rgba(255,255,255,.18); border-radius: 999px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.32);
+  animation: wc-player-mini-in .26s cubic-bezier(.22,.61,.36,1) both;
+}
+@keyframes wc-player-mini-in { from { transform: translateY(12px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
+.wc-player.is-mini .eq { margin: 0 .25rem; }
+.wc-player-mini-art { position: relative; display: grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 999px; }
+.wc-player.is-mini .cover { width: 34px; height: 34px; border-radius: 999px; }
+.wc-player-mini-live {
+  position: absolute; top: 5px; right: 5px; width: 9px; height: 9px; border-radius: 999px;
+  background: var(--live, #e11d48); box-shadow: 0 0 0 2px var(--player-surface);
+}
+
 /* Live-activity strip, flush to the top edge. This is a LIVE stream: there is
    no duration, so a percentage fill would be a lie dressed as a scrubber. It
    is an indeterminate shimmer that runs only while audio is actually playing —
@@ -541,7 +567,7 @@ a.wc-card:hover, a.wc-card-i:hover { border-color: color-mix(in srgb, var(--maro
 
 /* Motion is meaning here, not decoration — but it is all optional. */
 @media (prefers-reduced-motion: reduce) {
-  .wc-player { animation: none; }
+  .wc-player, .wc-player.is-mini { animation: none; }
   .wc-player-progress > span { animation: none; background: var(--gold); }
   .wc-play > span, .wc-player-vol input[type="range"] { transition: none; }
 }

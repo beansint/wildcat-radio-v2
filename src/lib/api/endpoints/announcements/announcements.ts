@@ -641,6 +641,106 @@ export function useAnnouncementsControllerReview<TData = Awaited<ReturnType<type
 
 
 
+export const getAnnouncementsControllerPublishUrl = (id: string,) => {
+
+
+
+
+  return `/api/announcements/${id}/publish`
+}
+
+/**
+ * @summary Author self-publish: DRAFT | PENDING_REVIEW | REJECTED -> PUBLISHED (or SCHEDULED with scheduledFor). No second approver.
+ */
+export const announcementsControllerPublish = async (id: string, options?: RequestInit): Promise<AnnouncementStaffDto> => {
+
+  return customFetch<AnnouncementStaffDto>(getAnnouncementsControllerPublishUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAnnouncementsControllerPublishQueryKey = (id: string,) => {
+    return [
+    'POST', `/api/announcements/${id}/publish`
+    ] as const;
+    }
+
+
+export const getAnnouncementsControllerPublishQueryOptions = <TData = Awaited<ReturnType<typeof announcementsControllerPublish>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof announcementsControllerPublish>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAnnouncementsControllerPublishQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof announcementsControllerPublish>>> = ({ signal }) => announcementsControllerPublish(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof announcementsControllerPublish>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AnnouncementsControllerPublishQueryResult = NonNullable<Awaited<ReturnType<typeof announcementsControllerPublish>>>
+export type AnnouncementsControllerPublishQueryError = unknown
+
+
+export function useAnnouncementsControllerPublish<TData = Awaited<ReturnType<typeof announcementsControllerPublish>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof announcementsControllerPublish>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof announcementsControllerPublish>>,
+          TError,
+          Awaited<ReturnType<typeof announcementsControllerPublish>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAnnouncementsControllerPublish<TData = Awaited<ReturnType<typeof announcementsControllerPublish>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof announcementsControllerPublish>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof announcementsControllerPublish>>,
+          TError,
+          Awaited<ReturnType<typeof announcementsControllerPublish>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAnnouncementsControllerPublish<TData = Awaited<ReturnType<typeof announcementsControllerPublish>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof announcementsControllerPublish>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Author self-publish: DRAFT | PENDING_REVIEW | REJECTED -> PUBLISHED (or SCHEDULED with scheduledFor). No second approver.
+ */
+
+export function useAnnouncementsControllerPublish<TData = Awaited<ReturnType<typeof announcementsControllerPublish>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof announcementsControllerPublish>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAnnouncementsControllerPublishQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 export const getAnnouncementsControllerArchiveUrl = (id: string,) => {
 
 

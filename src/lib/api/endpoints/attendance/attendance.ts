@@ -139,6 +139,106 @@ export function useAttendanceControllerList<TData = Awaited<ReturnType<typeof at
 
 
 
+export const getAttendanceControllerCreateUrl = () => {
+
+
+
+
+  return `/api/attendance`
+}
+
+/**
+ * @summary Create a new attendance record
+ */
+export const attendanceControllerCreate = async ( options?: RequestInit): Promise<AttendanceRowDto> => {
+
+  return customFetch<AttendanceRowDto>(getAttendanceControllerCreateUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAttendanceControllerCreateQueryKey = () => {
+    return [
+    'POST', `/api/attendance`
+    ] as const;
+    }
+
+
+export const getAttendanceControllerCreateQueryOptions = <TData = Awaited<ReturnType<typeof attendanceControllerCreate>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCreate>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAttendanceControllerCreateQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof attendanceControllerCreate>>> = ({ signal }) => attendanceControllerCreate({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCreate>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AttendanceControllerCreateQueryResult = NonNullable<Awaited<ReturnType<typeof attendanceControllerCreate>>>
+export type AttendanceControllerCreateQueryError = unknown
+
+
+export function useAttendanceControllerCreate<TData = Awaited<ReturnType<typeof attendanceControllerCreate>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCreate>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof attendanceControllerCreate>>,
+          TError,
+          Awaited<ReturnType<typeof attendanceControllerCreate>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAttendanceControllerCreate<TData = Awaited<ReturnType<typeof attendanceControllerCreate>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCreate>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof attendanceControllerCreate>>,
+          TError,
+          Awaited<ReturnType<typeof attendanceControllerCreate>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAttendanceControllerCreate<TData = Awaited<ReturnType<typeof attendanceControllerCreate>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCreate>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Create a new attendance record
+ */
+
+export function useAttendanceControllerCreate<TData = Awaited<ReturnType<typeof attendanceControllerCreate>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCreate>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAttendanceControllerCreateQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 export const getAttendanceControllerCorrectUrl = (recordId: string,) => {
 
 
@@ -228,6 +328,206 @@ export function useAttendanceControllerCorrect<TData = Awaited<ReturnType<typeof
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getAttendanceControllerCorrectQueryOptions(recordId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getApproveAttendanceOvertimeUrl = (recordId: string,) => {
+
+
+
+
+  return `/api/attendance/${recordId}/overtime-approval`
+}
+
+/**
+ * @summary Approve measured overtime (#106, audited)
+ */
+export const approveAttendanceOvertime = async (recordId: string, options?: RequestInit): Promise<AttendanceRowDto> => {
+
+  return customFetch<AttendanceRowDto>(getApproveAttendanceOvertimeUrl(recordId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getApproveAttendanceOvertimeQueryKey = (recordId: string,) => {
+    return [
+    'POST', `/api/attendance/${recordId}/overtime-approval`
+    ] as const;
+    }
+
+
+export const getApproveAttendanceOvertimeQueryOptions = <TData = Awaited<ReturnType<typeof approveAttendanceOvertime>>, TError = unknown>(recordId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approveAttendanceOvertime>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getApproveAttendanceOvertimeQueryKey(recordId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof approveAttendanceOvertime>>> = ({ signal }) => approveAttendanceOvertime(recordId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: recordId !== null && recordId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof approveAttendanceOvertime>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ApproveAttendanceOvertimeQueryResult = NonNullable<Awaited<ReturnType<typeof approveAttendanceOvertime>>>
+export type ApproveAttendanceOvertimeQueryError = unknown
+
+
+export function useApproveAttendanceOvertime<TData = Awaited<ReturnType<typeof approveAttendanceOvertime>>, TError = unknown>(
+ recordId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof approveAttendanceOvertime>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof approveAttendanceOvertime>>,
+          TError,
+          Awaited<ReturnType<typeof approveAttendanceOvertime>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useApproveAttendanceOvertime<TData = Awaited<ReturnType<typeof approveAttendanceOvertime>>, TError = unknown>(
+ recordId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approveAttendanceOvertime>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof approveAttendanceOvertime>>,
+          TError,
+          Awaited<ReturnType<typeof approveAttendanceOvertime>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useApproveAttendanceOvertime<TData = Awaited<ReturnType<typeof approveAttendanceOvertime>>, TError = unknown>(
+ recordId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approveAttendanceOvertime>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Approve measured overtime (#106, audited)
+ */
+
+export function useApproveAttendanceOvertime<TData = Awaited<ReturnType<typeof approveAttendanceOvertime>>, TError = unknown>(
+ recordId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approveAttendanceOvertime>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getApproveAttendanceOvertimeQueryOptions(recordId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getRevokeAttendanceOvertimeUrl = (recordId: string,) => {
+
+
+
+
+  return `/api/attendance/${recordId}/overtime-approval`
+}
+
+/**
+ * @summary Withdraw an overtime approval (#106, audited)
+ */
+export const revokeAttendanceOvertime = async (recordId: string, options?: RequestInit): Promise<AttendanceRowDto> => {
+
+  return customFetch<AttendanceRowDto>(getRevokeAttendanceOvertimeUrl(recordId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRevokeAttendanceOvertimeQueryKey = (recordId: string,) => {
+    return [
+    'DELETE', `/api/attendance/${recordId}/overtime-approval`
+    ] as const;
+    }
+
+
+export const getRevokeAttendanceOvertimeQueryOptions = <TData = Awaited<ReturnType<typeof revokeAttendanceOvertime>>, TError = unknown>(recordId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof revokeAttendanceOvertime>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getRevokeAttendanceOvertimeQueryKey(recordId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof revokeAttendanceOvertime>>> = ({ signal }) => revokeAttendanceOvertime(recordId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: recordId !== null && recordId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof revokeAttendanceOvertime>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type RevokeAttendanceOvertimeQueryResult = NonNullable<Awaited<ReturnType<typeof revokeAttendanceOvertime>>>
+export type RevokeAttendanceOvertimeQueryError = unknown
+
+
+export function useRevokeAttendanceOvertime<TData = Awaited<ReturnType<typeof revokeAttendanceOvertime>>, TError = unknown>(
+ recordId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof revokeAttendanceOvertime>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof revokeAttendanceOvertime>>,
+          TError,
+          Awaited<ReturnType<typeof revokeAttendanceOvertime>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRevokeAttendanceOvertime<TData = Awaited<ReturnType<typeof revokeAttendanceOvertime>>, TError = unknown>(
+ recordId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof revokeAttendanceOvertime>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof revokeAttendanceOvertime>>,
+          TError,
+          Awaited<ReturnType<typeof revokeAttendanceOvertime>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRevokeAttendanceOvertime<TData = Awaited<ReturnType<typeof revokeAttendanceOvertime>>, TError = unknown>(
+ recordId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof revokeAttendanceOvertime>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Withdraw an overtime approval (#106, audited)
+ */
+
+export function useRevokeAttendanceOvertime<TData = Awaited<ReturnType<typeof revokeAttendanceOvertime>>, TError = unknown>(
+ recordId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof revokeAttendanceOvertime>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getRevokeAttendanceOvertimeQueryOptions(recordId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

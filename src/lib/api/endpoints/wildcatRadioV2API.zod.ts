@@ -749,7 +749,8 @@ export const GetStreamManifestResponse = zod.object({
   "type": zod.enum(['hls']),
   "url": zod.string().nullable(),
   "dj": zod.array(zod.string()),
-  "episodeId": zod.string().nullable()
+  "episodeId": zod.string().nullable(),
+  "showId": zod.string().nullable()
 })
 
 
@@ -828,13 +829,25 @@ export const GetStudioTodayResponse = zod.object({
   "timeOut": zod.iso.datetime({"offset":true}).nullable()
 })),
   "todayShows": zod.array(zod.object({
-  "id": zod.string(),
+  "id": zod.string().nullable().describe('Episode id once anyone tapped in'),
   "showId": zod.string().nullable(),
-  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
-  "status": zod.string(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable().describe('Original (cadence) start'),
+  "effectiveStart": zod.iso.datetime({"offset":true}),
+  "effectiveEnd": zod.iso.datetime({"offset":true}),
+  "status": zod.enum(['SCHEDULED', 'DELAYED', 'CANCELLED', 'HIATUS', 'PENDING_HANDOVER', 'ON_AIR', 'DONE']),
   "showName": zod.string().nullable(),
   "djs": zod.array(zod.string())
+})),
+  "pendingHandover": zod.object({
+  "episodeId": zod.string(),
+  "showId": zod.string().nullable(),
+  "showName": zod.string().nullable(),
+  "attendees": zod.array(zod.object({
+  "rosterId": zod.string(),
+  "displayName": zod.string(),
+  "timeIn": zod.iso.datetime({"offset":true}).describe('Arrival (tap-in) time')
 }))
+}).nullable()
 })
 
 
@@ -851,13 +864,27 @@ export const ListStudioRosterResponse = zod.array(ListStudioRosterResponseItem)
 /**
  * @summary DJ time-in (tap in)
  */
-export const TimeInStudioResponse = zod.unknown()
+export const TimeInStudioResponse = zod.object({
+  "episodeId": zod.string(),
+  "status": zod.enum(['LIVE', 'STATION_ROTATION', 'OFF_AIR']),
+  "state": zod.enum(['ON_AIR', 'PENDING_HANDOVER'])
+})
 
 
 /**
  * @summary DJ time-out (tap out)
  */
 export const TimeOutStudioResponse = zod.unknown()
+
+
+/**
+ * @summary Incoming DJ starts their show (explicit handover)
+ */
+export const HandoverStudioResponse = zod.object({
+  "episodeId": zod.string(),
+  "showId": zod.string().nullable(),
+  "startedAt": zod.iso.datetime({"offset":true}).nullable()
+})
 
 
 /**
@@ -1349,7 +1376,10 @@ export const ListShowsAdminResponseItem = zod.object({
   "roster": zod.array(zod.object({
   "id": zod.string(),
   "displayName": zod.string()
-}))
+})),
+  "hiatusFrom": zod.string().nullable().describe('#106 hiatus start, YYYY-MM-DD'),
+  "hiatusUntil": zod.string().nullable().describe('#106 hiatus end (inclusive), YYYY-MM-DD'),
+  "hiatusReason": zod.string().nullable()
 })
 export const ListShowsAdminResponse = zod.array(ListShowsAdminResponseItem)
 
@@ -1368,7 +1398,10 @@ export const ShowsControllerCreateResponse = zod.object({
   "roster": zod.array(zod.object({
   "id": zod.string(),
   "displayName": zod.string()
-}))
+})),
+  "hiatusFrom": zod.string().nullable().describe('#106 hiatus start, YYYY-MM-DD'),
+  "hiatusUntil": zod.string().nullable().describe('#106 hiatus end (inclusive), YYYY-MM-DD'),
+  "hiatusReason": zod.string().nullable()
 })
 
 
@@ -1406,7 +1439,10 @@ export const ShowsControllerUpdateResponse = zod.object({
   "roster": zod.array(zod.object({
   "id": zod.string(),
   "displayName": zod.string()
-}))
+})),
+  "hiatusFrom": zod.string().nullable().describe('#106 hiatus start, YYYY-MM-DD'),
+  "hiatusUntil": zod.string().nullable().describe('#106 hiatus end (inclusive), YYYY-MM-DD'),
+  "hiatusReason": zod.string().nullable()
 })
 
 
@@ -1418,6 +1454,78 @@ export const ShowsControllerRemoveParams = zod.object({
 })
 
 export const ShowsControllerRemoveResponse = zod.void()
+
+
+/**
+ * @summary A station date's occurrences with overrides (moderator)
+ */
+export const ListShowOccurrencesQueryParams = zod.object({
+  "date": zod.string().describe('Station-local YYYY-MM-DD')
+})
+
+export const ListShowOccurrencesResponseItem = zod.object({
+  "showId": zod.string(),
+  "showName": zod.string(),
+  "slug": zod.string(),
+  "date": zod.string().describe('Station-local YYYY-MM-DD'),
+  "status": zod.enum(['SCHEDULED', 'DELAYED', 'CANCELLED', 'HIATUS']),
+  "originalStart": zod.iso.datetime({"offset":true}),
+  "originalEnd": zod.iso.datetime({"offset":true}),
+  "effectiveStart": zod.iso.datetime({"offset":true}),
+  "effectiveEnd": zod.iso.datetime({"offset":true}),
+  "reason": zod.string().nullable(),
+  "episodeId": zod.string().nullable().describe('Episode id once anyone tapped in'),
+  "locked": zod.boolean().describe('An episode exists (started or pending) — changes are locked')
+})
+export const ListShowOccurrencesResponse = zod.array(ListShowOccurrencesResponseItem)
+
+
+/**
+ * @summary Delay or cancel one occurrence (moderator, audited)
+ */
+export const UpsertShowOccurrenceParams = zod.object({
+  "date": zod.string().describe('Station-local YYYY-MM-DD'),
+  "id": zod.string()
+})
+
+export const UpsertShowOccurrenceResponse = zod.object({
+  "showId": zod.string(),
+  "showName": zod.string(),
+  "slug": zod.string(),
+  "date": zod.string().describe('Station-local YYYY-MM-DD'),
+  "status": zod.enum(['SCHEDULED', 'DELAYED', 'CANCELLED', 'HIATUS']),
+  "originalStart": zod.iso.datetime({"offset":true}),
+  "originalEnd": zod.iso.datetime({"offset":true}),
+  "effectiveStart": zod.iso.datetime({"offset":true}),
+  "effectiveEnd": zod.iso.datetime({"offset":true}),
+  "reason": zod.string().nullable(),
+  "episodeId": zod.string().nullable().describe('Episode id once anyone tapped in'),
+  "locked": zod.boolean().describe('An episode exists (started or pending) — changes are locked')
+})
+
+
+/**
+ * @summary Resume a delayed/cancelled occurrence (moderator, audited)
+ */
+export const ResumeShowOccurrenceParams = zod.object({
+  "date": zod.string().describe('Station-local YYYY-MM-DD'),
+  "id": zod.string()
+})
+
+export const ResumeShowOccurrenceResponse = zod.object({
+  "showId": zod.string(),
+  "showName": zod.string(),
+  "slug": zod.string(),
+  "date": zod.string().describe('Station-local YYYY-MM-DD'),
+  "status": zod.enum(['SCHEDULED', 'DELAYED', 'CANCELLED', 'HIATUS']),
+  "originalStart": zod.iso.datetime({"offset":true}),
+  "originalEnd": zod.iso.datetime({"offset":true}),
+  "effectiveStart": zod.iso.datetime({"offset":true}),
+  "effectiveEnd": zod.iso.datetime({"offset":true}),
+  "reason": zod.string().nullable(),
+  "episodeId": zod.string().nullable().describe('Episode id once anyone tapped in'),
+  "locked": zod.boolean().describe('An episode exists (started or pending) — changes are locked')
+})
 
 
 /**
@@ -1434,6 +1542,24 @@ export const GetWeeklyScheduleResponse = zod.object({
   "end": zod.string(),
   "roster": zod.array(zod.string())
 }))
+}))
+})
+
+
+/**
+ * @summary Get today's occurrences (public)
+ */
+export const GetTodayScheduleResponse = zod.object({
+  "date": zod.string().describe('Station-local YYYY-MM-DD'),
+  "occurrences": zod.array(zod.object({
+  "showId": zod.string(),
+  "showName": zod.string(),
+  "slug": zod.string(),
+  "status": zod.enum(['SCHEDULED', 'DELAYED', 'CANCELLED']),
+  "originalStart": zod.iso.datetime({"offset":true}),
+  "originalEnd": zod.iso.datetime({"offset":true}),
+  "effectiveStart": zod.iso.datetime({"offset":true}),
+  "effectiveEnd": zod.iso.datetime({"offset":true})
 }))
 })
 
@@ -1503,17 +1629,49 @@ export const AttendanceControllerListQueryParams = zod.object({
 export const AttendanceControllerListResponseItem = zod.object({
   "recordId": zod.string().nullable(),
   "episodeId": zod.string().nullable(),
+  "showId": zod.string().nullable(),
   "rosterId": zod.string(),
   "displayName": zod.string(),
   "scheduled": zod.string().nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledEnd": zod.string().nullable().describe('HH:MM scheduled end time'),
   "timeIn": zod.iso.datetime({"offset":true}).nullable(),
   "timeOut": zod.iso.datetime({"offset":true}).nullable(),
   "onAirHours": zod.number().nullable(),
-  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT', 'AGREED_OVERTIME']),
+  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT', 'OVERTIME_PENDING', 'AGREED_OVERTIME']),
   "lateMinutes": zod.number(),
+  "overtimeMinutes": zod.number().describe('Whole minutes past the effective end (measured)'),
+  "onAirStartAt": zod.iso.datetime({"offset":true}).nullable().describe('Broadcast attribution start; null while waiting for handover'),
+  "overtimeApproved": zod.boolean(),
+  "overtimeApprovalReason": zod.string().nullable(),
   "note": zod.string().nullable()
 })
 export const AttendanceControllerListResponse = zod.array(AttendanceControllerListResponseItem)
+
+
+/**
+ * @summary Create a new attendance record
+ */
+export const AttendanceControllerCreateResponse = zod.object({
+  "recordId": zod.string().nullable(),
+  "episodeId": zod.string().nullable(),
+  "showId": zod.string().nullable(),
+  "rosterId": zod.string(),
+  "displayName": zod.string(),
+  "scheduled": zod.string().nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledEnd": zod.string().nullable().describe('HH:MM scheduled end time'),
+  "timeIn": zod.iso.datetime({"offset":true}).nullable(),
+  "timeOut": zod.iso.datetime({"offset":true}).nullable(),
+  "onAirHours": zod.number().nullable(),
+  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT', 'OVERTIME_PENDING', 'AGREED_OVERTIME']),
+  "lateMinutes": zod.number(),
+  "overtimeMinutes": zod.number().describe('Whole minutes past the effective end (measured)'),
+  "onAirStartAt": zod.iso.datetime({"offset":true}).nullable().describe('Broadcast attribution start; null while waiting for handover'),
+  "overtimeApproved": zod.boolean(),
+  "overtimeApprovalReason": zod.string().nullable(),
+  "note": zod.string().nullable()
+})
 
 
 /**
@@ -1526,14 +1684,79 @@ export const AttendanceControllerCorrectParams = zod.object({
 export const AttendanceControllerCorrectResponse = zod.object({
   "recordId": zod.string().nullable(),
   "episodeId": zod.string().nullable(),
+  "showId": zod.string().nullable(),
   "rosterId": zod.string(),
   "displayName": zod.string(),
   "scheduled": zod.string().nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledEnd": zod.string().nullable().describe('HH:MM scheduled end time'),
   "timeIn": zod.iso.datetime({"offset":true}).nullable(),
   "timeOut": zod.iso.datetime({"offset":true}).nullable(),
   "onAirHours": zod.number().nullable(),
-  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT', 'AGREED_OVERTIME']),
+  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT', 'OVERTIME_PENDING', 'AGREED_OVERTIME']),
   "lateMinutes": zod.number(),
+  "overtimeMinutes": zod.number().describe('Whole minutes past the effective end (measured)'),
+  "onAirStartAt": zod.iso.datetime({"offset":true}).nullable().describe('Broadcast attribution start; null while waiting for handover'),
+  "overtimeApproved": zod.boolean(),
+  "overtimeApprovalReason": zod.string().nullable(),
+  "note": zod.string().nullable()
+})
+
+
+/**
+ * @summary Approve measured overtime (#106, audited)
+ */
+export const ApproveAttendanceOvertimeParams = zod.object({
+  "recordId": zod.string()
+})
+
+export const ApproveAttendanceOvertimeResponse = zod.object({
+  "recordId": zod.string().nullable(),
+  "episodeId": zod.string().nullable(),
+  "showId": zod.string().nullable(),
+  "rosterId": zod.string(),
+  "displayName": zod.string(),
+  "scheduled": zod.string().nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledEnd": zod.string().nullable().describe('HH:MM scheduled end time'),
+  "timeIn": zod.iso.datetime({"offset":true}).nullable(),
+  "timeOut": zod.iso.datetime({"offset":true}).nullable(),
+  "onAirHours": zod.number().nullable(),
+  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT', 'OVERTIME_PENDING', 'AGREED_OVERTIME']),
+  "lateMinutes": zod.number(),
+  "overtimeMinutes": zod.number().describe('Whole minutes past the effective end (measured)'),
+  "onAirStartAt": zod.iso.datetime({"offset":true}).nullable().describe('Broadcast attribution start; null while waiting for handover'),
+  "overtimeApproved": zod.boolean(),
+  "overtimeApprovalReason": zod.string().nullable(),
+  "note": zod.string().nullable()
+})
+
+
+/**
+ * @summary Withdraw an overtime approval (#106, audited)
+ */
+export const RevokeAttendanceOvertimeParams = zod.object({
+  "recordId": zod.string()
+})
+
+export const RevokeAttendanceOvertimeResponse = zod.object({
+  "recordId": zod.string().nullable(),
+  "episodeId": zod.string().nullable(),
+  "showId": zod.string().nullable(),
+  "rosterId": zod.string(),
+  "displayName": zod.string(),
+  "scheduled": zod.string().nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledEnd": zod.string().nullable().describe('HH:MM scheduled end time'),
+  "timeIn": zod.iso.datetime({"offset":true}).nullable(),
+  "timeOut": zod.iso.datetime({"offset":true}).nullable(),
+  "onAirHours": zod.number().nullable(),
+  "status": zod.enum(['ON_TIME', 'LATE', 'ABSENT', 'OVERTIME_PENDING', 'AGREED_OVERTIME']),
+  "lateMinutes": zod.number(),
+  "overtimeMinutes": zod.number().describe('Whole minutes past the effective end (measured)'),
+  "onAirStartAt": zod.iso.datetime({"offset":true}).nullable().describe('Broadcast attribution start; null while waiting for handover'),
+  "overtimeApproved": zod.boolean(),
+  "overtimeApprovalReason": zod.string().nullable(),
   "note": zod.string().nullable()
 })
 
@@ -1834,6 +2057,58 @@ export const AnnouncementsControllerReviewParams = zod.object({
 })
 
 export const AnnouncementsControllerReviewResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Author self-publish: DRAFT | PENDING_REVIEW | REJECTED -> PUBLISHED (or SCHEDULED with scheduledFor). No second approver.
+ */
+export const AnnouncementsControllerPublishParams = zod.object({
+  "id": zod.string()
+})
+
+export const AnnouncementsControllerPublishResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),

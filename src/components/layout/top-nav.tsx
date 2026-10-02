@@ -7,6 +7,7 @@ import { Menu } from "lucide-react";
 import { useSession, type SessionUser } from "@/lib/auth/client";
 import { getStaffPortalPath } from "@/lib/auth/staff-routing";
 import { useHydrated } from "@/lib/use-hydrated";
+import { AccountMenu } from "./account-menu";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -86,23 +87,24 @@ export function TopNav({ onMenu }: TopNavProps) {
           {/* Match SSR on the first client render, then reveal session-aware actions. */}
           {mounted && !isPending && (
             user ? (
-              /* Logged-in: elevated roles get a direct staff entry, all users keep Profile. */
+              /* Logged-in: elevated roles get a direct staff entry; the avatar opens
+                 the account menu (profile, settings, sign out). */
               <>
                 {staffPortal && (
-                  <Link
-                    href={staffPortal}
-                    className="wc-btn wc-btn-primary wc-btn-sm hidden md:inline-flex"
-                    data-testid="staff-console-link"
-                  >
-                    Staff console
-                  </Link>
+                  /* Wrapper carries the breakpoint: unlayered `.wc-btn` sets
+                     `display`, which beat Tailwind's layered `hidden` and showed
+                     this on phones. Below md it lives in the account menu. */
+                  <span className="hidden md:inline-flex">
+                    <Link
+                      href={staffPortal}
+                      className="wc-btn wc-btn-primary wc-btn-sm"
+                      data-testid="staff-console-link"
+                    >
+                      Staff console
+                    </Link>
+                  </span>
                 )}
-                <Link
-                  href="/profile"
-                  className="wc-avatar h-9 w-9 block flex-none"
-                  aria-label={`Your profile${user.handle ? ` (@${user.handle})` : ''}`}
-                  style={user.image ? { backgroundImage: `url(${user.image})`, backgroundSize: 'cover' } : undefined}
-                />
+                <AccountMenu user={user} staffPortal={staffPortal} />
               </>
             ) : (
               /* Logged-out: Sign in + Listen live.

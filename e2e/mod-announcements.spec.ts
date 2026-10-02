@@ -1,4 +1,4 @@
-import { expect, request as pwRequest, test, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, request as pwRequest, test, type APIRequestContext } from '@playwright/test';
 import { attachConsoleGuard, appAlerts } from './_console';
 import {
   ACCOUNTS,
@@ -67,18 +67,6 @@ test.afterAll(async () => {
   await custodianApi.dispose();
   await anonApi.dispose();
 });
-
-/**
- * The review decision control is the shadcn/Radix `Select` (AGENTS.md
- * prohibits a hand-written native `<select>` in new code), so it is driven the
- * way a moderator drives it — open the trigger, click the option — rather than
- * with `.selectOption()`, which only works against a real `<select>`.
- */
-async function selectReviewDecision(page: Page, optionLabel: string): Promise<void> {
-  await page.getByTestId('mod-ann-review-decision').click();
-  await page.getByRole('option', { name: optionLabel }).click();
-  await expect(page.getByTestId('mod-ann-review-decision')).toContainText(optionLabel);
-}
 
 async function fixtureDraft(overrides: Parameters<typeof createAnnouncement>[1] = {}): Promise<AnnouncementStaff> {
   const created = await createAnnouncement(modApi, overrides);
@@ -307,9 +295,8 @@ test('ANN-I-03: server state, not optimistic fiction, on both success and 409', 
   await page.goto(`${WEB_BASE}/mod/announcements`);
   const row = page.getByTestId('mod-ann-row').filter({ hasText: created.title as string });
 
-  await row.getByTestId('mod-ann-review').click();
-  await selectReviewDecision(page, 'Publish now');
-  await page.getByTestId('mod-ann-review-confirm').click();
+  await row.getByTestId('mod-ann-publish').click();
+  await page.getByTestId('mod-ann-publish-confirm').click();
   await expect(row).toContainText(/published/i, { timeout: 10_000 });
 
   // Force a 409 by resubmitting an already-published row directly via the API,
@@ -379,12 +366,11 @@ test('ANN-E-01: golden path — draft to public, pinned and visible anonymously'
   const created = (await listRes.json()).items.find((item: AnnouncementStaff) => item.title === title);
   if (created) createdIds.push(created.id);
 
-  await row.getByTestId('mod-ann-submit').click();
-  await expect(row).toContainText(/pending/i, { timeout: 10_000 });
-
-  await row.getByTestId('mod-ann-review').click();
-  await selectReviewDecision(page, 'Publish now');
-  await page.getByTestId('mod-ann-review-confirm').click();
+  // Self-publish: the author takes it live in one step — no submit/review.
+  await expect(row.getByTestId('mod-ann-submit')).toHaveCount(0);
+  await row.getByTestId('mod-ann-publish').click();
+  await expect(page.getByTestId('mod-ann-publish-now')).toHaveAttribute('aria-checked', 'true');
+  await page.getByTestId('mod-ann-publish-confirm').click();
   await expect(row).toContainText(/published/i, { timeout: 10_000 });
 
   await row.getByTestId('mod-ann-pin').click();
@@ -402,16 +388,15 @@ test('ANN-E-01: golden path — draft to public, pinned and visible anonymously'
 
 test('ANN-E-02: schedule instead of publish', async ({ page }) => {
   const created = await fixtureDraft({ title: `E2E FE9 Schedule ${Date.now()}` });
-  await submitAnnouncement(modApi, created.id);
 
   await loginAs(page, 'moderator');
   await page.goto(`${WEB_BASE}/mod/announcements`);
   const row = page.getByTestId('mod-ann-row').filter({ hasText: created.title as string });
-  await row.getByTestId('mod-ann-review').click();
-  await selectReviewDecision(page, 'Schedule for later');
+  await row.getByTestId('mod-ann-publish').click();
+  await page.getByTestId('mod-ann-publish-later').click();
   const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
-  await page.getByTestId('mod-ann-review-schedule').fill(future);
-  await page.getByTestId('mod-ann-review-confirm').click();
+  await page.getByTestId('mod-ann-publish-at').fill(future);
+  await page.getByTestId('mod-ann-publish-confirm').click();
   await expect(row).toContainText(/scheduled/i, { timeout: 10_000 });
 
   const publicRes = await anonApi.get('/api/announcements');
@@ -419,24 +404,25 @@ test('ANN-E-02: schedule instead of publish', async ({ page }) => {
   expect(body.items.some((item: { id: string }) => item.id === created.id)).toBe(false);
 });
 
-test('ANN-E-03: reject with reason — empty reason blocked, then rejected with reason', async ({ page }) => {
-  const created = await fixtureDraft({ title: `E2E FE9 Reject ${Date.now()}` });
-  await submitAnnouncement(modApi, created.id);
+test('ANN-E-03: publish dialog — no reject/approval path; a past schedule is blocked with one alert', async ({ page }) => {
+  const created = await fixtureDraft({ title: `E2E FE9 PastSchedule ${Date.now()}` });
 
   await loginAs(page, 'moderator');
   await page.goto(`${WEB_BASE}/mod/announcements`);
   const row = page.getByTestId('mod-ann-row').filter({ hasText: created.title as string });
-  await row.getByTestId('mod-ann-review').click();
-  await selectReviewDecision(page, 'Reject');
-  await page.getByTestId('mod-ann-review-confirm').click();
+  await row.getByTestId('mod-ann-publish').click();
+  const dialog = page.getByTestId('mod-ann-publish-dialog');
+  await expect(dialog).not.toContainText(/reject/i);
+
+  await page.getByTestId('mod-ann-publish-later').click();
+  const past = new Date(Date.now() - 60 * 60 * 1000).toISOString().slice(0, 16);
+  await page.getByTestId('mod-ann-publish-at').fill(past);
+  await page.getByTestId('mod-ann-publish-confirm').click();
 
   const alert = appAlerts(page);
   await expect(alert).toHaveCount(1);
   await expect(alert).toBeVisible();
-
-  await page.getByTestId('mod-ann-review-reason').fill('Not on-brand — fixture rejection.');
-  await page.getByTestId('mod-ann-review-confirm').click();
-  await expect(row).toContainText(/rejected/i, { timeout: 10_000 });
+  await expect(row).toContainText(/draft/i);
 
   const publicRes = await anonApi.get(`/api/announcements/${created.id}`);
   expect(publicRes.status()).toBe(404);
@@ -618,12 +604,11 @@ test('ANN-E-09: a11y — dialogs trap focus, return focus on close, close on Esc
   page,
 }) => {
   const created = await fixtureDraft({ title: `E2E FE9 A11y ${Date.now()}` });
-  await submitAnnouncement(modApi, created.id);
 
   await loginAs(page, 'moderator');
   await page.goto(`${WEB_BASE}/mod/announcements`);
   const row = page.getByTestId('mod-ann-row').filter({ hasText: created.title as string });
-  const reviewTrigger = row.getByTestId('mod-ann-review');
+  const reviewTrigger = row.getByTestId('mod-ann-publish');
   await reviewTrigger.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 });
@@ -652,9 +637,7 @@ test('ANN-E-10: RBAC — LISTENER refused, CUSTODIAN completes the full lifecycl
   const created = (await listRes.json()).items.find((item: AnnouncementStaff) => item.title === title);
   if (created) createdIds.push(created.id);
 
-  await row.getByTestId('mod-ann-submit').click();
-  await row.getByTestId('mod-ann-review').click();
-  await selectReviewDecision(page, 'Publish now');
-  await page.getByTestId('mod-ann-review-confirm').click();
+  await row.getByTestId('mod-ann-publish').click();
+  await page.getByTestId('mod-ann-publish-confirm').click();
   await expect(row).toContainText(/published/i, { timeout: 10_000 });
 });

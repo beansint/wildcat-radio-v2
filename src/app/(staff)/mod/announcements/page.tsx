@@ -14,8 +14,9 @@
  *   - "Restore" on archived rows and "Publish now" on scheduled rows —
  *     neither transition exists (`ARCHIVED` is terminal; `SCHEDULED ->
  *     PUBLISHED` only ever happens via the backend's own cron promoter).
- * Added vs. the prototype: the Submit step (DRAFT -> PENDING_REVIEW), the
- * PENDING_REVIEW and REJECTED tabs/states the prototype never drew, and
+ * Added vs. the prototype: one-step self-publish (DRAFT -> PUBLISHED |
+ * SCHEDULED, no second approver — the author is responsible), the REJECTED
+ * tab and a legacy-only PENDING_REVIEW tab the prototype never drew, and
  * pin/unpin (the prototype only drew a static "Featured" chip).
  *
  * The selected tab is a server-side `status` filter, and the tab badges plus
@@ -37,8 +38,7 @@ import {
   getAnnouncementsControllerListQueryKey,
   announcementsControllerCreate,
   announcementsControllerUpdate,
-  announcementsControllerSubmit,
-  announcementsControllerReview,
+  announcementsControllerPublish,
   announcementsControllerArchive,
   announcementsControllerPin,
   announcementsControllerUnpin,
@@ -55,7 +55,7 @@ import { SegTabs } from "@/components/mod/seg-tabs";
 import { Button } from "@/components/ui/button";
 import { AnnouncementCard } from "@/components/mod/announcements/announcement-card";
 import { AnnouncementFormDialog } from "@/components/mod/announcements/announcement-form-dialog";
-import { ReviewDialog, type ReviewSubmitValues } from "@/components/mod/announcements/review-dialog";
+import { PublishDialog, type PublishSubmitValues } from "@/components/mod/announcements/publish-dialog";
 import {
   ANNOUNCEMENT_TAB_KEYS,
   countsFromServer,
@@ -81,7 +81,7 @@ export default function AnnouncementsPage() {
 
   const [formTarget, setFormTarget] = useState<AnnouncementStaffDto | null>(null);
   const [creating, setCreating] = useState(false);
-  const [reviewTarget, setReviewTarget] = useState<AnnouncementStaffDto | null>(null);
+  const [publishTarget, setPublishTarget] = useState<AnnouncementStaffDto | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // The selected tab is a *server-side* filter. Tallying statuses from one
@@ -149,10 +149,8 @@ export default function AnnouncementsPage() {
   });
 
   const transitionMutation = useMutation({
-    mutationFn: async (vars: { kind: "submit" | "archive" | "pin" | "unpin" | "feature" | "unfeature"; id: string }) => {
+    mutationFn: async (vars: { kind: "archive" | "pin" | "unpin" | "feature" | "unfeature"; id: string }) => {
       switch (vars.kind) {
-        case "submit":
-          return announcementsControllerSubmit(vars.id);
         case "archive":
           return announcementsControllerArchive(vars.id);
         case "pin":
@@ -175,12 +173,12 @@ export default function AnnouncementsPage() {
     },
   });
 
-  const reviewMutation = useMutation({
-    mutationFn: async (vars: { id: string; body: Record<string, unknown> }) =>
-      announcementsControllerReview(vars.id, { body: JSON.stringify(vars.body) }),
+  const publishMutation = useMutation({
+    mutationFn: async (vars: { id: string; body: PublishSubmitValues }) =>
+      announcementsControllerPublish(vars.id, { body: JSON.stringify(vars.body) }),
     onSuccess: async () => {
       await invalidateList();
-      setReviewTarget(null);
+      setPublishTarget(null);
     },
   });
 
@@ -199,19 +197,18 @@ export default function AnnouncementsPage() {
     },
   });
 
-  function handleTransition(kind: "submit" | "archive" | "pin" | "unpin" | "feature" | "unfeature", id: string) {
+  function handleTransition(kind: "archive" | "pin" | "unpin" | "feature" | "unfeature", id: string) {
     transitionMutation.mutate({ kind, id });
   }
 
-  function handleReviewSubmit(values: ReviewSubmitValues) {
-    if (!reviewTarget) return;
-    const body: Record<string, unknown> = { decision: values.decision };
-    if (values.scheduledFor) body.scheduledFor = values.scheduledFor;
-    if (values.rejectionReason) body.rejectionReason = values.rejectionReason;
-    reviewMutation.mutate({ id: reviewTarget.id, body });
+  function handlePublishSubmit(values: PublishSubmitValues) {
+    if (!publishTarget) return;
+    publishMutation.mutate({ id: publishTarget.id, body: values });
   }
 
-  const tabs = ANNOUNCEMENT_TAB_KEYS.map((key) => ({
+  // No review queue any more: the Pending tab only appears while legacy
+  // PENDING_REVIEW rows still exist.
+  const tabs = ANNOUNCEMENT_TAB_KEYS.filter((key) => key !== "pending" || counts.pending > 0).map((key) => ({
     key,
     label: tabLabel(key),
     count: counts[key],
@@ -275,11 +272,10 @@ export default function AnnouncementsPage() {
                 saveMutation.reset();
                 setFormTarget(announcement);
               }}
-              onSubmit={() => handleTransition("submit", announcement.id)}
-              onReview={() => {
+              onPublish={() => {
                 setActionError(null);
-                reviewMutation.reset();
-                setReviewTarget(announcement);
+                publishMutation.reset();
+                setPublishTarget(announcement);
               }}
               onArchive={() => handleTransition("archive", announcement.id)}
               onTogglePin={() => handleTransition(announcement.isPinned ? "unpin" : "pin", announcement.id)}
@@ -345,16 +341,16 @@ export default function AnnouncementsPage() {
         />
       )}
 
-      {reviewTarget && (
-        <ReviewDialog
+      {publishTarget && (
+        <PublishDialog
           open
           onOpenChange={(open) => {
-            if (!open) setReviewTarget(null);
+            if (!open) setPublishTarget(null);
           }}
-          title={reviewTarget.title}
-          onSubmit={handleReviewSubmit}
-          pending={reviewMutation.isPending}
-          error={reviewMutation.isError ? humanizeAnnouncementError(reviewMutation.error, "transition") : null}
+          title={publishTarget.title}
+          onSubmit={handlePublishSubmit}
+          pending={publishMutation.isPending}
+          error={publishMutation.isError ? humanizeAnnouncementError(publishMutation.error, "transition") : null}
         />
       )}
     </div>

@@ -195,9 +195,12 @@ export default function StudioPage() {
     },
   });
 
+  // The queue belongs to the open episode; with nothing on air the API
+  // answers 400, and polling it every 5s filled the booth console with
+  // errors (found by #106 WEB-E-05). Poll only while an episode is open.
   const queueQuery = useQuery({
     queryKey: ["studio-queue"],
-    enabled: unlocked,
+    enabled: unlocked && !!today?.episode,
     refetchInterval: 5_000,
     queryFn: () => getStudioQueue(),
   });
@@ -730,9 +733,13 @@ export default function StudioPage() {
       <SubTimeInDialog
         open={subDialogOpen}
         onOpenChange={setSubDialogOpen}
-        onTimedIn={(displayName) => {
+        onTimedIn={(displayName, pending) => {
           setSubDialogOpen(false);
-          pushToast(`✓ ${displayName} timed in`);
+          pushToast(
+            pending
+              ? `✓ ${displayName} checked in — waiting for the current show to hand over`
+              : `✓ ${displayName} timed in`,
+          );
           void queryClient.invalidateQueries({ queryKey: getGetStudioTodayQueryKey() });
         }}
       />

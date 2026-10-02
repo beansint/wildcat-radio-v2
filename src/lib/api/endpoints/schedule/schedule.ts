@@ -21,7 +21,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  ScheduleDto
+  ScheduleDto,
+  ScheduleTodayDto
 } from '../../model';
 
 import { customFetch } from '../../fetcher';
@@ -120,6 +121,106 @@ export function useGetWeeklySchedule<TData = Awaited<ReturnType<typeof getWeekly
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetWeeklyScheduleQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getGetTodayScheduleUrl = () => {
+
+
+
+
+  return `/api/schedule/today`
+}
+
+/**
+ * @summary Get today's occurrences (public)
+ */
+export const getTodaySchedule = async ( options?: RequestInit): Promise<ScheduleTodayDto> => {
+
+  return customFetch<ScheduleTodayDto>(getGetTodayScheduleUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTodayScheduleQueryKey = () => {
+    return [
+    `/api/schedule/today`
+    ] as const;
+    }
+
+
+export const getGetTodayScheduleQueryOptions = <TData = Awaited<ReturnType<typeof getTodaySchedule>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTodaySchedule>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTodayScheduleQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTodaySchedule>>> = ({ signal }) => getTodaySchedule({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTodaySchedule>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTodayScheduleQueryResult = NonNullable<Awaited<ReturnType<typeof getTodaySchedule>>>
+export type GetTodayScheduleQueryError = unknown
+
+
+export function useGetTodaySchedule<TData = Awaited<ReturnType<typeof getTodaySchedule>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTodaySchedule>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTodaySchedule>>,
+          TError,
+          Awaited<ReturnType<typeof getTodaySchedule>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTodaySchedule<TData = Awaited<ReturnType<typeof getTodaySchedule>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTodaySchedule>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTodaySchedule>>,
+          TError,
+          Awaited<ReturnType<typeof getTodaySchedule>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTodaySchedule<TData = Awaited<ReturnType<typeof getTodaySchedule>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTodaySchedule>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get today's occurrences (public)
+ */
+
+export function useGetTodaySchedule<TData = Awaited<ReturnType<typeof getTodaySchedule>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTodaySchedule>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTodayScheduleQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

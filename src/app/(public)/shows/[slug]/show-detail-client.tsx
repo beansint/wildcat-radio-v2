@@ -25,7 +25,7 @@ import { useGetShowEpisodes, useGetShowPublic } from "@/lib/api/endpoints/shows-
 import { classifyQueryError, filterAllowedPhotoUrls } from "@/lib/content/format";
 import { formatDateTime } from "@/components/standing/format";
 import { coverClassFor, initialsFor, monoClassFor } from "@/lib/content/cover";
-import { episodeTitleLabel, formatEpisodeStats, isShowCurrentlyLive } from "@/lib/content/live";
+import { episodeTitleLabel, formatEpisodeStats, isShowOnAir } from "@/lib/content/live";
 import { PublicEmpty, PublicGenericError, PublicNotFound, PublicRateLimited } from "@/components/public/public-states";
 import { Button } from "@/components/ui/button";
 import { useStream } from "@/lib/stream/stream-context";
@@ -68,11 +68,7 @@ export function ShowDetailClient() {
 
   const show = showQuery.data!;
   const photos = filterAllowedPhotoUrls(show.coverImage ? [show.coverImage] : []);
-  const isLive = isShowCurrentlyLive(
-    stream.status,
-    stream.djs,
-    show.roster.map((entry) => entry.displayName),
-  );
+  const isLive = isShowOnAir(stream.status, stream.showId, show.id);
   const episodes = episodesQuery.data;
   const episodesErr = episodesQuery.isError ? classifyQueryError(episodesQuery.error) : null;
   // The episodes query is gated on the show query resolving first, so for a

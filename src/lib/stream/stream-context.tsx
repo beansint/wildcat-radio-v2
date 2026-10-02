@@ -37,6 +37,8 @@ export interface StreamState {
   manifestUrl: string | null;
   djs: string[];
   episodeId: string | null;
+  /** #106: show the active episode belongs to (null when unscheduled / off air). */
+  showId: string | null;
   /** Listener count from socket (null if no socket data yet) */
   listeners: number | null;
   manifestAvailability: ManifestAvailability;
@@ -72,6 +74,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const rawDjs = manifestReady ? manifest?.dj : undefined;
   const djs: string[] = useMemo(() => rawDjs ?? [], [rawDjs]);
   const episodeId: string | null = manifestReady ? (manifest?.episodeId ?? null) : null;
+  const showId: string | null = manifestReady ? (manifest?.showId ?? null) : null;
 
   const [phase, setPhase] = useState<PlayerPhase>("idle");
   useEffect(() => {
@@ -340,6 +343,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       manifestUrl,
       djs,
       episodeId,
+      showId,
       listeners,
       manifestAvailability,
       isPlaying,
@@ -354,6 +358,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       manifestUrl,
       djs,
       episodeId,
+      showId,
       listeners,
       manifestAvailability,
       isPlaying,

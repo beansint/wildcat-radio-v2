@@ -50,8 +50,7 @@ interface AnnouncementCardProps {
   pinLimit: number;
   busy?: boolean;
   onEdit: () => void;
-  onSubmit: () => void;
-  onReview: () => void;
+  onPublish: () => void;
   onArchive: () => void;
   onTogglePin: () => void;
   onToggleFeature: () => void;
@@ -63,8 +62,7 @@ export function AnnouncementCard({
   pinLimit,
   busy,
   onEdit,
-  onSubmit,
-  onReview,
+  onPublish,
   onArchive,
   onTogglePin,
   onToggleFeature,
@@ -150,26 +148,14 @@ export function AnnouncementCard({
             Edit
           </Button>
         )}
-        {actions.includes("submit") && (
+        {actions.includes("publish") && (
           <Button
             size="sm"
-            variant="outline"
-            data-testid="mod-ann-submit"
+            data-testid="mod-ann-publish"
             disabled={busy}
-            onClick={stop(onSubmit)}
+            onClick={stop(onPublish)}
           >
-            Submit for review
-          </Button>
-        )}
-        {actions.includes("review") && (
-          <Button
-            size="sm"
-            variant="outline"
-            data-testid="mod-ann-review"
-            disabled={busy}
-            onClick={stop(onReview)}
-          >
-            Review
+            Publish…
           </Button>
         )}
         {canPin && (

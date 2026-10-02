@@ -34,11 +34,13 @@ import type {
   StationDeviceDto,
   StationHandoffResponseDto,
   StationRevokeResponseDto,
+  StudioHandoverResultDto,
   StudioQueueResponseDto,
   StudioRosterEntryDto,
   StudioSessionClearResponseDto,
   StudioSessionResponseDto,
   StudioSessionStatusResponseDto,
+  StudioTimeInResultDto,
   StudioTodayDto
 } from '../../model';
 
@@ -1544,9 +1546,9 @@ export const getTimeInStudioUrl = () => {
 /**
  * @summary DJ time-in (tap in)
  */
-export const timeInStudio = async ( options?: RequestInit): Promise<void> => {
+export const timeInStudio = async ( options?: RequestInit): Promise<StudioTimeInResultDto> => {
 
-  return customFetch<void>(getTimeInStudioUrl(),
+  return customFetch<StudioTimeInResultDto>(getTimeInStudioUrl(),
   {
     ...options,
     method: 'POST'
@@ -1722,6 +1724,106 @@ export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getTimeOutStudioQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getHandoverStudioUrl = () => {
+
+
+
+
+  return `/api/studio/handover`
+}
+
+/**
+ * @summary Incoming DJ starts their show (explicit handover)
+ */
+export const handoverStudio = async ( options?: RequestInit): Promise<StudioHandoverResultDto> => {
+
+  return customFetch<StudioHandoverResultDto>(getHandoverStudioUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getHandoverStudioQueryKey = () => {
+    return [
+    'POST', `/api/studio/handover`
+    ] as const;
+    }
+
+
+export const getHandoverStudioQueryOptions = <TData = Awaited<ReturnType<typeof handoverStudio>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof handoverStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getHandoverStudioQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof handoverStudio>>> = ({ signal }) => handoverStudio({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof handoverStudio>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type HandoverStudioQueryResult = NonNullable<Awaited<ReturnType<typeof handoverStudio>>>
+export type HandoverStudioQueryError = unknown
+
+
+export function useHandoverStudio<TData = Awaited<ReturnType<typeof handoverStudio>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof handoverStudio>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof handoverStudio>>,
+          TError,
+          Awaited<ReturnType<typeof handoverStudio>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useHandoverStudio<TData = Awaited<ReturnType<typeof handoverStudio>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof handoverStudio>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof handoverStudio>>,
+          TError,
+          Awaited<ReturnType<typeof handoverStudio>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useHandoverStudio<TData = Awaited<ReturnType<typeof handoverStudio>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof handoverStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Incoming DJ starts their show (explicit handover)
+ */
+
+export function useHandoverStudio<TData = Awaited<ReturnType<typeof handoverStudio>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof handoverStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getHandoverStudioQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

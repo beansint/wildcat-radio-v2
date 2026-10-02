@@ -1,31 +1,17 @@
 /**
- * Public show-detail "Live now" derivation (FE#44).
+ * "Is THIS show on air?" (#106 / FE#84).
  *
- * The stream manifest (`GET /api/stream/manifest`, consumed via
- * `useStream()`) reports overall station status plus the *display names* of
- * DJs currently timed in (`dj[]` — "online DJ display names" per the
- * backend's `StreamController.getManifest` doc comment). It does **not**
- * report which show — or even which episode's show — is airing; `episodeId`
- * identifies the open `Episode` row, but that row's `showId` is nullable
- * (unscheduled episodes have none) and isn't exposed on the manifest at all.
- *
- * So a show detail page can't ask "is *my* show live" directly. The closest
- * real signal available is: the station is `LIVE`, and at least one of the
- * currently timed-in DJ names matches a name on this show's roster. That's
- * an approximation — it would over-report if two shows share a DJ and that
- * DJ is timed in for the *other* show — but it's the only correlation the
- * manifest contract currently supports, and it degrades safely to "not
- * live" whenever the station is off air or nobody's timed in.
+ * True only with broadcast evidence for this exact show: the stream is
+ * `LIVE` **and** the manifest's `showId` (the active episode's show) is this
+ * show. Replaces the old DJ-name overlap guess, which over-reported whenever
+ * two shows shared a DJ and ignored whether the schedule said anything.
  */
-export function isShowCurrentlyLive(
+export function isShowOnAir(
   streamStatus: string,
-  liveDjNames: readonly string[],
-  showRosterNames: readonly string[],
+  liveShowId: string | null | undefined,
+  showId: string | null | undefined,
 ): boolean {
-  if (streamStatus !== "LIVE") return false;
-  if (liveDjNames.length === 0 || showRosterNames.length === 0) return false;
-  const live = new Set(liveDjNames);
-  return showRosterNames.some((name) => live.has(name));
+  return streamStatus === "LIVE" && !!liveShowId && !!showId && liveShowId === showId;
 }
 
 /**

@@ -22,7 +22,10 @@ function FacebookIcon({ className }: { className?: string }) {
 
 export function Footer() {
   return (
-    <footer className="wc-grad-ink text-white/80 mt-4">
+    // The fixed GlobalPlayer overlaps the page bottom, so the footer carries its
+    // own clearance (72px mobile / 56px md) inside its dark surface. Padding
+    // the footer from outside left a strip of bare page background below it.
+    <footer className="wc-grad-ink text-white/80 pb-[72px] md:pb-14">
       <div className="wc-container py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
         <div className="flex items-center gap-3">
           <Image

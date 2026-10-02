@@ -63,14 +63,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </a>
       <TopNav onMenu={() => setOpen(true)} />
       <MobileDrawer open={open} onClose={() => setOpen(false)} />
-      <div id="main-content" tabIndex={-1}>
+      <div id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
         {children}
       </div>
-      {/* FE#43 — the footer sits after each page's own padded content, so it
-          needs its own clearance from the position:fixed GlobalPlayer. */}
-      <div className="pb-[72px] md:pb-14">
-        <Footer />
-      </div>
+      <Footer />
     </>
   );
 }

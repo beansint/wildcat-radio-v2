@@ -3196,6 +3196,37 @@
         ]
       }
     },
+    "/api/announcements/{id}/publish": {
+      "post": {
+        "operationId": "AnnouncementsController_publish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published or scheduled announcement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Author self-publish: DRAFT | PENDING_REVIEW | REJECTED -> PUBLISHED (or SCHEDULED with scheduledFor). No second approver.",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
     "/api/announcements/{id}/archive": {
       "post": {
         "operationId": "AnnouncementsController_archive",

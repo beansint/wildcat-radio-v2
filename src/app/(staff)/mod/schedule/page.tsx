@@ -20,6 +20,7 @@ import type { Weekday, Cadence } from "@/lib/mod/types";
 import type { ScheduleSourceShow } from "@/lib/schedule/grid";
 import { Button } from "@/components/ui/button";
 import { ShowFormDialog } from "@/components/mod/show-form-dialog";
+import { OccurrencesPanel } from "@/components/mod/occurrences-panel";
 
 const DAY_HEADER: Record<Weekday, string> = {
   MON: "Mon",
@@ -79,6 +80,8 @@ export default function SchedulePage() {
         </Button>
       </header>
 
+      <OccurrencesPanel />
+
       <div className="wc-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="wc-table min-w-[860px]">
@@ -130,6 +133,11 @@ export default function SchedulePage() {
                             onClick={() => showEntity && setDialogState({ mode: "edit", show: showEntity })}
                           >
                             <span className="font-bold">{cell.name}</span>
+                            {showEntity?.hiatusFrom && (
+                              <span className="wc-chip-ghost text-[.55rem] ml-1" data-testid="mod-schedule-hiatus">
+                                hiatus {showEntity.hiatusFrom}→{showEntity.hiatusUntil}
+                              </span>
+                            )}
                             <br />
                             <span className="wc-muted text-xs tnum">
                               {cell.start}–{cell.end}

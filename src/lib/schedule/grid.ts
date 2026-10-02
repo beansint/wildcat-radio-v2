@@ -86,6 +86,24 @@ export function daypartLabel(start: string, end: string): string {
   return `${s.h12} ${s.suffix}–${e.h12} ${e.suffix}`;
 }
 
+/**
+ * Minute-precise clock range, e.g. "12:30–2:30 PM" ("12–2 PM" when both ends
+ * are on the hour). `daypartLabel` rounds to hours on purpose — it names grid
+ * rows — so it must not be used where the minutes are the information, like
+ * a delayed occurrence's new time (#106).
+ */
+export function clockRangeLabel(start: string, end: string): string {
+  const fmt = (hhmm: string) => {
+    const { h12, suffix } = formatHour(hhmm);
+    const mm = hhmm.slice(3, 5);
+    return { text: mm === "00" ? `${h12}` : `${h12}:${mm}`, suffix };
+  };
+  const s = fmt(start);
+  const e = fmt(end);
+  if (s.suffix === e.suffix) return `${s.text}–${e.text} ${e.suffix}`;
+  return `${s.text} ${s.suffix}–${e.text} ${e.suffix}`;
+}
+
 export function toDaypartGrid(schedule: ScheduleDto): DaypartGrid {
   const slotMap = new Map<string, { start: string; end: string }>();
   for (const day of schedule.days) {

@@ -26,17 +26,15 @@ export function PublicShell({ children }: PublicShellProps) {
       </a>
       <TopNav onMenu={() => setOpen(true)} />
       <MobileDrawer open={open} onClose={() => setOpen(false)} />
-      <div id="main-content" tabIndex={-1}>
+      <div id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
         {children}
       </div>
       {/* Hoisted from the landing page: the footer carries the privacy, terms
           and music-credit links, and those have to be reachable from every
           public surface rather than only from the home page.
-          The always-on GlobalPlayer is position:fixed and would otherwise
-          cover the footer's bottom edge — pb clears it. */}
-      <div className="pb-[72px] md:pb-14">
-        <Footer />
-      </div>
+          #main-content grows (flex-1) so the footer sits at the viewport
+          bottom on short pages instead of floating mid-screen. */}
+      <Footer />
     </>
   );
 }

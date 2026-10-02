@@ -11,9 +11,15 @@
  * merge (`slotRoster` empty), falls back to listing `attendees` (whoever has
  * actually tapped in) with guidance copy instead of a blank card.
  *
- * Right: "Today's schedule" — every episode scheduled today, ported from the
- * same `GET /api/studio/today` payload the left card uses, so both sides
- * always agree.
+ * Right: "Today's schedule" — every occurrence of the station day (#106:
+ * including shows nobody has tapped into yet, with Delayed / Cancelled /
+ * Waiting-for-handover states), from the same `GET /api/studio/today`
+ * payload the left card uses, so both sides always agree.
+ *
+ * #106 handover: a DJ who taps in while the previous show is still running
+ * is *waiting*, not on air. The banner shows who is waiting and gives them an
+ * explicit "Start my show" — the outgoing show otherwise ends on its last
+ * tap-out.
  *
  * FE#46: the sub/guest time-in dialog + toast host moved up to `StudioPage`
  * so the kiosk header's persistent "add a DJ" button (visible in both
@@ -28,16 +34,20 @@ import {
   ArrowRight,
   CalendarDays,
   Check,
+  Hourglass,
   LogIn,
+  Play,
   SlidersHorizontal,
   UserPlus,
 } from "lucide-react";
 import {
   getGetStudioTodayQueryKey,
+  handoverStudio,
   timeInStudio,
   timeOutStudio,
   useGetStudioToday,
 } from "@/lib/api/endpoints/studio/studio";
+import { occurrencePill } from "@/lib/studio/occurrence-status";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import type { StudioTodayDto, StudioTodayShowDto } from "@/lib/api/model";
 import { stationHhmm } from "@/lib/time/station";
@@ -58,22 +68,9 @@ function formatClock(iso: string | null): string {
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
-/**
- * `show.status` is the episode's live stream status (`ON_AIR` / `OFF_AIR` /
- * `TECH_DIFFICULTIES`) — it doesn't distinguish "already aired" from
- * "hasn't started yet" for an episode that's currently off air. We derive
- * that distinction from `scheduledFor` vs. now, same as the prototype's
- * Done/On air/Upcoming pills.
- */
-function scheduleRowMeta(show: StudioTodayShowDto): { label: string; pillClass: string } {
-  if (show.status === "ON_AIR") return { label: "On air", pillClass: "wc-badge-live" };
-  if (show.status === "TECH_DIFFICULTIES") return { label: "Tech issues", pillClass: "wc-pill-bad" };
-  // `scheduledFor` is nullable for an ad-hoc episode with no show attached —
-  // treat "no schedule" the same as "already happened" (Done), same as an
-  // episode whose scheduled time has passed.
-  const scheduledMs = show.scheduledFor ? new Date(show.scheduledFor).getTime() : 0;
-  if (scheduledMs <= Date.now()) return { label: "Done", pillClass: "wc-pill-neutral" };
-  return { label: "Upcoming", pillClass: "wc-pill-warn" };
+/** Occurrence start (effective, i.e. after a delay) as station-local clock text. */
+function startLabel(show: StudioTodayShowDto): string {
+  return formatClock(show.effectiveStart ?? show.scheduledFor);
 }
 
 interface AttendancePanelProps {
@@ -107,12 +104,34 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
     mutationFn: (rosterId: string) => timeOutStudio({ body: JSON.stringify({ rosterId }) }),
   });
 
+  // Stays pending until today's view has refetched, so the banner never
+  // flashes "Start my show" again with pre-handover data (seen in live QA).
+  const handoverMutation = useMutation({
+    mutationFn: (rosterId: string) => handoverStudio({ body: JSON.stringify({ rosterId }) }),
+    onSuccess: () => invalidateToday(),
+  });
+
+  const pending = today?.pendingHandover ?? null;
+
   function handleTimeIn(rosterId: string, displayName: string) {
     timeInMutation.mutate(rosterId, {
-      onSuccess: async () => {
+      onSuccess: async (result) => {
         await invalidateToday();
-        pushToast(`✓ ${displayName} timed in ${new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`);
+        const at = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+        pushToast(
+          result.state === "PENDING_HANDOVER"
+            ? `✓ ${displayName} checked in ${at} — waiting for the current show to hand over`
+            : `✓ ${displayName} timed in ${at}`,
+        );
       },
+    });
+  }
+
+  function handleHandover() {
+    const first = pending?.attendees[0];
+    if (!first) return;
+    handoverMutation.mutate(first.rosterId, {
+      onSuccess: () => pushToast(`▶ ${pending?.showName ?? "Next show"} is on air`),
     });
   }
 
@@ -142,7 +161,9 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
       ? getApiErrorMessage(timeInMutation.error)
       : timeOutMutation.isError
         ? getApiErrorMessage(timeOutMutation.error)
-        : null;
+        : handoverMutation.isError
+          ? getApiErrorMessage(handoverMutation.error)
+          : null;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
@@ -161,9 +182,38 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
               {activeShow?.showName ?? (today?.episode?.unscheduled ? "Ad-hoc episode" : "No show scheduled")}
             </div>
             {activeShow && (
-              <span className="wc-chip-ghost tnum">Scheduled {formatClock(activeShow.scheduledFor)}</span>
+              <span className="wc-chip-ghost tnum">Scheduled {startLabel(activeShow)}</span>
             )}
           </div>
+
+          {pending && (
+            <div
+              role="status"
+              data-testid="studio-handover-banner"
+              className="wc-card-pad border-b border-border flex items-center gap-3 flex-wrap"
+              style={{ background: "var(--accent)" }}
+            >
+              <Hourglass className="h-5 w-5 text-gold flex-none" aria-hidden="true" />
+              <div className="flex-1 min-w-0">
+                <div className="font-bold">
+                  {pending.showName ?? "Next show"} is waiting to go on air
+                </div>
+                <div className="text-sm wc-muted">
+                  {pending.attendees.map((a) => `${a.displayName} (in ${formatClock(a.timeIn)})`).join(", ")}
+                  {today?.episode ? " · the current show is still running" : ""}
+                </div>
+              </div>
+              <Button
+                type="button"
+                data-testid="studio-handover"
+                disabled={handoverMutation.isPending}
+                onClick={handleHandover}
+              >
+                <Play className="h-4 w-4" aria-hidden="true" />
+                {handoverMutation.isPending ? "Starting…" : "Start my show"}
+              </Button>
+            </div>
+          )}
 
           <div className="p-3 sm:p-4 flex flex-col gap-3">
             {panelAlert && (
@@ -192,7 +242,7 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
                   <div className="flex-1 min-w-0">
                     <div className="font-bold truncate">{entry.displayName}</div>
                     <div className="text-xs wc-muted tnum">
-                      {activeShow ? `Scheduled ${formatClock(activeShow.scheduledFor)} · ` : ""}
+                      {activeShow ? `Scheduled ${startLabel(activeShow)} · ` : ""}
                       {entry.timedIn ? `in ${formatClock(entry.timeIn)}` : "not yet in"}
                     </div>
                   </div>
@@ -333,17 +383,29 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
         {today && today.todayShows.length > 0 ? (
           <ul>
             {today.todayShows.map((show) => {
-              const meta = scheduleRowMeta(show);
+              const meta = occurrencePill(show.status);
+              const muted = show.status === "CANCELLED" || show.status === "HIATUS";
               return (
                 <li
-                  key={show.id}
+                  key={`${show.showId ?? show.id}-${show.scheduledFor}`}
                   data-testid="studio-schedule-row"
+                  data-status={show.status}
                   className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0"
                   style={show.status === "ON_AIR" ? { background: "var(--accent)" } : undefined}
                 >
-                  <div className="w-16 text-xs wc-muted tnum flex-none">{formatClock(show.scheduledFor)}</div>
+                  <div className="w-16 text-xs wc-muted tnum flex-none">
+                    {startLabel(show)}
+                    {show.status === "DELAYED" && show.scheduledFor && (
+                      <div>
+                        <span className="sr-only">originally </span>
+                        <span className="line-through">{formatClock(show.scheduledFor)}</span>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold truncate">{show.showName ?? "Ad-hoc episode"}</div>
+                    <div className={`font-bold truncate${muted ? " line-through wc-muted" : ""}`}>
+                      {show.showName ?? "Ad-hoc episode"}
+                    </div>
                     <div className="text-xs wc-muted truncate">{show.djs.join(" · ") || "No roster"}</div>
                   </div>
                   {meta.pillClass === "wc-badge-live" ? (
@@ -360,7 +422,7 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
           </ul>
         ) : (
           <div className="p-6 text-center wc-muted text-sm" data-testid="studio-schedule-empty">
-            No episodes scheduled today.
+            No shows scheduled today.
           </div>
         )}
       </section>

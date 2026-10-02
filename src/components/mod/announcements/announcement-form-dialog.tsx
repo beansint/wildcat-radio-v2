@@ -16,7 +16,7 @@
  * time, so a photo rejection never stacks a second alert node next to a
  * save error.
  */
-import { useState, type ChangeEvent } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -29,8 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { validatePhoto, uploadToPresignedUrl, MAX_PHOTOS } from "@/lib/announcements/photos";
-import { humanizeAnnouncementError } from "@/lib/announcements/errors";
+import { PhotoUploader } from "./photo-uploader";
 
 export interface AnnouncementFormValues {
   title: string;
@@ -92,29 +91,6 @@ export function AnnouncementFormDialog({
     onSave({ title: trimmedTitle, content });
   }
 
-  async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !photoHandlers) return;
-
-    const validation = validatePhoto({ type: file.type, size: file.size, existingCount: photos.length });
-    if (!validation.ok) {
-      setPhotoError(validation.message);
-      return;
-    }
-    setPhotoError(null);
-    setPhotoBusy(true);
-    try {
-      const presigned = await photoHandlers.requestUpload({ contentType: file.type, sizeBytes: file.size });
-      await uploadToPresignedUrl(presigned.uploadUrl, file);
-      await photoHandlers.confirmUpload(presigned.key);
-    } catch (err) {
-      setPhotoError(humanizeAnnouncementError(err, "validation"));
-    } finally {
-      setPhotoBusy(false);
-    }
-  }
-
   const alertMessage = titleError ?? photoError ?? saveError ?? null;
 
   return (
@@ -171,18 +147,14 @@ export function AnnouncementFormDialog({
 
         {isEdit && (
           <div className="mb-3">
-            <Label htmlFor="mod-ann-photo-input">Photos</Label>
-            <input
-              id="mod-ann-photo-input"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              data-testid="mod-ann-photo-input"
-              disabled={busy || photos.length >= MAX_PHOTOS}
-              onChange={handlePhotoChange}
+            <Label htmlFor="mod-ann-photo-input" className="mb-2 block">Photos</Label>
+            <PhotoUploader
+              photos={photos}
+              handlers={photoHandlers}
+              disabled={!!saving}
+              onBusyChange={setPhotoBusy}
+              onError={setPhotoError}
             />
-            <p className="wc-help" data-testid="mod-ann-photo-count">
-              {photos.length} of {MAX_PHOTOS} uploaded
-            </p>
           </div>
         )}
 

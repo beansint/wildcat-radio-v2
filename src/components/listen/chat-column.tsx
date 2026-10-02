@@ -9,6 +9,7 @@ import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PollResponseDto } from "@/lib/api/model";
+import { EngagementErrorNotice } from "@/components/listen/engagement-error-notice";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 
 export interface ChatMsg extends ChatMessageProps {
@@ -181,12 +182,10 @@ export const ChatColumn = memo(function ChatColumn({
           >
             <Send className="w-5 h-5" aria-hidden="true" />
           </Button>
-          {(sendError || !isLive) && (
-            <div role="alert" className="sr-only">
-              {sendError ?? "No live episode right now."}
-            </div>
-          )}
         </form>
+      )}
+      {isLive && sendError && (
+        <EngagementErrorNotice error={sendError} className="hidden lg:block px-3 pb-2.5" />
       )}
     </section>
   );

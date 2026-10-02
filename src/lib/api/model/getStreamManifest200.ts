@@ -19,4 +19,6 @@ export type GetStreamManifest200 = {
   dj: string[];
   /** @nullable */
   episodeId: string | null;
+  /** @nullable */
+  showId: string | null;
 };

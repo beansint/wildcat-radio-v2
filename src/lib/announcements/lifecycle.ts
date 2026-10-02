@@ -55,8 +55,7 @@ export function statusVariant(status: AnnouncementStatus): StatusPillVariant {
 
 export type AnnouncementAction =
   | "edit"
-  | "submit"
-  | "review"
+  | "publish"
   | "archive"
   | "pin"
   | "unpin"
@@ -64,12 +63,14 @@ export type AnnouncementAction =
   | "unfeature";
 
 const ACTIONS_BY_STATUS: Record<AnnouncementStatus, readonly AnnouncementAction[]> = {
-  DRAFT: ["edit", "submit"],
-  PENDING_REVIEW: ["review", "edit"],
+  // Self-publish: the author takes their own post live (or schedules it).
+  // There is no review queue; PENDING_REVIEW only exists for legacy rows.
+  DRAFT: ["edit", "publish"],
+  PENDING_REVIEW: ["edit", "publish"],
   PUBLISHED: ["edit", "archive", "pin", "unpin", "feature", "unfeature"],
   SCHEDULED: ["edit", "archive"],
   ARCHIVED: [],
-  REJECTED: ["edit", "submit"],
+  REJECTED: ["edit", "publish"],
 };
 
 export function availableActions(status: AnnouncementStatus): readonly AnnouncementAction[] {

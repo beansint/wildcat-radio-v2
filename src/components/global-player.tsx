@@ -7,7 +7,18 @@ import { useMutation } from "@tanstack/react-query";
 import { useStream } from "@/lib/stream/stream-context";
 import { react } from "@/lib/api/endpoints/engagement/engagement";
 import { CreateReactionDtoEmoji } from "@/lib/api/model/createReactionDtoEmoji";
-import { Flame, Loader2, Pause, Play, Users, Volume2, VolumeX } from "lucide-react";
+import { usePlayerMinimized } from "@/lib/stream/player-minimized";
+import {
+  ChevronDown,
+  ChevronUp,
+  Flame,
+  Loader2,
+  Pause,
+  Play,
+  Users,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 
 /**
  * Global persistent player — lives in the root layout so it never remounts on
@@ -23,6 +34,10 @@ import { Flame, Loader2, Pause, Play, Users, Volume2, VolumeX } from "lucide-rea
  * The controls added here are the ones a radio bar actually needs and stops
  * there: volume (desktop, where the OS isn't already one gesture away) and a
  * live listener count. No seek bar — see the activity strip note below.
+ *
+ * Minimizable: the bar collapses to a corner pill (art, play/pause, expand)
+ * so it stops spanning the page. The <audio> element stays mounted in both
+ * modes — collapsing must never interrupt playback.
  */
 export const GlobalPlayer = memo(function GlobalPlayer() {
   const {
@@ -41,6 +56,24 @@ export const GlobalPlayer = memo(function GlobalPlayer() {
   const pathname = usePathname();
 
   const [volume, setVolume] = useState(1);
+  const [minimized, setMinimized] = usePlayerMinimized();
+  const minimizeRef = useRef<HTMLButtonElement>(null);
+  const expandRef = useRef<HTMLButtonElement>(null);
+  // Only a user toggle moves focus — a restored preference on page load must
+  // not steal focus from the page.
+  const focusAfterToggle = useRef(false);
+  useEffect(() => {
+    if (!focusAfterToggle.current) return;
+    focusAfterToggle.current = false;
+    (minimized ? expandRef : minimizeRef).current?.focus();
+  }, [minimized]);
+  const toggleMinimized = useCallback(
+    (next: boolean) => {
+      focusAfterToggle.current = true;
+      setMinimized(next);
+    },
+    [setMinimized],
+  );
   const [muted, setMuted] = useState(false);
 
   // The <audio> element is owned here but driven by StreamContext, so volume is
@@ -153,151 +186,213 @@ export const GlobalPlayer = memo(function GlobalPlayer() {
     </>
   );
 
+  /* Play / Pause — 44px hit area, 32px visual disc. Shared by both modes. */
+  const playButton = (
+    <button
+      type="button"
+      aria-label={
+        phase === "connecting"
+          ? "Connecting — tap to cancel"
+          : phase === "reconnecting"
+            ? "Reconnecting — tap to stop"
+            : isPlaying
+              ? "Pause"
+              : "Play live stream"
+      }
+      data-testid="player-play"
+      onClick={handlePlayPause}
+      disabled={!canPlay && phase === "idle"}
+      className="wc-play"
+    >
+      <span>
+        {busy ? (
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+        ) : isPlaying ? (
+          <Pause className="w-4 h-4" aria-hidden="true" />
+        ) : (
+          <Play className="w-4 h-4 translate-x-[1px]" aria-hidden="true" />
+        )}
+      </span>
+    </button>
+  );
+
+  const statusMarker = (
+    <span data-testid="player-status" className="sr-only">
+      {manifestAvailability === "unavailable" ? "UNAVAILABLE" : status}
+    </span>
+  );
+
   return (
-    <div className="wc-player" role="region" aria-label="Now playing">
-      {/* Hidden audio element — controlled via ref from StreamContext */}
+    <div
+      className={`wc-player${minimized ? " is-mini" : ""}`}
+      role="region"
+      aria-label="Now playing"
+      data-testid={minimized ? "player-mini" : undefined}
+    >
+      {/* Hidden audio element — controlled via ref from StreamContext. Kept as
+          the first child in BOTH modes so React never remounts it: a remount
+          would drop the attached HLS media source and silence playback. */}
       <audio ref={audioRef} data-testid="player-audio" />
 
-      {/*
-        FE#50 — the player's signature gold strip. This is a LIVE stream, so
-        there is no duration and therefore no meaningful playhead position:
-        the prototype's static 38% fill would be a lie dressed as a control.
-        It is an indeterminate shimmer that runs only while audio is actually
-        playing, and it is aria-hidden because it conveys nothing a screen
-        reader user cannot already get from the play/pause button's state.
-      */}
-      <div className="wc-player-progress" data-testid="player-progress" aria-hidden="true">
-        <span style={{ width: isPlaying ? undefined : 0 }} />
-      </div>
-
-      <div className="wc-player-inner">
-        {isListenPage ? (
-          <div className="flex items-center gap-[.7rem] flex-1 min-w-0">{coverAndMeta}</div>
-        ) : (
-          <Link
-            href="/listen"
-            aria-label="Open the live listening room"
-            className="flex items-center gap-[.7rem] flex-1 min-w-0 cursor-pointer no-underline text-inherit"
-          >
-            {coverAndMeta}
-          </Link>
-        )}
-
-        {/* Up next — only exists while listening, because the queue arrives over
-            the socket that only listening opens (see useStreamPresence). Absent
-            rather than stale when idle. */}
-        {status === "LIVE" && upNext && (
-          <span className="wc-player-upnext" data-testid="player-upnext">
-            <span className="label">Up next</span>
-            <span className="text">{upNext.text}</span>
-          </span>
-        )}
-
-        {/* Listener count — real presence data, the one number a radio bar earns.
-            Null until the presence socket reports, so it stays hidden rather
-            than flashing a placeholder "0 listening". */}
-        {canPlay && listeners != null && listeners > 0 ? (
-          <span
-            className="wc-player-listeners"
-            data-testid="player-listeners"
-            title={`${listeners} listening now`}
-          >
-            <Users className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>{listeners}</span>
-            <span className="sr-only">listening now</span>
-          </span>
-        ) : null}
-
-        {/* EQ bars — animate while playing */}
-        {isPlaying && (
-          <div className="eq text-gold" aria-hidden="true">
-            <i /><i /><i /><i />
-          </div>
-        )}
-
-        {/* Status badge (for test targeting) */}
-        <span data-testid="player-status" className="sr-only">
-          {manifestAvailability === "unavailable" ? "UNAVAILABLE" : status}
-        </span>
-
-        {/* React from anywhere — REST, no socket, so it costs no connection on
-            routes the listener is only passing through. */}
-        {canReact && (
+      {minimized ? (
+        <>
+          {statusMarker}
+          {isListenPage ? (
+            <div className="wc-player-mini-art">
+              <div className="wc-art cover" />
+              {status === "LIVE" && <span className="wc-player-mini-live" aria-hidden="true" />}
+            </div>
+          ) : (
+            <Link href="/listen" aria-label={`Open the live listening room — ${showTitle}`} className="wc-player-mini-art">
+              <div className="wc-art cover" />
+              {status === "LIVE" && <span className="wc-player-mini-live" aria-hidden="true" />}
+            </Link>
+          )}
+          {isPlaying && (
+            <div className="eq text-gold" aria-hidden="true">
+              <i /><i /><i /><i />
+            </div>
+          )}
+          {playButton}
           <button
             type="button"
-            className="wc-player-btn wc-player-react"
-            data-testid="player-react"
-            aria-label="Send a fire reaction"
-            disabled={reactionMutation.isPending}
-            onClick={() => reactionMutation.mutate(CreateReactionDtoEmoji["🔥"])}
-          >
-            <Flame className="w-4 h-4" aria-hidden="true" />
-          </button>
-        )}
-
-        {/* Volume — desktop only; on touch the OS volume keys are one press away
-            and the slider would just eat width on a 375px bar. */}
-        <div className="wc-player-vol">
-          <button
-            type="button"
+            ref={expandRef}
             className="wc-player-btn"
-            data-testid="player-mute"
-            aria-label={muted || volume === 0 ? "Unmute" : "Mute"}
-            aria-pressed={muted}
-            onClick={() => setMuted((m) => !m)}
+            data-testid="player-expand"
+            aria-label="Expand player"
+            onClick={() => toggleMinimized(false)}
           >
-            {muted || volume === 0 ? (
-              <VolumeX className="w-4 h-4" aria-hidden="true" />
-            ) : (
-              <Volume2 className="w-4 h-4" aria-hidden="true" />
-            )}
+            <ChevronUp className="w-4 h-4" aria-hidden="true" />
           </button>
-          {/* Native range: keyboard-operable for free, which a div-based slider
-              would have had to reimplement. */}
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={muted ? 0 : volume}
-            data-testid="player-volume"
-            aria-label="Volume"
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              setVolume(next);
-              if (next > 0 && muted) setMuted(false);
-            }}
-          />
-        </div>
+        </>
+      ) : (
+        <>
 
-        {/* Play / Pause — 44px hit area, 32px visual disc. */}
-        <button
-          type="button"
-          aria-label={
-            phase === "connecting"
-              ? "Connecting — tap to cancel"
-              : phase === "reconnecting"
-                ? "Reconnecting — tap to stop"
-                : isPlaying
-                  ? "Pause"
-                  : "Play live stream"
-          }
-          data-testid="player-play"
-          onClick={handlePlayPause}
-          disabled={!canPlay && phase === "idle"}
-          className="wc-play"
-        >
-          <span>
-            {busy ? (
-              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-            ) : isPlaying ? (
-              <Pause className="w-4 h-4" aria-hidden="true" />
+          {/*
+            FE#50 — the player's signature gold strip. This is a LIVE stream, so
+            there is no duration and therefore no meaningful playhead position:
+            the prototype's static 38% fill would be a lie dressed as a control.
+            It is an indeterminate shimmer that runs only while audio is actually
+            playing, and it is aria-hidden because it conveys nothing a screen
+            reader user cannot already get from the play/pause button's state.
+          */}
+          <div className="wc-player-progress" data-testid="player-progress" aria-hidden="true">
+            <span style={{ width: isPlaying ? undefined : 0 }} />
+          </div>
+
+          <div className="wc-player-inner">
+            {isListenPage ? (
+              <div className="flex items-center gap-[.7rem] flex-1 min-w-0">{coverAndMeta}</div>
             ) : (
-              <Play className="w-4 h-4 translate-x-[1px]" aria-hidden="true" />
+              <Link
+                href="/listen"
+                aria-label="Open the live listening room"
+                className="flex items-center gap-[.7rem] flex-1 min-w-0 cursor-pointer no-underline text-inherit"
+              >
+                {coverAndMeta}
+              </Link>
             )}
-          </span>
-        </button>
-      </div>
+
+            {/* Up next — only exists while listening, because the queue arrives over
+                the socket that only listening opens (see useStreamPresence). Absent
+                rather than stale when idle. */}
+            {status === "LIVE" && upNext && (
+              <span className="wc-player-upnext" data-testid="player-upnext">
+                <span className="label">Up next</span>
+                <span className="text">{upNext.text}</span>
+              </span>
+            )}
+
+            {/* Listener count — real presence data, the one number a radio bar earns.
+                Null until the presence socket reports, so it stays hidden rather
+                than flashing a placeholder "0 listening". */}
+            {canPlay && listeners != null && listeners > 0 ? (
+              <span
+                className="wc-player-listeners"
+                data-testid="player-listeners"
+                title={`${listeners} listening now`}
+              >
+                <Users className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{listeners}</span>
+                <span className="sr-only">listening now</span>
+              </span>
+            ) : null}
+
+            {/* EQ bars — animate while playing */}
+            {isPlaying && (
+              <div className="eq text-gold" aria-hidden="true">
+                <i /><i /><i /><i />
+              </div>
+            )}
+
+            {/* Status badge (for test targeting) */}
+            {statusMarker}
+
+            {/* React from anywhere — REST, no socket, so it costs no connection on
+                routes the listener is only passing through. */}
+            {canReact && (
+              <button
+                type="button"
+                className="wc-player-btn wc-player-react"
+                data-testid="player-react"
+                aria-label="Send a fire reaction"
+                disabled={reactionMutation.isPending}
+                onClick={() => reactionMutation.mutate(CreateReactionDtoEmoji["🔥"])}
+              >
+                <Flame className="w-4 h-4" aria-hidden="true" />
+              </button>
+            )}
+
+            {/* Volume — desktop only; on touch the OS volume keys are one press away
+                and the slider would just eat width on a 375px bar. */}
+            <div className="wc-player-vol">
+              <button
+                type="button"
+                className="wc-player-btn"
+                data-testid="player-mute"
+                aria-label={muted || volume === 0 ? "Unmute" : "Mute"}
+                aria-pressed={muted}
+                onClick={() => setMuted((m) => !m)}
+              >
+                {muted || volume === 0 ? (
+                  <VolumeX className="w-4 h-4" aria-hidden="true" />
+                ) : (
+                  <Volume2 className="w-4 h-4" aria-hidden="true" />
+                )}
+              </button>
+              {/* Native range: keyboard-operable for free, which a div-based slider
+                  would have had to reimplement. */}
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={muted ? 0 : volume}
+                data-testid="player-volume"
+                aria-label="Volume"
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  setVolume(next);
+                  if (next > 0 && muted) setMuted(false);
+                }}
+              />
+            </div>
+
+            {playButton}
+
+            <button
+              type="button"
+              ref={minimizeRef}
+              className="wc-player-btn"
+              data-testid="player-minimize"
+              aria-label="Minimize player"
+              onClick={() => toggleMinimized(true)}
+            >
+              <ChevronDown className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 });

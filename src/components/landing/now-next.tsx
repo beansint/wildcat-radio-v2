@@ -3,16 +3,20 @@
 /**
  * Landing "Now & next" — wired to the real public schedule (was a hardcoded
  * mock show/DJ, which meant the homepage could claim someone was on air who
- * doesn't exist). The "On air" badge is bound to the live stream status, not
- * the schedule alone: a scheduled slot with no actual broadcast shows as
- * "Scheduled", never as on air.
+ * doesn't exist). The "On air" badge needs broadcast evidence for THAT show
+ * (#106: stream LIVE + manifest showId), never the schedule or any-show-LIVE:
+ * a scheduled slot with no matching broadcast shows as "Scheduled now".
+ * Today's delays/cancellations are overlaid, and the clock ticks each minute.
  */
 import Link from "next/link";
-import { useGetWeeklySchedule } from "@/lib/api/endpoints/schedule/schedule";
+import { useGetTodaySchedule, useGetWeeklySchedule } from "@/lib/api/endpoints/schedule/schedule";
 import { daypartLabel, type ScheduleDto, type ScheduleShowCell } from "@/lib/schedule/grid";
 import { pickNowNext } from "@/lib/schedule/now-next";
+import { overlayToday } from "@/lib/schedule/today";
 import { coverClassFor, initialsFor } from "@/lib/content/cover";
+import { isShowOnAir } from "@/lib/content/live";
 import { stationHhmm, stationWeekday } from "@/lib/time/station";
+import { useStationNow } from "@/lib/time/use-station-now";
 import { useStream } from "@/lib/stream/stream-context";
 import type { Weekday } from "@/lib/mod/types";
 
@@ -63,25 +67,40 @@ function SlotCard({
 }
 
 export function NowNext() {
-  const { status } = useStream();
+  const { status, showId: liveShowId } = useStream();
+  const now = useStationNow();
   const query = useGetWeeklySchedule<ScheduleDto>({ query: { retry: false } });
+  // #106: today's delays/cancellations; refetched with the minute ticker's cadence.
+  const todayQuery = useGetTodaySchedule({ query: { retry: false, refetchInterval: 60_000 } });
 
-  const schedule = query.data;
-  if (!schedule) return null;
+  const weekly = query.data;
+  if (!weekly) return null;
 
-  const pick = pickNowNext(schedule, stationWeekday(), stationHhmm(new Date()));
-  if (!pick.now && !pick.next) return null;
+  const today = stationWeekday(now);
+  const schedule = overlayToday(weekly, today, todayQuery.data?.occurrences);
+  const pick = pickNowNext(schedule, today, stationHhmm(now));
+
+  // Broadcast truth beats the clock: if a show is actually live (e.g. an
+  // overrun past its slot), it is the "now" card, not whatever is scheduled.
+  const liveCell =
+    status === "LIVE" && liveShowId
+      ? schedule.days.flatMap((d) => d.shows).find((c) => c.id === liveShowId) ?? null
+      : null;
+  const nowCell = liveCell ?? pick.now;
+  const next = pick.next && pick.next.id === nowCell?.id ? null : pick.next;
+  if (!nowCell && !next) return null;
+  const nowLive = !!nowCell && isShowOnAir(status, liveShowId, nowCell.id);
 
   return (
     <section className="wc-container py-2">
       <h2 className="text-lg font-extrabold mb-3">Now &amp; next</h2>
       <div className="grid sm:grid-cols-2 gap-3">
-        {pick.now && (
+        {nowCell && (
           <SlotCard
-            cell={pick.now}
-            coverVariant={coverClassFor(pick.now.id)}
+            cell={nowCell}
+            coverVariant={coverClassFor(nowCell.id)}
             badge={
-              status === "LIVE" ? (
+              nowLive ? (
                 <span className="wc-badge-live text-[.65rem]">
                   <span className="dot"></span>On air
                 </span>
@@ -91,13 +110,13 @@ export function NowNext() {
             }
           />
         )}
-        {pick.next && (
+        {next && (
           <SlotCard
-            cell={pick.next}
-            coverVariant={coverClassFor(pick.next.id)}
+            cell={next}
+            coverVariant={coverClassFor(next.id)}
             badge={
               <span className="wc-chip-ghost text-[.65rem]">
-                Up next{pick.next.day !== stationWeekday() ? ` · ${DAY_LABEL[pick.next.day]}` : ""}
+                Up next{next.day !== today ? ` · ${DAY_LABEL[next.day]}` : ""}
               </span>
             }
           />

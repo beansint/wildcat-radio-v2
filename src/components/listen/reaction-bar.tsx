@@ -3,6 +3,7 @@
 import { Flame } from "lucide-react";
 import { useRef } from "react";
 import type { CreateReactionDtoEmoji } from "@/lib/api/model";
+import { EngagementErrorNotice } from "@/components/listen/engagement-error-notice";
 import type { HypeState } from "@/lib/realtime/use-engagement-room";
 
 type ReactionKey = "fire" | "heart" | "laugh" | "clap";
@@ -103,11 +104,13 @@ export function ReactionBar({ hype, onReact, reacting, error, isLive }: Reaction
           );
         })}
       </div>
-      {(error || !isLive) && (
+      {error ? (
+        <EngagementErrorNotice error={error} tone="dark" className="mt-2" />
+      ) : !isLive ? (
         <div role="alert" className="mt-2 text-xs font-semibold text-white/75">
-          {error ?? "Reactions unlock when an episode is live."}
+          Reactions unlock when an episode is live.
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

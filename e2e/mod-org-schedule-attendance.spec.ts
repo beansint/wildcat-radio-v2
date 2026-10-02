@@ -303,10 +303,11 @@ test.describe('mod org/schedule/attendance', () => {
 
     await page.getByTestId('mod-schedule-add').click();
     await page.getByTestId('show-name').fill(showName);
-    // Recurrence already defaults to "Mon-Wed-Fri" for a fresh "Add show" (no
-    // prefilled day/time). Confirmed via the dialog's visible trigger text
-    // rather than re-opening the popover (see the force-click note below).
-    await expect(page.getByTestId('show-recurrence')).toContainText('Mon-Wed-Fri');
+    // A fresh "Add show" (no prefilled day/time) defaults to Mon·Wed·Fri.
+    for (const day of ['mon', 'wed', 'fri']) {
+      await expect(page.getByTestId(`show-day-${day}`)).toHaveAttribute('aria-pressed', 'true');
+    }
+    await expect(page.getByTestId('show-day-tue')).toHaveAttribute('aria-pressed', 'false');
     // Use a start/end slot distinct from the seeded "Afternoon Vibes" (13:00-16:00)
     // so this show lands in its own grid row.
     await page.getByTestId('show-start').fill('09:00');
@@ -532,9 +533,8 @@ test.describe('mod org/schedule/attendance', () => {
     await page.goto('/mod/schedule');
     await page.getByTestId('mod-schedule-add').click();
     await page.getByTestId('show-name').fill(showName);
-    await page.getByTestId('show-recurrence').click();
-    await pickSelectItem(page, 'Daily');
-    await expect(page.getByTestId('show-recurrence')).toContainText('Daily');
+    await page.getByTestId('show-days-preset-daily').click();
+    await expect(page.getByTestId('show-days-summary')).toContainText('Airs every day');
     await page.getByTestId('show-start').fill('05:00');
     await page.getByTestId('show-end').fill('05:30');
     await page.getByTestId('show-djs-add').click();

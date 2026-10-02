@@ -2102,6 +2102,58 @@ export const AnnouncementsControllerReviewResponse = zod.object({
 
 
 /**
+ * @summary Author self-publish: DRAFT | PENDING_REVIEW | REJECTED -> PUBLISHED (or SCHEDULED with scheduledFor). No second approver.
+ */
+export const AnnouncementsControllerPublishParams = zod.object({
+  "id": zod.string()
+})
+
+export const AnnouncementsControllerPublishResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string())
+})
+
+
+/**
  * @summary Any non-ARCHIVED status -> ARCHIVED (idempotent discard/retire)
  */
 export const AnnouncementsControllerArchiveParams = zod.object({

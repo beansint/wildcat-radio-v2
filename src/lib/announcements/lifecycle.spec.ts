@@ -41,15 +41,17 @@ describe("ANN-U-01: status -> pill mapping is total", () => {
 });
 
 describe("ANN-U-02: available actions per status", () => {
-  it("DRAFT offers edit + submit, never archive", () => {
+  it("DRAFT offers edit + publish (author self-publishes, no review step), never archive", () => {
     const actions = availableActions("DRAFT");
-    expect(actions).toEqual(expect.arrayContaining(["edit", "submit"]));
+    expect(actions).toEqual(expect.arrayContaining(["edit", "publish"]));
+    expect(actions).not.toContain("submit");
     expect(actions).not.toContain("archive");
   });
 
-  it("PENDING_REVIEW offers review + edit", () => {
+  it("legacy PENDING_REVIEW rows are publishable by the author, no second-person review", () => {
     const actions = availableActions("PENDING_REVIEW");
-    expect(actions).toEqual(expect.arrayContaining(["review", "edit"]));
+    expect(actions).toEqual(expect.arrayContaining(["publish", "edit"]));
+    expect(actions).not.toContain("review");
   });
 
   it("PUBLISHED offers edit, archive, pin/unpin, feature/unfeature", () => {
@@ -66,9 +68,9 @@ describe("ANN-U-02: available actions per status", () => {
     expect(actions).not.toContain("publishNow");
   });
 
-  it("REJECTED offers edit + submit again", () => {
+  it("REJECTED offers edit + publish", () => {
     const actions = availableActions("REJECTED");
-    expect(actions).toEqual(expect.arrayContaining(["edit", "submit"]));
+    expect(actions).toEqual(expect.arrayContaining(["edit", "publish"]));
   });
 
   it("ARCHIVED is read-only, never offers restore", () => {

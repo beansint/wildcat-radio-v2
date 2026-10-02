@@ -3,6 +3,7 @@
 import { BarChart3 } from "lucide-react";
 import { useState } from "react";
 import type { PollResponseDto } from "@/lib/api/model";
+import { EngagementErrorNotice } from "@/components/listen/engagement-error-notice";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 
 interface InlinePollProps {
@@ -89,11 +90,7 @@ export function InlinePoll({
         </>
       )}
 
-      {(error || voteError || localError) && (
-        <div role="alert" className="mt-2 text-xs font-semibold text-destructive">
-          {localError ?? voteError ?? error}
-        </div>
-      )}
+      <EngagementErrorNotice error={localError ?? voteError ?? error} className="mt-2" />
     </div>
   );
 }

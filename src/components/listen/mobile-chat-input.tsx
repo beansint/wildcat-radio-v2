@@ -7,6 +7,7 @@ import { useEngagementGate, EngagementGateNotice } from "./engagement-gate";
 import { useHydrated } from "@/lib/use-hydrated";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EngagementErrorNotice } from "@/components/listen/engagement-error-notice";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 
 interface MobileChatInputProps {
@@ -107,8 +108,10 @@ export const MobileChatInput = memo(function MobileChatInput({ onOpenSheet, onSe
           >
             <Send className="w-5 h-5" aria-hidden="true" />
           </Button>
-          {error && <div role="alert" className="sr-only">{error}</div>}
         </form>
+      )}
+      {mounted && gate === "ok" && error && (
+        <EngagementErrorNotice error={error} className="wc-container pb-2" />
       )}
     </div>
   );

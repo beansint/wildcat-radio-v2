@@ -19,6 +19,7 @@ import type {
   SubmitQueueItemDto,
 } from "@/lib/api/model";
 import { acquireSocket, type SocketLease } from "./socket";
+import { SEND_TIMEOUT, SOCKET_UNAVAILABLE } from "./engagement-error";
 import {
   emptyEngagementState,
   mergeEngagementSnapshot,
@@ -399,7 +400,11 @@ export function useEngagementRoom(
   const sendChat = useCallback(
     async (content: string) => {
       if (!episodeId) throw new Error("No live episode right now.");
-      const lease = await acquireSocket();
+      // Transport failures get their own codes so the UI can tell "can't
+      // reach the room" apart from a server refusal (FE#65).
+      const lease = await acquireSocket().catch(() => {
+        throw new Error(SOCKET_UNAVAILABLE);
+      });
       try {
         await new Promise<void>((resolve, reject) => {
           lease.socket.timeout(5_000).emit(
@@ -407,7 +412,7 @@ export function useEngagementRoom(
             { episodeId, content },
             (error: Error | null, response?: { ok?: boolean; error?: string }) => {
               if (error) {
-                reject(new Error("Chat send timed out."));
+                reject(new Error(SEND_TIMEOUT));
                 return;
               }
               if (!response?.ok) {

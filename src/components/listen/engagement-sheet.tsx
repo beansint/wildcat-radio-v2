@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { EngagementErrorNotice } from "@/components/listen/engagement-error-notice";
 import { Label } from "@/components/ui/label";
 
 interface EngagementSheetProps {
@@ -226,11 +227,7 @@ export const EngagementSheet = memo(function EngagementSheet({
                 </button>
               </div>
 
-              {alert && (
-                <div role="alert" className="mb-3 text-sm font-semibold text-destructive">
-                  {alert}
-                </div>
-              )}
+              <EngagementErrorNotice error={alert} className="mb-3 text-sm" />
 
               {tab === "req" && (
                 <div role="tabpanel" id="engagement-panel-req" aria-labelledby="engagement-tab-req-btn">

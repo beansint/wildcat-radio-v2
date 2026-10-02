@@ -3,11 +3,11 @@
 /**
  * Add/edit show dialog — 1:1 with
  * docs/frontend-design-basis-prototype/mod/schedule.html #mShow, extended
- * with a Recurrence select (Mon-Wed-Fri/Daily/Custom) that maps to the
- * backend `Cadence` shape:
- *   Mon-Wed-Fri  -> { kind:'WEEKLY', days:['MON','WED','FRI'] }
- *   Daily        -> { kind:'WEEKLY', days:<all 7> }
- *   Custom       -> { kind:'WEEKLY', days:<checked days> }
+ * with a day picker: seven toggle chips (plus one-tap presets) whose
+ * selection maps straight onto the backend `Cadence` shape
+ *   { kind:'WEEKLY', days:<selected days>, start, end }.
+ * It replaced a Mon-Wed-Fri/Daily/Custom select whose "Custom" option hid
+ * the day checkboxes — the days ARE the recurrence, so they are shown first.
  * One-time (`Cadence.kind === "ONE_TIME"`) is intentionally not offered —
  * the weekly schedule grid only renders WEEKLY shows, so a one-time show
  * would have no cell to appear in.
@@ -40,6 +40,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -66,31 +67,40 @@ const DAY_LABEL: Record<Weekday, string> = {
 // WEEKLY shows, so a show created as one-time would have no cell to render
 // in and become unmanageable. The `Cadence` type itself keeps ONE_TIME for
 // a future slice; this form just never produces or round-trips it.
-type Recurrence = "MWF" | "DAILY" | "CUSTOM";
+const PRESETS: { id: string; label: string; days: Weekday[] }[] = [
+  { id: "weekdays", label: "Weekdays", days: ["MON", "TUE", "WED", "THU", "FRI"] },
+  { id: "mwf", label: "Mon·Wed·Fri", days: MWF },
+  { id: "tuth", label: "Tue·Thu", days: ["TUE", "THU"] },
+  { id: "daily", label: "Every day", days: ALL_DAYS },
+];
 
 function sameDaySet(a: Weekday[], b: Weekday[]): boolean {
   return a.length === b.length && [...a].sort().join(",") === [...b].sort().join(",");
 }
 
-function recurrenceFromCadence(cadence?: Cadence | null): {
-  recurrence: Recurrence;
-  customDays: Weekday[];
-} {
-  // A ONE_TIME cadence should never reach this dialog (see note above), but
-  // fall back to MWF defensively rather than a recurrence value the select
-  // no longer offers.
-  if (!cadence || cadence.kind === "ONE_TIME") return { recurrence: "MWF", customDays: [] };
-  const days = cadence.days ?? [];
-  if (sameDaySet(days, MWF)) return { recurrence: "MWF", customDays: [] };
-  if (sameDaySet(days, ALL_DAYS)) return { recurrence: "DAILY", customDays: [] };
-  return { recurrence: "CUSTOM", customDays: days };
+/** Week order, regardless of the order the chips were tapped in. */
+function sortDays(days: Weekday[]): Weekday[] {
+  return ALL_DAYS.filter((d) => days.includes(d));
+}
+
+function formatTime(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
+  const suffix = h >= 12 ? "PM" : "AM";
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
+function daysSummary(days: Weekday[]): string {
+  if (days.length === 0) return "No days picked yet";
+  if (days.length === 7) return "Airs every day";
+  if (sameDaySet(days, PRESETS[0].days)) return "Airs weekdays";
+  return `Airs ${sortDays(days).map((d) => DAY_LABEL[d]).join(", ")}`;
 }
 
 const schema = z
   .object({
     name: z.string().trim().min(1, "Add a show name.").max(120, "Keep it under 120 characters."),
-    recurrence: z.enum(["MWF", "DAILY", "CUSTOM"]),
-    customDays: z.array(z.enum(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"])),
+    days: z.array(z.enum(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"])),
     start: z.string().min(1, "Add a start time."),
     end: z.string().min(1, "Add an end time."),
     rosterIds: z.array(z.string()).min(1, "Assign at least one DJ."),
@@ -111,8 +121,8 @@ const schema = z
         ctx.addIssue({ code: "custom", path: ["hiatusReason"], message: "Add a reason for the hiatus." });
       }
     }
-    if (val.recurrence === "CUSTOM" && val.customDays.length === 0) {
-      ctx.addIssue({ code: "custom", path: ["customDays"], message: "Pick at least one day." });
+    if (val.days.length === 0) {
+      ctx.addIssue({ code: "custom", path: ["days"], message: "Pick at least one day." });
     }
     if (val.start && val.end && val.start >= val.end) {
       ctx.addIssue({ code: "custom", path: ["end"], message: "End time must be after start time." });
@@ -122,9 +132,7 @@ const schema = z
 type FormValues = z.infer<typeof schema>;
 
 function cadenceFromForm(values: FormValues): Cadence {
-  const days =
-    values.recurrence === "MWF" ? MWF : values.recurrence === "DAILY" ? ALL_DAYS : values.customDays;
-  return { kind: "WEEKLY", days, start: values.start, end: values.end };
+  return { kind: "WEEKLY", days: sortDays(values.days), start: values.start, end: values.end };
 }
 
 interface ShowFormDialogProps {
@@ -157,7 +165,14 @@ export function ShowFormDialog({
   // orval generates a blob type. The runtime shape is `Cadence` 1:1 (see
   // `src/lib/mod/types.ts`).
   const cadence = show?.cadence as Cadence | undefined;
-  const initial = recurrenceFromCadence(cadence);
+  // A ONE_TIME cadence should never reach this dialog (see note above); it
+  // falls back to the fresh-show default rather than an empty day set.
+  const initialDays =
+    cadence?.kind === "WEEKLY" && cadence.days?.length
+      ? cadence.days
+      : prefillDay
+        ? [prefillDay]
+        : MWF;
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const {
@@ -171,8 +186,7 @@ export function ShowFormDialog({
     resolver: zodResolver(schema),
     defaultValues: {
       name: show?.name ?? "",
-      recurrence: isEdit ? initial.recurrence : prefillDay ? "CUSTOM" : "MWF",
-      customDays: isEdit ? initial.customDays : prefillDay ? [prefillDay] : [],
+      days: initialDays,
       start: cadence?.start ?? prefillStart ?? "13:00",
       end: cadence?.end ?? prefillEnd ?? "16:00",
       rosterIds: show?.roster.map((r) => r.id) ?? [],
@@ -184,8 +198,9 @@ export function ShowFormDialog({
   });
   const hiatusOn = watch("hiatusOn");
 
-  const recurrence = watch("recurrence");
-  const customDays = watch("customDays");
+  const days = watch("days");
+  const start = watch("start");
+  const end = watch("end");
   const selectedRosterIds = watch("rosterIds");
   // `roster` is active-only (the "add DJ" picker should only offer active
   // DJs), but a show can have an archived DJ still assigned to it — that
@@ -237,7 +252,7 @@ export function ShowFormDialog({
 
   const alertMessage =
     errors.name?.message ??
-    errors.customDays?.message ??
+    errors.days?.message ??
     errors.start?.message ??
     errors.end?.message ??
     errors.rosterIds?.message ??
@@ -265,9 +280,13 @@ export function ShowFormDialog({
     );
   }
 
-  function toggleCustomDay(day: Weekday, checked: boolean) {
-    const next = checked ? [...customDays, day] : customDays.filter((d) => d !== day);
-    setValue("customDays", next, { shouldValidate: true });
+  function toggleDay(day: Weekday) {
+    const next = days.includes(day) ? days.filter((d) => d !== day) : [...days, day];
+    setValue("days", next, { shouldValidate: true });
+  }
+
+  function applyPreset(next: Weekday[]) {
+    setValue("days", next, { shouldValidate: true });
   }
 
   return (
@@ -295,47 +314,77 @@ export function ShowFormDialog({
               {...register("name")}
             />
 
-            <Label htmlFor="show-recurrence">Recurrence</Label>
-            <Controller
-              control={control}
-              name="recurrence"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange} disabled={busy}>
-                  <SelectTrigger id="show-recurrence" className="mb-3" data-testid="show-recurrence">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MWF">Mon-Wed-Fri</SelectItem>
-                    <SelectItem value="DAILY">Daily</SelectItem>
-                    <SelectItem value="CUSTOM">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-
-            {recurrence === "CUSTOM" && (
-              <div className="mb-3">
-                <Label>Days</Label>
-                <div className="flex flex-wrap gap-3 mt-1">
-                  {ALL_DAYS.map((day) => (
-                    <label
+            <div className="mb-3">
+              <Label id="show-days-label">Airs on</Label>
+              <div
+                role="group"
+                aria-labelledby="show-days-label"
+                aria-describedby="show-days-summary"
+                className="mt-1 grid grid-cols-7 gap-1.5"
+                data-testid="show-days"
+              >
+                {ALL_DAYS.map((day) => {
+                  const on = days.includes(day);
+                  return (
+                    <button
                       key={day}
-                      className="flex items-center gap-1.5 text-sm"
-                      htmlFor={`show-day-${day.toLowerCase()}`}
+                      type="button"
+                      aria-pressed={on}
+                      data-testid={`show-day-${day.toLowerCase()}`}
+                      disabled={busy}
+                      onClick={() => toggleDay(day)}
+                      className={cn(
+                        "min-h-11 rounded-xl border text-sm font-bold transition-colors",
+                        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-maroon",
+                        "disabled:opacity-50",
+                        on
+                          ? "border-maroon bg-maroon text-white"
+                          : "border-border bg-background text-muted-foreground hover:border-maroon/60 hover:text-foreground",
+                      )}
                     >
-                      <Checkbox
-                        id={`show-day-${day.toLowerCase()}`}
-                        data-testid={`show-day-${day.toLowerCase()}`}
-                        checked={customDays.includes(day)}
-                        onCheckedChange={(checked) => toggleCustomDay(day, checked === true)}
-                        disabled={busy}
-                      />
                       {DAY_LABEL[day]}
-                    </label>
-                  ))}
-                </div>
+                    </button>
+                  );
+                })}
               </div>
-            )}
+              <div className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-1 text-xs">
+                <span className="text-muted-foreground mr-1">Quick pick:</span>
+                {PRESETS.map((p) => {
+                  const active = sameDaySet(days, p.days);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      aria-pressed={active}
+                      data-testid={`show-days-preset-${p.id}`}
+                      disabled={busy}
+                      onClick={() => applyPreset(p.days)}
+                      className={cn(
+                        "min-h-8 rounded-full border px-2.5 font-semibold transition-colors",
+                        active ? "border-ring bg-accent text-foreground" : "border-border text-foreground hover:bg-muted",
+                      )}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+                {days.length > 0 && (
+                  <button
+                    type="button"
+                    data-testid="show-days-preset-clear"
+                    disabled={busy}
+                    onClick={() => applyPreset([])}
+                    className="min-h-8 rounded-full px-2.5 font-semibold text-muted-foreground hover:bg-muted"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <p id="show-days-summary" className="wc-help mt-1.5" aria-live="polite" data-testid="show-days-summary">
+                {daysSummary(days)}
+                {days.length > 0 && start && end ? ` · ${formatTime(start)}–${formatTime(end)}` : ""}
+              </p>
+            </div>
 
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>

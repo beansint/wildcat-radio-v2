@@ -955,13 +955,51 @@ export const GetEpisodeResponse = zod.unknown()
 /**
  * @summary Get current user profile
  */
-export const UsersControllerGetMeResponse = zod.unknown()
+export const UsersControllerGetMeResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "handle": zod.string(),
+  "avatarUrl": zod.string().nullable(),
+  "class": zod.enum(['CAMPUS', 'GUEST']),
+  "role": zod.enum(['CUSTODIAN', 'MODERATOR', 'LISTENER']),
+  "emailVerified": zod.boolean(),
+  "notifyEmail": zod.boolean(),
+  "notifyInApp": zod.boolean(),
+  "yearLevel": zod.string().nullable().describe('Stored year level; PATCH accepts an integer or null'),
+  "college": zod.string().nullable(),
+  "gender": zod.string().nullable()
+})
 
 
 /**
  * @summary Update current user profile
  */
-export const UsersControllerUpdateMeResponse = zod.unknown()
+export const UsersControllerUpdateMeBody = zod.object({
+  "handle": zod.string().optional(),
+  "avatarUrl": zod.string().nullish(),
+  "notifyEmail": zod.boolean().optional(),
+  "notifyInApp": zod.boolean().optional(),
+  "yearLevel": zod.number().nullish(),
+  "college": zod.string().nullish(),
+  "gender": zod.string().nullish()
+})
+
+export const UsersControllerUpdateMeResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "handle": zod.string(),
+  "avatarUrl": zod.string().nullable(),
+  "class": zod.enum(['CAMPUS', 'GUEST']),
+  "role": zod.enum(['CUSTODIAN', 'MODERATOR', 'LISTENER']),
+  "emailVerified": zod.boolean(),
+  "notifyEmail": zod.boolean(),
+  "notifyInApp": zod.boolean(),
+  "yearLevel": zod.string().nullable().describe('Stored year level; PATCH accepts an integer or null'),
+  "college": zod.string().nullable(),
+  "gender": zod.string().nullable()
+})
 
 
 /**

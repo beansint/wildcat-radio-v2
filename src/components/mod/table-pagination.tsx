@@ -47,8 +47,9 @@ export function TablePagination({
           variant="outline"
           size="sm"
           data-testid={`${testidPrefix}-prev`}
-          disabled={!hasPrev || busy}
-          onClick={onPrev}
+          disabled={!hasPrev}
+          aria-disabled={!hasPrev || busy}
+          onClick={() => { if (hasPrev && !busy) onPrev(); }}
         >
           Prev
         </Button>
@@ -56,8 +57,9 @@ export function TablePagination({
           variant="outline"
           size="sm"
           data-testid={`${testidPrefix}-next`}
-          disabled={!hasNext || busy}
-          onClick={onNext}
+          disabled={!hasNext}
+          aria-disabled={!hasNext || busy}
+          onClick={() => { if (hasNext && !busy) onNext(); }}
         >
           Next
         </Button>

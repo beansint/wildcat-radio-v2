@@ -60,3 +60,20 @@ jobs:
         # Last, because it is the slowest and the cheaper gates above catch
         # most of what would fail here.
         run: pnpm run build
+
+  audit:
+    name: dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Reject high and critical dependency advisories
+        run: pnpm audit --audit-level high

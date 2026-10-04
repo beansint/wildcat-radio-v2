@@ -36,7 +36,7 @@ function AnnouncementPhoto({ src, position, title }: { src: string; position: nu
         aria-label={`Photo ${position} for ${title} is unavailable`}
         data-testid="announcement-photo-unavailable"
       >
-        <span className="wc-muted">Photo unavailable</span>
+        <span>Photo unavailable</span>
       </div>
     );
   }

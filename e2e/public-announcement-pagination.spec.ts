@@ -31,6 +31,7 @@ test('AC-1: keyboard paging exposes all205 records without duplicating the pinne
   const cards = page.getByTestId('public-announcement-card');
   await expect(cards).toHaveCount(100);
   await expect(cards.filter({ hasText: rows[0].title })).toHaveCount(1);
+  await expect(page.getByRole('region', { name: 'Announcement pages' })).toHaveAttribute('aria-busy', 'false');
   const first = await cards.evaluateAll((els) => els.map((el) => el.getAttribute('href')));
   const next = page.getByTestId('public-ann-pagination-next');
   await expect(next).toBeEnabled();
@@ -39,6 +40,7 @@ test('AC-1: keyboard paging exposes all205 records without duplicating the pinne
   await page.keyboard.press('Enter');
   await expect(page.getByText('Showing 101–200 of 205', { exact: true })).toBeVisible();
   await expect(cards).toHaveCount(100);
+  await expect(page.getByRole('region', { name: 'Announcement pages' })).toHaveAttribute('aria-busy', 'false');
   const second = await cards.evaluateAll((els) => els.map((el) => el.getAttribute('href')));
   await expect(next).toBeEnabled();
   await expect(next).toBeFocused();

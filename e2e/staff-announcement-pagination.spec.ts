@@ -9,7 +9,7 @@ test.beforeAll(async () => {
   const url = new URL(API_BASE);
   if (url.hostname !== 'localhost' || url.port !== '3310') throw new Error('Pagination fixtures require the isolated local API on3310');
   api = await apiLoginAs('moderator');
-  for (let i = 0; i < 105; i += 1) {
+  for (let i = 0; i < 205; i += 1) {
     const title = `${prefix} ${i}`;
     const row = await createAnnouncement(api, { title, content: 'Staff pagination regression.' });
     rows.push({ id: row.id, title });
@@ -36,16 +36,22 @@ test('AC-1: older records remain editable past the hundred-row cap', async ({ pa
   await page.getByTestId('mod-ann-pagination-next').focus();
   await expect(page.getByTestId('mod-ann-pagination-next')).toBeFocused();
   await page.keyboard.press('Enter');
+  await expect(page.getByTestId('mod-ann-row')).toHaveCount(100);
+  await expect(page.getByTestId('mod-ann-pagination-next')).toBeEnabled();
+  await page.getByTestId('mod-ann-pagination-next').click();
   await expect(page.getByTestId('mod-ann-row')).toHaveCount(5);
   await expect(page.getByTestId('mod-ann-row').filter({ hasText: rows[0].title })).toBeVisible();
   await page.getByTestId('mod-ann-pagination-prev').click();
   await expect(page.getByTestId('mod-ann-row')).toHaveCount(100);
-  await expect(page.getByTestId('mod-ann-row').filter({ hasText: rows[104].title })).toBeVisible();
+  await expect(page.getByText('Showing 101–200 of 205', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('mod-ann-pagination-prev')).toBeEnabled();
+  await page.getByTestId('mod-ann-pagination-prev').click();
+  await expect(page.getByTestId('mod-ann-row').filter({ hasText: rows[204].title })).toBeVisible();
 });
 
 test('AC-2: selecting another status resets the page', async ({ page }) => {
   await page.getByTestId('mod-ann-pagination-next').click();
-  await expect(page.getByTestId('mod-ann-row')).toHaveCount(5);
+  await expect(page.getByTestId('mod-ann-row')).toHaveCount(100);
   await page.getByTestId('mod-ann-tabs-archived').click();
   await expect(page.getByTestId('mod-ann-pagination-prev')).toBeDisabled();
   await page.getByTestId('mod-ann-tabs-draft').click();
@@ -53,7 +59,21 @@ test('AC-2: selecting another status resets the page', async ({ page }) => {
   await expect(page.getByTestId('mod-ann-pagination-prev')).toBeDisabled();
 });
 
-test('AC-3: publishing the final draft page returns to remaining drafts', async ({ page }) => {
+test('AC-3: keyboard focus survives an intermediate page request', async ({ page }) => {
+  const next = page.getByTestId('mod-ann-pagination-next');
+  await expect(next).toBeEnabled();
+  await next.focus();
+  await page.keyboard.press('Enter');
+  await expect(next).toBeEnabled();
+  await expect(page.getByText('Showing 101–200 of 205', { exact: true })).toBeVisible();
+  await expect(next).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('mod-ann-row')).toHaveCount(5);
+});
+
+test('AC-4: publishing the final draft page returns to remaining drafts', async ({ page }) => {
+  await page.getByTestId('mod-ann-pagination-next').click();
+  await expect(page.getByTestId('mod-ann-pagination-next')).toBeEnabled();
   await page.getByTestId('mod-ann-pagination-next').click();
   await expect(page.getByTestId('mod-ann-row')).toHaveCount(5);
   for (let remaining = 5; remaining > 0; remaining -= 1) {
@@ -62,5 +82,5 @@ test('AC-3: publishing the final draft page returns to remaining drafts', async 
     await expect(page.getByTestId('mod-ann-row')).toHaveCount(remaining === 1 ? 100 : remaining - 1);
   }
   await expect(page.getByTestId('mod-ann-pagination-next')).toBeDisabled();
-  await expect(page.getByTestId('mod-ann-pagination-prev')).toBeDisabled();
+  await expect(page.getByTestId('mod-ann-pagination-prev')).toBeEnabled();
 });

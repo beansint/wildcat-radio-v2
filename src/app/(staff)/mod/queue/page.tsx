@@ -39,6 +39,7 @@ import {
 } from "@/lib/api/endpoints/moderation/moderation";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import { AppealDtoStatus, type QueueDto, type ReportDto, type AppealDto } from "@/lib/api/model";
+import { Button } from "@/components/ui/button";
 import { SegTabs, type SegTab } from "@/components/mod/seg-tabs";
 import { ConfirmDialog } from "@/components/mod/confirm-dialog";
 import { StrikeDialog, type StrikeDialogValues } from "@/components/mod/strike-dialog";
@@ -133,7 +134,7 @@ export default function QueuePage() {
   const [appealDialog, setAppealDialog] = useState<AppealDialogState | null>(null);
   const [escalated, setEscalated] = useState<Set<string>>(new Set());
 
-  const queueQuery = useModerationControllerGetQueue<QueueDto>();
+  const queueQuery = useModerationControllerGetQueue<QueueDto>({ query: { retry: false } });
   const queue = queueQuery.data;
 
   function invalidate() {
@@ -302,6 +303,14 @@ export default function QueuePage() {
 
       {queueQuery.isLoading ? (
         <p className="wc-muted">Loading queue…</p>
+      ) : queueQuery.isError ? (
+        <div className="wc-card wc-card-pad" role="alert" data-testid="mod-queue-error">
+          <p className="font-semibold text-destructive">Could not load the moderation queue.</p>
+          <p className="mt-1 text-sm">{getApiErrorMessage(queueQuery.error)}</p>
+          <Button className="mt-3" data-testid="mod-queue-retry" disabled={queueQuery.isFetching} onClick={() => queueQuery.refetch()}>
+            {queueQuery.isFetching ? "Retrying…" : "Try again"}
+          </Button>
+        </div>
       ) : totalVisible === 0 ? (
         <div className="wc-card wc-card-pad text-center wc-muted" data-testid="mod-queue-empty">
           {tab === "all"

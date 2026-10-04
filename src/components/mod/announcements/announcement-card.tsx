@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * One announcement row on `/mod/announcements`. Actions are gated purely by
- * `availableActions(status)` (`@/lib/announcements/lifecycle`) so this view
- * can never offer a transition the API would 409 on — SCHEDULED has no
+ * One announcement row on `/mod/announcements`. Lifecycle actions use
+ * `availableActions(status)` (`@/lib/announcements/lifecycle`). SCHEDULED has no
  * "publish now", ARCHIVED has no "restore", DRAFT has no "archive".
+ * Publishing and scheduling additionally require the current creator.
  *
  * `mod-ann-pin` / `mod-ann-feature` are single toggle buttons carrying
  * `aria-pressed` (binding testid list — no separate unpin/unfeature id).
@@ -46,6 +46,7 @@ function excerpt(content: string): string {
 
 interface AnnouncementCardProps {
   announcement: AnnouncementStaffDto;
+  actorId?: string;
   pinnedCount: number;
   pinLimit: number;
   busy?: boolean;
@@ -58,6 +59,7 @@ interface AnnouncementCardProps {
 
 export function AnnouncementCard({
   announcement,
+  actorId,
   pinnedCount,
   pinLimit,
   busy,
@@ -69,6 +71,7 @@ export function AnnouncementCard({
 }: AnnouncementCardProps) {
   const status = announcement.status as AnnouncementStatus;
   const actions = availableActions(status);
+  const isCreator = !!actorId && announcement.createdBy?.id === actorId;
   const canEdit = actions.includes("edit");
   const canPin = actions.includes("pin");
   const canFeature = actions.includes("feature");
@@ -95,8 +98,8 @@ export function AnnouncementCard({
     <article
       className="wc-card wc-card-pad"
       data-testid="mod-ann-row"
-      onClick={canEdit ? onEdit : undefined}
-      style={canEdit ? { cursor: "pointer" } : undefined}
+      onClick={canEdit && !busy ? onEdit : undefined}
+      style={canEdit && !busy ? { cursor: "pointer" } : undefined}
     >
       <div className="flex flex-wrap items-center gap-2">
         <StatusPill variant={statusVariant(status)}>{statusLabel(status)}</StatusPill>
@@ -152,11 +155,16 @@ export function AnnouncementCard({
           <Button
             size="sm"
             data-testid="mod-ann-publish"
-            disabled={busy}
+            disabled={busy || !isCreator}
             onClick={stop(onPublish)}
           >
             Publish…
           </Button>
+        )}
+        {actions.includes("publish") && !isCreator && (
+          <p className="wc-help" data-testid="mod-ann-publish-permission">
+            Only the creator can publish or schedule this announcement.
+          </p>
         )}
         {canPin && (
           <Button

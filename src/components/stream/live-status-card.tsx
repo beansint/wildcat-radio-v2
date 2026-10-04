@@ -10,9 +10,10 @@ import { useStream } from "@/lib/stream/stream-context";
  * Used on the landing page hero.
  */
 export function LiveStatusCard() {
-  const { status, djs, listeners, isPlaying, play, pause } = useStream();
+  const { status, djs, showName: activeShowName, listeners, isPlaying, play, pause, manifestAvailability, manifestUrl } = useStream();
 
-  const canPlay = status !== "OFF_AIR";
+  const statusReady = manifestAvailability === "ready";
+  const canPlay = statusReady && status !== "OFF_AIR" && !!manifestUrl;
 
   function handlePlayPause() {
     if (isPlaying) {
@@ -24,15 +25,13 @@ export function LiveStatusCard() {
 
   const showName =
     status === "LIVE"
-      ? djs.length > 0
-        ? `${djs[0]}'s Show`
-        : "Wildcat Radio Live"
+      ? activeShowName ?? "Wildcat Radio Live"
       : status === "STATION_ROTATION"
         ? "Station Rotation"
         : "Off Air";
 
   const nowPlayingLine =
-    status === "LIVE"
+    !statusReady ? "Broadcast status unavailable" : status === "LIVE"
       ? djs.join(", ") || "On air now"
       : status === "STATION_ROTATION"
         ? "Auto-curated playlist"
@@ -43,7 +42,11 @@ export function LiveStatusCard() {
       <div className="wc-card-pad">
         {/* Top row: badge + listener count */}
         <div className="flex items-center justify-between mb-4">
-          {status === "LIVE" ? (
+          {!statusReady ? (
+            <span className="wc-chip" data-testid="live-badge">
+              {manifestAvailability === "loading" ? "Checking broadcast" : "Status unavailable"}
+            </span>
+          ) : status === "LIVE" ? (
             <span className="wc-badge-live" data-testid="live-badge">
               <span className="dot" aria-hidden="true" />
               Live now
@@ -78,7 +81,7 @@ export function LiveStatusCard() {
             </div>
             <div className="text-xl font-extrabold truncate">{showName}</div>
             <div className="wc-muted text-sm flex items-center gap-2 mt-1 flex-wrap">
-              {status === "LIVE" && djs.length > 0 ? (
+              {statusReady && status === "LIVE" && djs.length > 0 ? (
                 djs.map((dj) => (
                   <span key={dj} className="wc-chip">
                     <Mic className="w-3.5 h-3.5" aria-hidden="true" />

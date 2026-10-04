@@ -1,0 +1,5 @@
+# Verification evidence
+
+Same-user verification previously refreshed the HTTP gate while the existing socket still refused chat. Identity now includes session ID, user ID, email verification, class and role, preserving the existing shared socket lease/reconnect seam. Real isolated API/SQL/Socket.IO browser regression failed before the fix and passes twice after it, including another-tab trusted verification state write, one persisted/visible keyboard chat message, refreshed role/class and replacement session, one active browser transport, and unchanged identity without another reconnect. Only stream metadata/status frames controlled; email token/provider delivery and physical broadcast not exercised. Fixture guard restricts SQL to local review_frontend; owned users/messages/episodes cleaned. lint/typecheck/full278unit pass. Initial fixture table-name and transport-count probes were corrected before final runs. No backend/API contract change; backend158 separately refreshes authority at send time.
+
+Independent review: pending after draft PR creation. No deployment or physical-device proof.

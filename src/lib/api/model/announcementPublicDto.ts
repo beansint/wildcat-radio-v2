@@ -15,6 +15,7 @@ export interface AnnouncementPublicDto {
   publicId: string;
   content: string;
   isPinned: boolean;
+  isFeatured: boolean;
   /** @nullable */
   publishedAt: string | null;
   photos: string[];

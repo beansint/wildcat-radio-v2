@@ -2,6 +2,7 @@
 
 import { MessagesSquare, Send, Users } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
+import { ChatReportDialog } from "./chat-report-dialog";
 import { ChatMessage, type ChatMessageProps } from "./chat-message";
 import { InlinePoll } from "./inline-poll";
 import { useEngagementGate, EngagementGateNotice } from "./engagement-gate";
@@ -14,10 +15,14 @@ import { getApiErrorMessage } from "@/lib/api/error-message";
 
 export interface ChatMsg extends ChatMessageProps {
   id: string;
+  authorId?: string | null;
+  authorHandle?: string | null;
 }
 
 interface ChatColumnProps {
   messages: ChatMsg[];
+  reporterId?: string;
+  reporterHandle?: string | null;
   onSend: (text: string) => Promise<void>;
   listenerCount: number | null;
   polls: PollResponseDto[];
@@ -32,6 +37,8 @@ interface ChatColumnProps {
 
 export const ChatColumn = memo(function ChatColumn({
   messages,
+  reporterId,
+  reporterHandle,
   onSend,
   listenerCount,
   polls,
@@ -47,6 +54,7 @@ export const ChatColumn = memo(function ChatColumn({
   const [inputValue, setInputValue] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [reportTarget, setReportTarget] = useState<ChatMsg | null>(null);
   const gate = useEngagementGate();
   // Avoid SSR/client hydration mismatch: the gate depends on session data
   // that isn't visible during SSR (cross-origin httpOnly cookie), so the
@@ -118,15 +126,20 @@ export const ChatColumn = memo(function ChatColumn({
               : "Chat is available during a live episode."}
           </div>
         ) : (
-          messages.map((msg) => (
-            <ChatMessage
-              key={msg.id}
-              name={msg.name}
-              time={msg.time}
-              body={msg.body}
-              variant={msg.variant}
-            />
-          ))
+          messages.map((msg) => {
+            // This is a UI convenience only. The report request uses message
+            // identity and the API resolves its actual author independently.
+            const ownMessage = msg.authorId
+              ? msg.authorId === reporterId
+              : !!reporterHandle && msg.authorHandle === reporterHandle;
+            const reportable = msg.variant !== "booth" && !!(msg.authorId || msg.authorHandle) && !ownMessage;
+            return (
+              <div key={msg.id} data-testid="chat-report-message">
+                <ChatMessage name={msg.name} time={msg.time} body={msg.body} variant={msg.variant} />
+                {reportable && <Button type="button" size="sm" variant="ghost" aria-label="Report message" onClick={() => setReportTarget(msg)}>Report</Button>}
+              </div>
+            );
+          })
         )}
         {/* Inline poll placed after messages, matching prototype order */}
         {isLive && (
@@ -142,6 +155,8 @@ export const ChatColumn = memo(function ChatColumn({
           />
         )}
       </div>
+
+      {reportTarget && <ChatReportDialog message={reportTarget} authenticated={!!reporterId} onClose={() => setReportTarget(null)} />}
 
       {/* Desktop-only input - gated */}
       {!isLive ? null : !mounted ? (

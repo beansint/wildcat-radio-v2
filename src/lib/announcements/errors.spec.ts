@@ -33,6 +33,11 @@ describe("ANN-U-08: error envelope -> human sentence", () => {
     expect(feature.toLowerCase()).toMatch(/publish/);
   });
 
+  it("403 author permission denial is preserved rather than called a stale state", () => {
+    expect(humanizeAnnouncementError(errorWith(403, JSON.stringify({ message: "Only the author may publish this announcement" })), "transition"))
+      .toBe("Only the author may publish this announcement");
+  });
+
   it("400 validation maps to a distinct human sentence", () => {
     const message = humanizeAnnouncementError(
       errorWith(400, JSON.stringify({ message: ["title is required"] })),

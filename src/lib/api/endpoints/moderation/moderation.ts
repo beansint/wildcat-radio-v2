@@ -21,6 +21,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AppealDecisionDto,
   AppealDto,
   BroadcastActivityPageDto,
   FilterEntryDto,
@@ -30,6 +31,7 @@ import type {
   QueueDto,
   ReinstatementRequestDto,
   ReportDto,
+  ResolveAppealDto,
   StaffAuditPageDto,
   StandingDto
 } from '../../model';
@@ -1166,14 +1168,15 @@ export const getModerationControllerResolveAppealUrl = (id: string,) => {
 /**
  * @summary Resolve an appeal: UPHELD/REDUCED/OVERTURNED, with a required written response
  */
-export const moderationControllerResolveAppeal = async (id: string, options?: RequestInit): Promise<AppealDto> => {
+export const moderationControllerResolveAppeal = async (id: string,
+    resolveAppealDto: ResolveAppealDto, options?: RequestInit): Promise<AppealDecisionDto> => {
 
-  return customFetch<AppealDto>(getModerationControllerResolveAppealUrl(id),
+  return customFetch<AppealDecisionDto>(getModerationControllerResolveAppealUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(resolveAppealDto)
   }
 );}
 
@@ -1181,23 +1184,25 @@ export const moderationControllerResolveAppeal = async (id: string, options?: Re
 
 
 
-export const getModerationControllerResolveAppealQueryKey = (id: string,) => {
+export const getModerationControllerResolveAppealQueryKey = (id: string,
+    resolveAppealDto?: ResolveAppealDto,) => {
     return [
-    'POST', `/api/mod/appeals/${id}/resolve`
+    'POST', `/api/mod/appeals/${id}/resolve`, resolveAppealDto
     ] as const;
     }
 
 
-export const getModerationControllerResolveAppealQueryOptions = <TData = Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getModerationControllerResolveAppealQueryOptions = <TData = Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError = unknown>(id: string,
+    resolveAppealDto: ResolveAppealDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getModerationControllerResolveAppealQueryKey(id);
+  const queryKey =  queryOptions?.queryKey ?? getModerationControllerResolveAppealQueryKey(id,resolveAppealDto);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof moderationControllerResolveAppeal>>> = ({ signal }) => moderationControllerResolveAppeal(id, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof moderationControllerResolveAppeal>>> = ({ signal }) => moderationControllerResolveAppeal(id,resolveAppealDto, { signal, ...requestOptions });
 
 
 
@@ -1211,7 +1216,8 @@ export type ModerationControllerResolveAppealQueryError = unknown
 
 
 export function useModerationControllerResolveAppeal<TData = Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError = unknown>(
- id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError, TData>> & Pick<
+ id: string,
+    resolveAppealDto: ResolveAppealDto, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof moderationControllerResolveAppeal>>,
           TError,
@@ -1221,7 +1227,8 @@ export function useModerationControllerResolveAppeal<TData = Awaited<ReturnType<
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useModerationControllerResolveAppeal<TData = Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError = unknown>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError, TData>> & Pick<
+ id: string,
+    resolveAppealDto: ResolveAppealDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof moderationControllerResolveAppeal>>,
           TError,
@@ -1231,7 +1238,8 @@ export function useModerationControllerResolveAppeal<TData = Awaited<ReturnType<
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useModerationControllerResolveAppeal<TData = Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError = unknown>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ id: string,
+    resolveAppealDto: ResolveAppealDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -1239,11 +1247,12 @@ export function useModerationControllerResolveAppeal<TData = Awaited<ReturnType<
  */
 
 export function useModerationControllerResolveAppeal<TData = Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError = unknown>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ id: string,
+    resolveAppealDto: ResolveAppealDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof moderationControllerResolveAppeal>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getModerationControllerResolveAppealQueryOptions(id,options)
+  const queryOptions = getModerationControllerResolveAppealQueryOptions(id,resolveAppealDto,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

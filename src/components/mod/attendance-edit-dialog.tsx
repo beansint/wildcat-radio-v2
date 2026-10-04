@@ -83,10 +83,10 @@ export function AttendanceEditDialog({ open, onOpenChange, row, date, onSaved }:
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
       if (!row.recordId) throw new Error("No attendance record to correct.");
-      const body: Record<string, unknown> = { timeIn: toIso(date, values.timeIn) };
+      const body: Parameters<typeof attendanceControllerCorrect>[1] = { timeIn: toIso(date, values.timeIn) };
       if (values.timeOut) body.timeOut = toIso(date, values.timeOut);
       body.note = values.note ?? "";
-      return attendanceControllerCorrect(row.recordId, { body: JSON.stringify(body) });
+      return attendanceControllerCorrect(row.recordId, body);
     },
     onSuccess: () => onSaved(),
   });

@@ -24,7 +24,8 @@ import type {
   AnnouncementPhotoUploadUrlDto,
   AnnouncementStaffDto,
   AnnouncementStaffPageDto,
-  AnnouncementsControllerListParams
+  AnnouncementsControllerListParams,
+  UpdateAnnouncementPhotosDto
 } from '../../model';
 
 import { customFetch } from '../../fetcher';
@@ -1230,6 +1231,113 @@ export function useAnnouncementsControllerUnpin<TData = Awaited<ReturnType<typeo
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getAnnouncementsControllerUnpinQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+export const getAnnouncementsControllerUpdatePhotosUrl = (id: string,) => {
+
+
+
+
+  return `/api/announcements/${id}/photos`
+}
+
+/**
+ * @summary Remove/reorder attached photos, or retry detached-object cleanup with an unchanged snapshot
+ */
+export const announcementsControllerUpdatePhotos = async (id: string,
+    updateAnnouncementPhotosDto: UpdateAnnouncementPhotosDto, options?: RequestInit): Promise<AnnouncementStaffDto> => {
+
+  return customFetch<AnnouncementStaffDto>(getAnnouncementsControllerUpdatePhotosUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateAnnouncementPhotosDto)
+  }
+);}
+
+
+
+
+
+export const getAnnouncementsControllerUpdatePhotosQueryKey = (id: string,
+    updateAnnouncementPhotosDto?: UpdateAnnouncementPhotosDto,) => {
+    return [
+    'PATCH', `/api/announcements/${id}/photos`, updateAnnouncementPhotosDto
+    ] as const;
+    }
+
+
+export const getAnnouncementsControllerUpdatePhotosQueryOptions = <TData = Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>, TError = unknown>(id: string,
+    updateAnnouncementPhotosDto: UpdateAnnouncementPhotosDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAnnouncementsControllerUpdatePhotosQueryKey(id,updateAnnouncementPhotosDto);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>> = ({ signal }) => announcementsControllerUpdatePhotos(id,updateAnnouncementPhotosDto, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AnnouncementsControllerUpdatePhotosQueryResult = NonNullable<Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>>
+export type AnnouncementsControllerUpdatePhotosQueryError = unknown
+
+
+export function useAnnouncementsControllerUpdatePhotos<TData = Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>, TError = unknown>(
+ id: string,
+    updateAnnouncementPhotosDto: UpdateAnnouncementPhotosDto, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>,
+          TError,
+          Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAnnouncementsControllerUpdatePhotos<TData = Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>, TError = unknown>(
+ id: string,
+    updateAnnouncementPhotosDto: UpdateAnnouncementPhotosDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>,
+          TError,
+          Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAnnouncementsControllerUpdatePhotos<TData = Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>, TError = unknown>(
+ id: string,
+    updateAnnouncementPhotosDto: UpdateAnnouncementPhotosDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Remove/reorder attached photos, or retry detached-object cleanup with an unchanged snapshot
+ */
+
+export function useAnnouncementsControllerUpdatePhotos<TData = Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>, TError = unknown>(
+ id: string,
+    updateAnnouncementPhotosDto: UpdateAnnouncementPhotosDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof announcementsControllerUpdatePhotos>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAnnouncementsControllerUpdatePhotosQueryOptions(id,updateAnnouncementPhotosDto,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

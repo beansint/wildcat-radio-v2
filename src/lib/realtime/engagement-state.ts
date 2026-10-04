@@ -6,6 +6,8 @@ import type {
 
 export interface LiveChatMessage {
   id: string;
+  authorId?: string | null;
+  authorHandle?: string | null;
   name: string;
   body: string;
   time?: string;
@@ -79,6 +81,7 @@ export function snapshotChatToLiveMessage(
   const author = message.author?.handle ?? message.author?.name ?? "@listener";
   return {
     id: message.id,
+    authorHandle: message.author?.handle ?? null,
     name: message.asBooth ? "🎙 Booth" : author,
     body: message.content,
     time: formatTime(message.createdAt),

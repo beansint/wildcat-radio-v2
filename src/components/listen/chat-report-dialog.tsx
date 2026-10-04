@@ -49,9 +49,9 @@ export function ChatReportDialog({ message, authenticated, onClose }: ChatReport
           <DialogTitle>Report message</DialogTitle>
           <DialogDescription>Send this message to staff for review.</DialogDescription>
         </DialogHeader>
-        <blockquote className="rounded-lg bg-muted p-3 text-sm">
+        <blockquote className="min-w-0 rounded-lg bg-muted p-3 text-sm [overflow-wrap:anywhere]">
           <p className="font-semibold">{message.name}</p>
-          <p className="whitespace-pre-wrap break-words">{message.body}</p>
+          <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.body}</p>
         </blockquote>
         {!authenticated ? (
           <>

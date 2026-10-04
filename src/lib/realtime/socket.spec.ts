@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, type Mock } from "vitest";
 import { SocketLeaseManager } from "./socket";
 
 interface FakeSocket {
-  disconnect: ReturnType<typeof vi.fn>;
+  disconnect: Mock<() => void>;
 }
 
 function deferred<T>() {
@@ -15,7 +15,7 @@ function deferred<T>() {
 
 describe("SocketLeaseManager", () => {
   it("disconnects only after the final owner releases", async () => {
-    const socket: FakeSocket = { disconnect: vi.fn() };
+    const socket: FakeSocket = { disconnect: vi.fn<() => void>() };
     const manager = new SocketLeaseManager(async () => socket);
 
     const first = await manager.acquire();
@@ -28,7 +28,7 @@ describe("SocketLeaseManager", () => {
   });
 
   it("makes release idempotent", async () => {
-    const socket: FakeSocket = { disconnect: vi.fn() };
+    const socket: FakeSocket = { disconnect: vi.fn<() => void>() };
     const manager = new SocketLeaseManager(async () => socket);
     const lease = await manager.acquire();
 
@@ -39,7 +39,7 @@ describe("SocketLeaseManager", () => {
   });
 
   it("shares in-flight creation without losing either owner", async () => {
-    const socket: FakeSocket = { disconnect: vi.fn() };
+    const socket: FakeSocket = { disconnect: vi.fn<() => void>() };
     const pending = deferred<FakeSocket>();
     const create = vi.fn(() => pending.promise);
     const manager = new SocketLeaseManager(create);
@@ -58,8 +58,8 @@ describe("SocketLeaseManager", () => {
   });
 
   it("does not disconnect an in-flight socket if a new owner arrives", async () => {
-    const firstSocket: FakeSocket = { disconnect: vi.fn() };
-    const secondSocket: FakeSocket = { disconnect: vi.fn() };
+    const firstSocket: FakeSocket = { disconnect: vi.fn<() => void>() };
+    const secondSocket: FakeSocket = { disconnect: vi.fn<() => void>() };
     const pending = deferred<FakeSocket>();
     const create = vi
       .fn<() => Promise<FakeSocket>>()

@@ -2585,3 +2585,54 @@ export const ChartsPublicControllerGetCurrentResponse = zod.object({
   "count": zod.number()
 }))
 })
+
+
+/**
+ * @summary List the authenticated user private notifications
+ */
+export const listMyNotificationsQueryPageSizeDefault = 20;
+export const listMyNotificationsQueryPageSizeMax = 100;
+
+export const listMyNotificationsQueryPageDefault = 1;
+export const listMyNotificationsQueryPageMax = 21474836;
+
+
+
+export const ListMyNotificationsQueryParams = zod.object({
+  "pageSize": zod.number().min(1).max(listMyNotificationsQueryPageSizeMax).default(listMyNotificationsQueryPageSizeDefault),
+  "page": zod.number().min(1).max(listMyNotificationsQueryPageMax).default(listMyNotificationsQueryPageDefault)
+})
+
+export const ListMyNotificationsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['EPISODE_REMINDER', 'STREAM_STARTED', 'STREAM_ENDED', 'SCHEDULE_CHANGED', 'ANNOUNCEMENT_PUBLISHED', 'QUEUE_RECEIPT', 'APPEAL_DECISION', 'SYSTEM']),
+  "title": zod.string(),
+  "body": zod.string(),
+  "isRead": zod.boolean(),
+  "relatedId": zod.string().nullable(),
+  "createdAt": zod.iso.datetime({"offset":true})
+})),
+  "total": zod.number(),
+  "unreadCount": zod.number(),
+  "page": zod.number(),
+  "pageSize": zod.number()
+})
+
+
+/**
+ * @summary Idempotently mark an owned notification read
+ */
+export const MarkMyNotificationReadParams = zod.object({
+  "id": zod.string()
+})
+
+export const MarkMyNotificationReadResponse = zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['EPISODE_REMINDER', 'STREAM_STARTED', 'STREAM_ENDED', 'SCHEDULE_CHANGED', 'ANNOUNCEMENT_PUBLISHED', 'QUEUE_RECEIPT', 'APPEAL_DECISION', 'SYSTEM']),
+  "title": zod.string(),
+  "body": zod.string(),
+  "isRead": zod.boolean(),
+  "relatedId": zod.string().nullable(),
+  "createdAt": zod.iso.datetime({"offset":true})
+})

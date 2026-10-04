@@ -3582,6 +3582,91 @@
           "charts-public"
         ]
       }
+    },
+    "/api/notifications": {
+      "get": {
+        "operationId": "listMyNotifications",
+        "parameters": [
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 21474836,
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListenerNotificationPageDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Valid session required"
+          }
+        },
+        "summary": "List the authenticated user private notifications",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "patch": {
+        "operationId": "markMyNotificationRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListenerNotificationDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Valid session required"
+          },
+          "404": {
+            "description": "Unknown or foreign notification"
+          }
+        },
+        "summary": "Idempotently mark an owned notification read",
+        "tags": [
+          "notifications"
+        ]
+      }
     }
   },
   "info": {
@@ -6983,6 +7068,83 @@
         "required": [
           "weekOf",
           "entries"
+        ]
+      },
+      "ListenerNotificationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "EPISODE_REMINDER",
+              "STREAM_STARTED",
+              "STREAM_ENDED",
+              "SCHEDULE_CHANGED",
+              "ANNOUNCEMENT_PUBLISHED",
+              "QUEUE_RECEIPT",
+              "APPEAL_DECISION",
+              "SYSTEM"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "isRead": {
+            "type": "boolean"
+          },
+          "relatedId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "body",
+          "isRead",
+          "relatedId",
+          "createdAt"
+        ]
+      },
+      "ListenerNotificationPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListenerNotificationDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "unreadCount": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "unreadCount",
+          "page",
+          "pageSize"
         ]
       }
     }

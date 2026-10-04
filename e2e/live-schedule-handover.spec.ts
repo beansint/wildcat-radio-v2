@@ -379,3 +379,37 @@ test.describe('#106 live schedule, handover, approved overtime', () => {
     expect(errors.filter((e) => !e.includes('409'))).toEqual([]);
   });
 });
+
+test.describe('#114 explicit continuing-crew handover', () => {
+  test.skip(!process.env.CI || !process.env.DATABASE_URL?.includes('@localhost:'), 'global fixtures are allowed only on CI isolated Postgres');
+  test.skip(NOW < 95 || NOW + 125 > 24 * 60, 'fixtures require a same-day station window');
+  test.beforeAll(() => {
+    cleanup();
+    seed();
+    prismaScript(`await prisma.showRosterEntry.create({ data: { showId: ${JSON.stringify(ids.showB)}, rosterId: ${JSON.stringify(ids.djA)} } });`);
+  });
+  test.afterAll(() => cleanup());
+
+  test('outgoing overtime remains open until the crew explicitly starts its next show', async ({ page }) => {
+    const errors = trackConsole(page);
+    await unlockStudio(page);
+    await expect(studioRow(page, names.A)).toHaveAttribute('data-status', 'ON_AIR');
+    await expect(page.getByRole('button', { name: 'Start next show', exact: true })).toBeVisible();
+    const before = await (await page.request.get(`${API_BASE}/api/studio/today`)).json();
+    expect(before.episode.showId).toBe(ids.showA);
+    expect(before.pendingHandover.continuingCrew).toBe(true);
+    await page.getByRole('button', { name: 'Start next show', exact: true }).click();
+    await expect(studioRow(page, names.B)).toHaveAttribute('data-status', 'ON_AIR');
+    await expect(studioRow(page, names.A)).toHaveAttribute('data-status', 'DONE');
+    await expect(page.getByTestId('studio-handover-banner')).toHaveCount(0);
+    prismaScript(`
+      const outgoing = await prisma.episode.findFirstOrThrow({ where: { showId: ${JSON.stringify(ids.showA)} }, include: { attendance: true } });
+      const row = outgoing.attendance.find(a => a.rosterId === ${JSON.stringify(ids.djA)});
+      if (!row?.timeOut || row.timeOutSource !== 'HANDOVER' || row.timeOut <= outgoing.effectiveEndAt || row.overtimeApprovedAt) throw new Error('Outgoing overtime attribution was lost');
+      const incoming = await prisma.episode.findFirstOrThrow({ where: { showId: ${JSON.stringify(ids.showB)}, endedAt: null }, include: { attendance: true } });
+      if (!incoming.attendance.some(a => a.rosterId === ${JSON.stringify(ids.djA)} && !a.timeOut && a.onAirStartAt)) throw new Error('Continuing crew was not transferred');
+      if (await prisma.episode.count({ where: { startedAt: { not: null }, endedAt: null } }) !== 1) throw new Error('More than one episode is open');
+    `);
+    expect(errors).toEqual([]);
+  });
+});

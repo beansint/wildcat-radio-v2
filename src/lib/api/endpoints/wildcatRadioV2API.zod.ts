@@ -311,6 +311,15 @@ export const ModerationControllerResolveAppealParams = zod.object({
   "id": zod.string()
 })
 
+export const moderationControllerResolveAppealBodyWrittenResponseMax = 4000;
+
+
+
+export const ModerationControllerResolveAppealBody = zod.object({
+  "status": zod.enum(['UPHELD', 'REDUCED', 'OVERTURNED']),
+  "writtenResponse": zod.string().min(1).max(moderationControllerResolveAppealBodyWrittenResponseMax)
+})
+
 export const ModerationControllerResolveAppealResponse = zod.object({
   "id": zod.string(),
   "userId": zod.string(),
@@ -323,7 +332,9 @@ export const ModerationControllerResolveAppealResponse = zod.object({
   "resolvedAt": zod.iso.datetime({"offset":true}).nullable(),
   "handle": zod.string().nullable().describe('Subject (userId) handle'),
   "class": zod.string().nullable().describe('Subject (userId) listener class'),
-  "role": zod.string().nullable().describe('Subject (userId) role')
+  "role": zod.string().nullable().describe('Subject (userId) role'),
+  "sanctionChanged": zod.boolean().describe('Whether this decision changed its identified sanction; independent restrictions can remain.'),
+  "notice": zod.string().nullable().describe('Mandatory decision notice when restrictions remain or no current sanction could be identified.')
 })
 
 
@@ -741,6 +752,20 @@ export const ClearStationSessionResponse = zod.object({
 
 
 /**
+ * @summary Authenticate current publication generation
+ */
+
+
+
+export const PostPublisherLeaseResponse = zod.object({
+  "stationId": zod.string(),
+  "generation": zod.number().min(1),
+  "prefix": zod.string(),
+  "expiresAt": zod.iso.datetime({"offset":true})
+})
+
+
+/**
  * @summary Get live stream manifest
  */
 export const GetStreamManifestResponse = zod.object({
@@ -758,9 +783,28 @@ export const GetStreamManifestResponse = zod.object({
 /**
  * @summary Studio source heartbeat
  */
+
+
+
+export const PostStreamHeartbeatBody = zod.object({
+  "publisherGeneration": zod.number().min(1).optional().describe('Authenticated publisher generation, required for publication evidence'),
+  "sourceConnected": zod.boolean(),
+  "lastSegmentAt": zod.iso.datetime({"offset":true}).optional(),
+  "lastPublishedAt": zod.iso.datetime({"offset":true}).optional()
+})
+
+
+
+
 export const PostStreamHeartbeatResponse = zod.object({
   "status": zod.enum(['LIVE', 'STATION_ROTATION', 'OFF_AIR']),
-  "reason": zod.enum(['NO_ATTENDANCE', 'SOURCE_STALE', 'SEGMENT_STALE', 'PUBLICATION_STALE', 'CONFIGURATION_ERROR']).nullable()
+  "reason": zod.enum(['NO_ATTENDANCE', 'SOURCE_STALE', 'SEGMENT_STALE', 'PUBLICATION_STALE', 'CONFIGURATION_ERROR']).nullable(),
+  "publisherLease": zod.object({
+  "stationId": zod.string(),
+  "generation": zod.number().min(1),
+  "prefix": zod.string(),
+  "expiresAt": zod.iso.datetime({"offset":true})
+})
 })
 
 
@@ -876,7 +920,18 @@ export const TimeInStudioResponse = zod.object({
 /**
  * @summary DJ time-out (tap out)
  */
-export const TimeOutStudioResponse = zod.unknown()
+export const timeOutStudioBodyExpectedPendingEpisodeIdMax = 128;
+
+
+
+export const TimeOutStudioBody = zod.object({
+  "rosterId": zod.string(),
+  "expectedPendingEpisodeId": zod.string().min(1).max(timeOutStudioBodyExpectedPendingEpisodeIdMax).optional().describe('Withdraw only a still-pending check-in for this episode. Reject if handover already started it.')
+})
+
+export const TimeOutStudioResponse = zod.object({
+  "status": zod.enum(['LIVE', 'STATION_ROTATION', 'OFF_AIR'])
+})
 
 
 /**
@@ -1715,10 +1770,18 @@ export const AttendanceControllerCreateResponse = zod.object({
 
 
 /**
- * @summary Correct an attendance record (time in/out, note)
+ * @summary Correct arrival, first broadcast start, timeout or note
  */
 export const AttendanceControllerCorrectParams = zod.object({
   "recordId": zod.string()
+})
+
+export const AttendanceControllerCorrectBody = zod.object({
+  "onAirStartAt": zod.iso.datetime({"offset":true}).nullish().describe('First broadcast start, distinct from arrival; null removes broadcast attribution'),
+  "timeIn": zod.iso.datetime({"offset":true}).optional(),
+  "timeOut": zod.iso.datetime({"offset":true}).nullish(),
+  "note": zod.string().optional(),
+  "reason": zod.string().optional().describe('Reason for the correction')
 })
 
 export const AttendanceControllerCorrectResponse = zod.object({
@@ -1852,7 +1915,8 @@ export const AnnouncementsControllerListResponse = zod.object({
   "name": zod.string().nullable(),
   "handle": zod.string().nullable()
 }).nullable(),
-  "photos": zod.array(zod.string())
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
 })),
   "total": zod.number(),
   "countsByStatus": zod.record(zod.string(), zod.number()).describe('Whole-table row count per status, e.g. {\"DRAFT\": 3, \"PUBLISHED\": 12}'),
@@ -1908,7 +1972,8 @@ export const AnnouncementsControllerGetOneResponse = zod.object({
   "name": zod.string().nullable(),
   "handle": zod.string().nullable()
 }).nullable(),
-  "photos": zod.array(zod.string())
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
 })
 
 
@@ -1956,7 +2021,8 @@ export const AnnouncementsControllerCreateResponse = zod.object({
   "name": zod.string().nullable(),
   "handle": zod.string().nullable()
 }).nullable(),
-  "photos": zod.array(zod.string())
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
 })
 
 
@@ -1976,6 +2042,7 @@ export const AnnouncementsPublicControllerListResponse = zod.object({
   "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
   "content": zod.string(),
   "isPinned": zod.boolean(),
+  "isFeatured": zod.boolean(),
   "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
   "photos": zod.array(zod.string())
 })),
@@ -2033,7 +2100,8 @@ export const AnnouncementsControllerUpdateResponse = zod.object({
   "name": zod.string().nullable(),
   "handle": zod.string().nullable()
 }).nullable(),
-  "photos": zod.array(zod.string())
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
 })
 
 
@@ -2085,7 +2153,8 @@ export const AnnouncementsControllerSubmitResponse = zod.object({
   "name": zod.string().nullable(),
   "handle": zod.string().nullable()
 }).nullable(),
-  "photos": zod.array(zod.string())
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
 })
 
 
@@ -2137,7 +2206,8 @@ export const AnnouncementsControllerReviewResponse = zod.object({
   "name": zod.string().nullable(),
   "handle": zod.string().nullable()
 }).nullable(),
-  "photos": zod.array(zod.string())
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
 })
 
 
@@ -2189,7 +2259,8 @@ export const AnnouncementsControllerPublishResponse = zod.object({
   "name": zod.string().nullable(),
   "handle": zod.string().nullable()
 }).nullable(),
-  "photos": zod.array(zod.string())
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
 })
 
 
@@ -2241,7 +2312,8 @@ export const AnnouncementsControllerArchiveResponse = zod.object({
   "name": zod.string().nullable(),
   "handle": zod.string().nullable()
 }).nullable(),
-  "photos": zod.array(zod.string())
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
 })
 
 
@@ -2293,7 +2365,8 @@ export const AnnouncementsControllerFeatureResponse = zod.object({
   "name": zod.string().nullable(),
   "handle": zod.string().nullable()
 }).nullable(),
-  "photos": zod.array(zod.string())
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
 })
 
 
@@ -2345,7 +2418,8 @@ export const AnnouncementsControllerUnfeatureResponse = zod.object({
   "name": zod.string().nullable(),
   "handle": zod.string().nullable()
 }).nullable(),
-  "photos": zod.array(zod.string())
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
 })
 
 
@@ -2397,7 +2471,8 @@ export const AnnouncementsControllerPinResponse = zod.object({
   "name": zod.string().nullable(),
   "handle": zod.string().nullable()
 }).nullable(),
-  "photos": zod.array(zod.string())
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
 })
 
 
@@ -2449,7 +2524,72 @@ export const AnnouncementsControllerUnpinResponse = zod.object({
   "name": zod.string().nullable(),
   "handle": zod.string().nullable()
 }).nullable(),
-  "photos": zod.array(zod.string())
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
+})
+
+
+/**
+ * @summary Remove/reorder attached photos, or retry detached-object cleanup with an unchanged snapshot
+ */
+export const AnnouncementsControllerUpdatePhotosParams = zod.object({
+  "id": zod.string()
+})
+
+export const announcementsControllerUpdatePhotosBodyPhotosMax = 4;
+
+export const announcementsControllerUpdatePhotosBodyExpectedPhotosMax = 4;
+
+
+
+export const AnnouncementsControllerUpdatePhotosBody = zod.object({
+  "photos": zod.array(zod.string()).max(announcementsControllerUpdatePhotosBodyPhotosMax).describe('Desired ordered subset of currently attached active photo URLs'),
+  "expectedPhotos": zod.array(zod.string()).max(announcementsControllerUpdatePhotosBodyExpectedPhotosMax).describe('Original ordered active photo snapshot; stale snapshots return 409')
+})
+
+export const AnnouncementsControllerUpdatePhotosResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "slug": zod.string().describe('Derived from title; not unique alone — decorative, regenerated on title edit'),
+  "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
+  "content": zod.string(),
+  "status": zod.enum(['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SCHEDULED', 'ARCHIVED', 'REJECTED']),
+  "isPinned": zod.boolean(),
+  "featuredAt": zod.iso.datetime({"offset":true}).nullable(),
+  "scheduledFor": zod.iso.datetime({"offset":true}).nullable(),
+  "expiresAt": zod.iso.datetime({"offset":true}).nullable(),
+  "rejectionReason": zod.string().nullable(),
+  "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "updatedAt": zod.iso.datetime({"offset":true}),
+  "lastEditedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "createdBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "reviewedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "publishedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "featuredBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "lastEditedBy": zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullable(),
+  "handle": zod.string().nullable()
+}).nullable(),
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
 })
 
 
@@ -2514,7 +2654,8 @@ export const AnnouncementsControllerConfirmPhotoUploadResponse = zod.object({
   "name": zod.string().nullable(),
   "handle": zod.string().nullable()
 }).nullable(),
-  "photos": zod.array(zod.string())
+  "photos": zod.array(zod.string()),
+  "photoCleanupPending": zod.boolean().describe('Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee')
 })
 
 
@@ -2532,6 +2673,7 @@ export const AnnouncementsPublicControllerGetOneResponse = zod.object({
   "publicId": zod.string().describe('8-char immutable unique id — never regenerated'),
   "content": zod.string(),
   "isPinned": zod.boolean(),
+  "isFeatured": zod.boolean(),
   "publishedAt": zod.iso.datetime({"offset":true}).nullable(),
   "photos": zod.array(zod.string())
 })

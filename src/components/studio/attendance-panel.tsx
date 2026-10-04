@@ -101,7 +101,7 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
   });
 
   const timeOutMutation = useMutation({
-    mutationFn: (rosterId: string) => timeOutStudio({ body: JSON.stringify({ rosterId }) }),
+    mutationFn: (rosterId: string) => timeOutStudio({ rosterId }),
   });
 
   // Stays pending until today's view has refetched, so the banner never

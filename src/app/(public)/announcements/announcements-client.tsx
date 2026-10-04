@@ -6,7 +6,11 @@
  * `src/lib/announcements/list-view.ts` (already unit-tested — reused
  * verbatim, never re-sorted here). Server order is the contract (AC-2).
  */
+import { useEffect, useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { TablePagination } from "@/components/mod/table-pagination";
 import Image from "next/image";
 import { Megaphone, Pin } from "lucide-react";
 import { useAnnouncementsPublicControllerList } from "@/lib/api/endpoints/announcements-public/announcements-public";
@@ -42,12 +46,21 @@ function CoverTile({ announcement, className }: { announcement: AnnouncementPubl
   );
 }
 
+const PAGE_SIZE = 100;
+
 export function AnnouncementsClient() {
+  const [page, setPage] = useState(1);
   const query = useAnnouncementsPublicControllerList(
-    { pageSize: 100 },
-    { query: { retry: false } },
+    { page, pageSize: PAGE_SIZE },
+    { query: { retry: false, placeholderData: keepPreviousData } },
   );
 
+  useEffect(() => {
+    if (!query.data || query.isFetching || query.isError || query.isPlaceholderData) return;
+    const lastPage = Math.max(1, Math.ceil(query.data.total / PAGE_SIZE));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reconcile a removed server page
+    if (page > lastPage) setPage(lastPage);
+  }, [page, query.data, query.isFetching, query.isError, query.isPlaceholderData]);
   const items = query.data?.items ?? [];
   const hero = selectHero(items);
   const rest = restItems(items);
@@ -72,6 +85,7 @@ export function AnnouncementsClient() {
       ) : err ? (
         <section className="wc-container pb-10">
           <PublicGenericError message={err.message} />
+          <Button className="mt-3" data-testid="public-ann-pagination-retry" disabled={query.isFetching} onClick={() => query.refetch()}>Try again</Button>
         </section>
       ) : items.length === 0 ? (
         <section className="wc-container pb-10">
@@ -137,6 +151,19 @@ export function AnnouncementsClient() {
             </div>
           </section>
         </>
+      )}
+      {(query.data?.total ?? 0) > 0 && (
+        <section className="wc-container pb-6" aria-label="Announcement pages" aria-busy={query.isFetching}>
+          <TablePagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={query.data!.total}
+            busy={query.isFetching}
+            onPrev={() => setPage((current) => Math.max(1, current - 1))}
+            onNext={() => setPage((current) => current + 1)}
+            testidPrefix="public-ann-pagination"
+          />
+        </section>
       )}
     </div>
   );

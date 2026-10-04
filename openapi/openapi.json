@@ -1263,7 +1263,8 @@
                     "url",
                     "dj",
                     "episodeId",
-                    "showId"
+                    "showId",
+                    "showName"
                   ],
                   "properties": {
                     "status": {
@@ -1306,6 +1307,10 @@
                       "nullable": true
                     },
                     "showId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "showName": {
                       "type": "string",
                       "nullable": true
                     }
@@ -4959,7 +4964,12 @@
         "type": "object",
         "properties": {
           "episodeId": {
-            "type": "string"
+            "type": "string",
+            "nullable": true,
+            "description": "Null when a continuing crew has not started the next episode"
+          },
+          "continuingCrew": {
+            "type": "boolean"
           },
           "showId": {
             "type": "string",
@@ -4978,6 +4988,7 @@
         },
         "required": [
           "episodeId",
+          "continuingCrew",
           "showId",
           "showName",
           "attendees"

@@ -39,6 +39,7 @@ export interface StreamState {
   episodeId: string | null;
   /** #106: show the active episode belongs to (null when unscheduled / off air). */
   showId: string | null;
+  showName: string | null;
   /** Listener count from socket (null if no socket data yet) */
   listeners: number | null;
   manifestAvailability: ManifestAvailability;
@@ -75,6 +76,8 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const djs: string[] = useMemo(() => rawDjs ?? [], [rawDjs]);
   const episodeId: string | null = manifestReady ? (manifest?.episodeId ?? null) : null;
   const showId: string | null = manifestReady ? (manifest?.showId ?? null) : null;
+
+  const showName = manifestReady ? (manifest?.showName ?? null) : null;
 
   const [phase, setPhase] = useState<PlayerPhase>("idle");
   useEffect(() => {
@@ -305,7 +308,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     const ms = navigator.mediaSession;
 
     ms.metadata = new MediaMetadata({
-      title: status === "LIVE" && djs.length > 0 ? djs[0] : "Wildcat Radio",
+      title: status === "LIVE" ? (showName ?? djs[0] ?? "Wildcat Radio") : "Wildcat Radio",
       artist:
         status === "LIVE"
           ? djs.length > 1
@@ -331,7 +334,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       ms.setActionHandler("pause", null);
       ms.setActionHandler("stop", null);
     };
-  }, [status, djs, isPlaying, play, pause]);
+  }, [status, djs, showName, isPlaying, play, pause]);
 
   // FE#47 — the value object previously had a NEW identity on every provider
   // render, so each 15s manifest poll (and every phase blip) re-rendered every
@@ -344,6 +347,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       djs,
       episodeId,
       showId,
+      showName,
       listeners,
       manifestAvailability,
       isPlaying,
@@ -359,6 +363,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       djs,
       episodeId,
       showId,
+      showName,
       listeners,
       manifestAvailability,
       isPlaying,

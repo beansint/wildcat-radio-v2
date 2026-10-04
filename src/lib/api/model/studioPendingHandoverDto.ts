@@ -8,7 +8,12 @@
 import type { StudioPendingAttendeeDto } from './studioPendingAttendeeDto.ts';
 
 export interface StudioPendingHandoverDto {
-  episodeId: string;
+  /**
+     * Null when a continuing crew has not started the next episode
+     * @nullable
+     */
+  episodeId: string | null;
+  continuingCrew: boolean;
   /** @nullable */
   showId: string | null;
   /** @nullable */

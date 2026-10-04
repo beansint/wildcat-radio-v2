@@ -199,14 +199,15 @@ export default function StudioPage() {
   // answers 400, and polling it every 5s filled the booth console with
   // errors (found by #106 WEB-E-05). Poll only while an episode is open.
   const queueQuery = useQuery({
-    queryKey: ["studio-queue"],
+    queryKey: ["studio-queue", today?.episode?.id ?? null],
     enabled: unlocked && !!today?.episode,
     refetchInterval: 5_000,
     queryFn: () => getStudioQueue(),
   });
 
-  const episodeId = queueQuery.data?.episodeId ?? null;
-  const showName = queueQuery.data?.showName ?? null;
+  const episodeId = unlocked ? (today?.episode?.id ?? null) : null;
+  const queue = episodeId && queueQuery.data?.episodeId === episodeId ? queueQuery.data : undefined;
+  const showName = queue?.showName ?? null;
 
   const addChatMessage = useCallback((message: ChatMessageResponseDto) => {
     setMessages((prev) => {
@@ -216,24 +217,36 @@ export default function StudioPage() {
   }, []);
 
   useEffect(() => {
-    if (!episodeId) return;
     let cancelled = false;
+    // Episode-local console state must never survive a handover or closure.
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      setPolls([]);
+      setHype({ count: 0, trend: "flat" });
+      setPinnedTopicState("");
+      setMessages([]);
+    });
+    if (!episodeId) return () => { cancelled = true; };
     let socket: Socket | null = null;
     let lease: SocketLease<Socket> | null = null;
     let joinEpisode: (() => void) | null = null;
     function onPollUpdated(poll: PollResponseDto) {
+      if (cancelled) return;
       setPolls((prev) => {
         const exists = prev.some((item) => item.id === poll.id);
         return exists ? prev.map((item) => (item.id === poll.id ? poll : item)) : [poll, ...prev];
       });
     }
     function onHypeTick(event: { count: number; trend: string }) {
+      if (cancelled) return;
       setHype(event);
     }
     function onTopicPinned(event: { text: string }) {
+      if (cancelled) return;
       setPinnedTopicState(event.text);
     }
     function onChatNew(event: ChatMessageResponseDto) {
+      if (cancelled) return;
       addChatMessage(event);
     }
     acquireSocket()
@@ -440,7 +453,7 @@ export default function StudioPage() {
             <div className="mb-3 flex items-center gap-2">
               <Inbox className="h-5 w-5 text-gold" aria-hidden="true" />
               <h2 className="font-extrabold">Inbox</h2>
-              <span className="wc-chip text-[.7rem] py-0.5">{queueQuery.data?.items.length ?? 0}</span>
+              <span className="wc-chip text-[.7rem] py-0.5">{queue?.items.length ?? 0}</span>
               <span className="ml-auto text-xs wc-muted">
                 Decline is silent · receipts only on positive outcomes
               </span>
@@ -456,8 +469,8 @@ export default function StudioPage() {
             <div className="wc-stack" data-testid="studio-queue">
               {queueQuery.isLoading ? (
                 <div className="text-sm wc-muted">Loading queue…</div>
-              ) : queueQuery.data?.items.length ? (
-                queueQuery.data.items.map((item) => {
+              ) : queue?.items.length ? (
+                queue.items.map((item) => {
                   const meta = TYPE_META[item.type];
                   const Icon = meta.icon;
                   return (

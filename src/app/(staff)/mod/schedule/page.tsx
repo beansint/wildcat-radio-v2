@@ -9,7 +9,7 @@
  * `mod-schedule-cell` opens the show for editing; an empty cell opens the
  * add dialog prefilled with that day + time slot.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useListShowsAdmin, getListShowsAdminQueryKey } from "@/lib/api/endpoints/shows/shows";
@@ -39,6 +39,8 @@ type DialogState =
 
 export default function SchedulePage() {
   const queryClient = useQueryClient();
+  const returnFocusRef = useRef<HTMLButtonElement | null>(null);
+  const addShowRef = useRef<HTMLButtonElement | null>(null);
   const [dialogState, setDialogState] = useState<DialogState>({ mode: "closed" });
 
   const showsQuery = useListShowsAdmin<ShowDto[]>();
@@ -60,8 +62,16 @@ export default function SchedulePage() {
     return toDaypartGrid(buildScheduleFromShows(sourceShows));
   }, [shows]);
 
+  const conflicts = useMemo(() => WEEKDAYS.flatMap(day => {
+    const cells = grid.rows.map(row => row.cells[day]).filter(cell => cell !== null);
+    return cells.flatMap((cell, index) => cells.slice(index + 1)
+      .filter(other => cell.start < other.end && other.start < cell.end)
+      .map(other => `${DAY_HEADER[day]}: ${cell.name} and ${other.name}`));
+  }), [grid]);
+
   function invalidate() {
-    queryClient.invalidateQueries({ queryKey: getListShowsAdminQueryKey() });
+    void queryClient.invalidateQueries({ queryKey: getListShowsAdminQueryKey() });
+    void queryClient.invalidateQueries({ predicate: query => query.queryKey.some(key => typeof key === "string" && (key.includes("/schedule") || key.includes("/occurrences") || key.includes("/studio/today"))) });
   }
 
   return (
@@ -74,12 +84,19 @@ export default function SchedulePage() {
             audit-logged.
           </p>
         </div>
-        <Button data-testid="mod-schedule-add" onClick={() => setDialogState({ mode: "create" })}>
+        <Button ref={addShowRef} data-testid="mod-schedule-add" onClick={(event) => { returnFocusRef.current = event.currentTarget; setDialogState({ mode: "create" }); }}>
           <Plus className="w-4 h-4" aria-hidden="true" />
           Add show
         </Button>
       </header>
 
+      {conflicts.length > 0 && (
+        <div role="status" className="wc-card wc-card-pad mb-4">
+          <p className="font-bold">Schedule overlaps need attention</p>
+          <p className="text-sm wc-muted">Edit these shows to use separate slots. A show may start exactly when another ends.</p>
+          <ul className="mt-2 text-sm list-disc pl-5">{conflicts.map(conflict => <li key={conflict}>{conflict}</li>)}</ul>
+        </div>
+      )}
       <OccurrencesPanel />
 
       <div className="wc-card overflow-hidden">
@@ -114,9 +131,10 @@ export default function SchedulePage() {
                               className="w-full h-full py-3"
                               data-testid="mod-schedule-cell"
                               aria-label={`Add a show ${DAY_HEADER[day]} ${row.label}`}
-                              onClick={() =>
-                                setDialogState({ mode: "create", day, start: row.start, end: row.end })
-                              }
+                              onClick={(event) => {
+                                returnFocusRef.current = event.currentTarget;
+                                setDialogState({ mode: "create", day, start: row.start, end: row.end });
+                              }}
                             >
                               —
                             </button>
@@ -130,7 +148,7 @@ export default function SchedulePage() {
                             type="button"
                             className="block w-full text-left cursor-pointer hover:text-gold px-[.85rem] py-[.72rem]"
                             data-testid="mod-schedule-cell"
-                            onClick={() => showEntity && setDialogState({ mode: "edit", show: showEntity })}
+                            onClick={(event) => { returnFocusRef.current = event.currentTarget; if (showEntity) setDialogState({ mode: "edit", show: showEntity }); }}
                           >
                             <span className="font-bold">{cell.name}</span>
                             {showEntity?.hiatusFrom && (
@@ -166,6 +184,11 @@ export default function SchedulePage() {
           prefillDay={dialogState.mode === "create" ? dialogState.day : undefined}
           prefillStart={dialogState.mode === "create" ? dialogState.start : undefined}
           prefillEnd={dialogState.mode === "create" ? dialogState.end : undefined}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            const target = returnFocusRef.current;
+            (target?.isConnected ? target : addShowRef.current)?.focus();
+          }}
           onOpenChange={(open) => {
             if (!open) setDialogState({ mode: "closed" });
           }}

@@ -37,6 +37,7 @@ export const Stage = memo(function Stage({
     play,
     pause,
     djs,
+    showName,
     listeners,
     status,
     manifestUrl,
@@ -103,7 +104,7 @@ export const Stage = memo(function Stage({
           <div className="wc-art rounded-2xl w-24 h-24 md:w-28 md:h-28 flex-none shadow-lg" role="img" aria-label="Show art" />
           <div className="min-w-0">
             <h1 className="text-2xl md:text-[1.75rem] font-extrabold leading-tight truncate">
-              {headline}
+              {status === "LIVE" ? (showName ?? headline) : headline}
             </h1>
             <div className="text-white/75 text-sm mt-1">{description}</div>
             {status === "LIVE" && djs.length > 0 && (

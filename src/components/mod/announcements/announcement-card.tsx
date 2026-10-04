@@ -95,8 +95,8 @@ export function AnnouncementCard({
     <article
       className="wc-card wc-card-pad"
       data-testid="mod-ann-row"
-      onClick={canEdit ? onEdit : undefined}
-      style={canEdit ? { cursor: "pointer" } : undefined}
+      onClick={canEdit && !busy ? onEdit : undefined}
+      style={canEdit && !busy ? { cursor: "pointer" } : undefined}
     >
       <div className="flex flex-wrap items-center gap-2">
         <StatusPill variant={statusVariant(status)}>{statusLabel(status)}</StatusPill>

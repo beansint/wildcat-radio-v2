@@ -17,6 +17,7 @@ export interface TablePaginationProps {
   page: number;
   pageSize: number;
   total: number;
+  busy?: boolean;
   onPrev: () => void;
   onNext: () => void;
   /** Base testid; buttons get `${testidPrefix}-prev` / `${testidPrefix}-next`. */
@@ -28,6 +29,7 @@ export function TablePagination({
   page,
   pageSize,
   total,
+  busy = false,
   onPrev,
   onNext,
   testidPrefix,
@@ -45,7 +47,7 @@ export function TablePagination({
           variant="outline"
           size="sm"
           data-testid={`${testidPrefix}-prev`}
-          disabled={!hasPrev}
+          disabled={!hasPrev || busy}
           onClick={onPrev}
         >
           Prev
@@ -54,7 +56,7 @@ export function TablePagination({
           variant="outline"
           size="sm"
           data-testid={`${testidPrefix}-next`}
-          disabled={!hasNext}
+          disabled={!hasNext || busy}
           onClick={onNext}
         >
           Next

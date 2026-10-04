@@ -47,6 +47,7 @@ import {
   announcementsControllerRequestPhotoUpload,
   announcementsControllerConfirmPhotoUpload,
 } from "@/lib/api/endpoints/announcements/announcements";
+import { useSession } from "@/lib/auth/client";
 import { useListSettingsAdmin } from "@/lib/api/endpoints/settings/settings";
 import type { AnnouncementStaffDto, AnnouncementStaffPageDto, SettingDto } from "@/lib/api/model";
 import { getApiErrorMessage } from "@/lib/api/error-message";
@@ -71,6 +72,7 @@ const DEFAULT_PIN_LIMIT = 2;
 
 export default function AnnouncementsPage() {
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
   // Default to "all": the e2e golden paths never switch tabs while driving a
   // single row through draft -> pending -> published (etc.) and expect that
   // one `mod-ann-row` locator to stay visible and update in place the whole
@@ -276,6 +278,7 @@ export default function AnnouncementsPage() {
             <AnnouncementCard
               key={announcement.id}
               announcement={announcement}
+              actorId={session?.user.id}
               pinnedCount={pinnedCount}
               pinLimit={pinLimit}
               busy={transitionMutation.isPending || listQuery.isFetching}

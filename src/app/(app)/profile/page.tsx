@@ -30,6 +30,7 @@ import { useSession, signOut, type SessionUser } from '@/lib/auth/client';
 import { customFetch } from '@/lib/api/fetcher';
 import {
   useUsersControllerGetMe,
+  usersControllerUpdateMe,
   getUsersControllerGetMeQueryKey,
 } from '@/lib/api/endpoints/users/users';
 import { Button } from '@/components/ui/button';
@@ -45,22 +46,6 @@ import {
 } from '@/components/ui/select';
 
 /* ------------------------------------------------------------------ types */
-
-interface UserProfile {
-  id: string;
-  email: string;
-  handle?: string;
-  name?: string;
-  avatarUrl?: string;
-  class?: string;
-  role?: string;
-  emailVerified: boolean;
-  notifyEmail?: boolean;
-  notifyInApp?: boolean;
-  yearLevel?: number;
-  college?: string;
-  gender?: string;
-}
 
 type AgeBucket = '18-20' | '21-23' | '24+' | 'prefer-not-to-say';
 type Gender    = 'Woman' | 'Man' | 'Non-binary' | 'Prefer not to say';
@@ -92,10 +77,10 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
 
   // Fetch the full user profile (editable projection)
-  const { data: rawProfile, isLoading } = useUsersControllerGetMe();
-  const profile = rawProfile as UserProfile | undefined;
+  const { data: profile, isLoading, isError, error, refetch } = useUsersControllerGetMe({ query: { retry: false } });
 
   /* ---- about-you form state ---- */
+  const [hydratedId, setHydratedId] = useState<string | null>(null);
   const [yearLevel, setYearLevel] = useState<string>('');
   const [college,   setCollege]   = useState<string>('');
   const [ageBucket, setAgeBucket] = useState<AgeBucket | ''>('');
@@ -103,8 +88,8 @@ export default function ProfilePage() {
   const [consent,   setConsent]   = useState(false);
 
   /* ---- notifications state ---- */
-  const [notifyEmail, setNotifyEmail] = useState(true);
   const [notifyInApp, setNotifyInApp] = useState(true);
+  const [notificationSaved, setNotificationSaved] = useState(false);
 
   /* ---- save state ---- */
   const [saving,          setSaving]          = useState(false);
@@ -116,12 +101,13 @@ export default function ProfilePage() {
   // Hydrate form from profile on load (valid one-shot sync from server state — not cascading)
   useEffect(() => {
     if (!profile) return;
+    // Mount controlled selects only after persisted values have been hydrated.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- valid form hydration from server state
-    if (profile.yearLevel) setYearLevel(String(profile.yearLevel));
-    if (profile.college)   setCollege(profile.college);
-    if (profile.gender)    setGender(profile.gender as Gender);
-    setNotifyEmail(profile.notifyEmail ?? true);
-    setNotifyInApp(profile.notifyInApp ?? true);
+    setYearLevel(profile.yearLevel ?? '');
+    setCollege(profile.college ?? '');
+    setGender((profile.gender ?? '') as Gender | '');
+    setNotifyInApp(profile.notifyInApp);
+    setHydratedId(profile.id);
   }, [profile]);
 
   const isCampus = (profile?.class ?? sessionUser?.class) === 'CAMPUS';
@@ -133,15 +119,10 @@ export default function ProfilePage() {
 
     try {
       // 1. PATCH /users/me
-      await customFetch('/api/users/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          ...(yearLevel ? { yearLevel: parseInt(yearLevel) } : {}),
-          ...(college   ? { college }                        : {}),
-          ...(gender    ? { gender }                         : {}),
-          notifyEmail,
-          notifyInApp,
-        }),
+      await usersControllerUpdateMe({
+        yearLevel: yearLevel ? Number(yearLevel) : null,
+        college: college || null,
+        gender: gender || null,
       });
 
       // 2. POST consent (if checked)
@@ -176,12 +157,12 @@ export default function ProfilePage() {
   }
 
   async function handleNotifSave() {
+    setSaveError(null);
+    setNotificationSaved(false);
     setSaving(true);
     try {
-      await customFetch('/api/users/me', {
-        method: 'PATCH',
-        body: JSON.stringify({ notifyEmail, notifyInApp }),
-      });
+      await usersControllerUpdateMe({ notifyInApp });
+      setNotificationSaved(true);
       await queryClient.invalidateQueries({ queryKey: getUsersControllerGetMeQueryKey() });
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Save failed.');
@@ -215,7 +196,19 @@ export default function ProfilePage() {
   const handle = profile?.handle ?? sessionUser?.handle ?? sessionUser?.name ?? '—';
   const userClass = (profile?.class ?? sessionUser?.class ?? 'GUEST') as string;
 
-  if (isLoading) {
+  if (isError || (!isLoading && !profile)) {
+    return (
+      <main className="wc-container py-6">
+        <div role="alert" className="wc-card wc-card-pad">
+          <p>Could not load your profile.</p>
+          <p>{error instanceof Error ? error.message : 'Please try again.'}</p>
+          <Button className="mt-3" onClick={() => refetch()}>Try again</Button>
+        </div>
+      </main>
+    );
+  }
+
+  if (isLoading || hydratedId !== profile?.id) {
     return (
       <main className="wc-container py-6" style={{ background: 'var(--muted)' }}>
         <div className="h-8 w-48 rounded-full bg-muted animate-pulse mb-4" />
@@ -412,40 +405,21 @@ export default function ProfilePage() {
         <div className="wc-stack">
           <label className="flex items-center justify-between gap-3">
             <span className="min-w-0">
-              <span className="font-semibold block">Queued-request emails</span>
-              <span className="wc-help mt-0 block">Email me when a DJ queues my song request.</span>
-            </span>
-            <Switch
-              checked={notifyEmail}
-              onCheckedChange={(v) => setNotifyEmail(v)}
-              aria-label="Queued-request emails"
-              data-testid="notif-email"
-            />
-          </label>
-          <label className="flex items-center justify-between gap-3">
-            <span className="min-w-0">
-              <span className="font-semibold block">On-air receipt emails</span>
-              <span className="wc-help mt-0 block">Email me when my dedication or request airs.</span>
+              <span className="font-semibold block">In-app receipts</span>
+              <span className="wc-help mt-0 block">Show updates when a DJ queues or airs my request or dedication.</span>
             </span>
             <Switch
               checked={notifyInApp}
-              onCheckedChange={(v) => setNotifyInApp(v)}
-              aria-label="On-air receipt emails"
+              onCheckedChange={(v) => { setNotifyInApp(v); setNotificationSaved(false); }}
+              aria-label="In-app receipts"
               data-testid="notif-inapp"
             />
-          </label>
-          <label className="flex items-center justify-between gap-3">
-            <span className="min-w-0">
-              <span className="font-semibold block">Announcement pushes</span>
-              <span className="wc-help mt-0 block">Push notifications for station news &amp; events.</span>
-            </span>
-            {/* Local TODO — no backend field yet */}
-            <Switch disabled aria-label="Announcement pushes" />
           </label>
         </div>
         <Button
           type="button"
           variant="default"
+          data-testid="profile-notification-save"
           onClick={handleNotifSave}
           disabled={saving}
           className="mt-4"
@@ -454,6 +428,8 @@ export default function ProfilePage() {
           Save
         </Button>
       </div>
+
+      {notificationSaved && <p role="status" data-testid="profile-notification-saved" className="mb-4">Notification preferences saved.</p>}
 
       {/* ── QUICK LINKS ── */}
       <div className="wc-card divide-y">

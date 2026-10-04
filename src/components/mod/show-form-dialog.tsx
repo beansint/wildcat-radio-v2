@@ -136,6 +136,7 @@ function cadenceFromForm(values: FormValues): Cadence {
 }
 
 interface ShowFormDialogProps {
+  onCloseAutoFocus?: (event: Event) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   show?: ShowDto | null;
@@ -150,6 +151,7 @@ interface ShowFormDialogProps {
 
 export function ShowFormDialog({
   open,
+  onCloseAutoFocus,
   onOpenChange,
   show,
   roster,
@@ -292,7 +294,7 @@ export function ShowFormDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
+        <DialogContent onCloseAutoFocus={onCloseAutoFocus}>
           <DialogHeader>
             <DialogTitle>{isEdit ? "Edit show" : "Add show"}</DialogTitle>
           </DialogHeader>

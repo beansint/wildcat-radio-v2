@@ -85,7 +85,7 @@ export function EscalationDecisionDialog({
   const resolveAppealMutation = useMutation({
     mutationFn: (status: AppealDtoStatus) =>
       moderationControllerResolveAppeal(target.item.id, {
-        body: JSON.stringify({ status, writtenResponse: response.trim() }),
+        status: status as Exclude<AppealDtoStatus, "OPEN">, writtenResponse: response.trim(),
       }),
     onSuccess: () => {
       invalidate();

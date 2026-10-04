@@ -55,10 +55,8 @@ export interface ScheduleDto {
 
 export interface DaypartRow {
   /**
-   * Unique row identity — the exact `start`-`end` (including minutes), e.g.
-   * "13:00-13:30". Use this for React `key`s. `label` is display-only and
-   * formats hours alone, so two slots sharing a start/end hour but differing
-   * in minutes (e.g. 1:00–4:00 PM and 1:30–4:00 PM) collide on `label`.
+   * Exact clock window plus an overflow index. Legacy duplicate shows get
+   * separate rows instead of silently disappearing.
    */
   key: string;
   /** e.g. "1–4 PM" */
@@ -114,13 +112,15 @@ export function toDaypartGrid(schedule: ScheduleDto): DaypartGrid {
 
   const slots = [...slotMap.values()].sort((a, b) => a.start.localeCompare(b.start));
 
-  const rows: DaypartRow[] = slots.map(({ start, end }) => {
-    const cells = {} as Record<Weekday, ScheduleShowCell | null>;
-    for (const weekday of WEEKDAYS) {
-      const dayRow = schedule.days.find((d) => d.day === weekday);
-      cells[weekday] = dayRow?.shows.find((s) => s.start === start && s.end === end) ?? null;
-    }
-    return { key: `${start}-${end}`, label: daypartLabel(start, end), start, end, cells };
+  const rows: DaypartRow[] = slots.flatMap(({ start, end }) => {
+    const matches = Object.fromEntries(WEEKDAYS.map(day => [day,
+      schedule.days.find(d => d.day === day)?.shows.filter(s => s.start === start && s.end === end) ?? [],
+    ])) as Record<Weekday, ScheduleShowCell[]>;
+    const count = Math.max(...WEEKDAYS.map(day => matches[day].length));
+    return Array.from({ length: count }, (_, index) => ({
+      key: `${start}-${end}:${index}`, label: clockRangeLabel(start, end), start, end,
+      cells: Object.fromEntries(WEEKDAYS.map(day => [day, matches[day][index] ?? null])) as Record<Weekday, ScheduleShowCell | null>,
+    }));
   });
 
   return { rows };
@@ -131,36 +131,23 @@ export type DayItem =
   | { type: "gap"; start: string; end: string };
 
 /**
- * Per-day list for the public `/schedule` mobile card view: walks a day's
- * dayparts in time order and merges consecutive empty slots into a single
- * "Music rotation" gap card (prototype `schedule.html` mobile panels show
- * one merged "10 AM–2 PM · Music rotation" card, not three separate blanks).
+ * Per-day mobile list. Rotation fills actual uncovered time between shows,
+ * bounded by the grid's earliest start and latest end. Overlapping legacy
+ * shows remain visible and never create a gap inside another show.
  */
 export function buildDayItems(grid: DaypartGrid, day: Weekday): DayItem[] {
+  if (!grid.rows.length) return [];
+  const cells = grid.rows.map(row => row.cells[day]).filter((cell): cell is ScheduleShowCell => !!cell)
+    .sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
   const items: DayItem[] = [];
-  let gapStart: string | null = null;
-  let gapEnd: string | null = null;
-
-  function flushGap() {
-    if (gapStart !== null && gapEnd !== null) {
-      items.push({ type: "gap", start: gapStart, end: gapEnd });
-    }
-    gapStart = null;
-    gapEnd = null;
+  let cursor = grid.rows.reduce((min, row) => row.start < min ? row.start : min, grid.rows[0].start);
+  const end = grid.rows.reduce((max, row) => row.end > max ? row.end : max, grid.rows[0].end);
+  for (const cell of cells) {
+    if (cursor < cell.start) items.push({ type: "gap", start: cursor, end: cell.start });
+    items.push({ type: "show", cell });
+    if (cell.end > cursor) cursor = cell.end;
   }
-
-  for (const row of grid.rows) {
-    const cell = row.cells[day];
-    if (cell) {
-      flushGap();
-      items.push({ type: "show", cell });
-    } else {
-      if (gapStart === null) gapStart = row.start;
-      gapEnd = row.end;
-    }
-  }
-  flushGap();
-
+  if (cursor < end) items.push({ type: "gap", start: cursor, end });
   return items;
 }
 

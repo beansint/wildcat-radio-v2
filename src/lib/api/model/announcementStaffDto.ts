@@ -43,4 +43,6 @@ export interface AnnouncementStaffDto {
   /** @nullable */
   lastEditedBy: ResolvedActorDto | null;
   photos: string[];
+  /** Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee */
+  photoCleanupPending: boolean;
 }

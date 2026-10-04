@@ -286,7 +286,8 @@ test('PUB-I-02: landing sections are live (featured, most requested, shows grid)
 
   await page.goto(`${WEB_BASE}/`);
   await expect(page.getByText(pinnedPublished.title as string)).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText(show.name)).toBeVisible({ timeout: 10_000 });
+  const showsGrid = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Shows', exact: true }) });
+  await expect(showsGrid.getByText(show.name, { exact: true })).toBeVisible({ timeout: 10_000 });
 
   guard.assertClean();
 });
@@ -491,12 +492,12 @@ test('FE#44: show detail hero has the CTA row, hosted-by byline, and cadence/air
   await expect(main.locator(`a[href="/djs/${activeDjA.id}"]`).first()).toBeVisible();
 
   // cadence/airtime chips — the fixture show is created with a WEEKLY
-  // Mon/Wed/Fri 13:00-16:00 cadence (`createShow` in `_fixtures.ts`), which
+  // Mon/Wed/Fri 03:00-04:00 cadence (`createShow` in `_fixtures.ts`), which
   // the backend's `formatCadence` renders as "Airs Mon, Wed, Fri" (not a
-  // contiguous run) and "1:00–4:00 PM" — assert those exact labels rather
+  // contiguous run) and "3:00–4:00 AM" — assert those exact labels rather
   // than just presence, so a formatting regression on either side shows up.
   await expect(main.getByText('Airs Mon, Wed, Fri')).toBeVisible();
-  await expect(main.getByText('1:00–4:00 PM')).toBeVisible();
+  await expect(main.getByText('3:00–4:00 AM')).toBeVisible();
 });
 
 test('PUB-E-04: DJs index lists only active DJs; inactive DJ id 404s directly', async ({ page }) => {

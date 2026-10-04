@@ -1,0 +1,5 @@
+# Verification evidence
+
+Depends on reviewed backendPR148 (#135) author predicate and explicit403 envelope. Cards compare current session ID to existing staff createdBy.id for enabled publish/schedule actions; eligible DRAFT/PENDING_REVIEW/REJECTED states remain compatible, non-creators get explanation and collaborative editing remains available. Backend stays authoritative. Real local API/Postgres browser baseline2cases reproduced nonauthorenabledbuttons; final3cases passed twice for moderator/custodian own+foreign notices in all3eligible states, keyboard dialog/cancel focus, and controlled local ownership change after dialog opened causing actualbackend403 with truthfulauthor text and unchangedDRAFT. Simulatedownershipchange is a fixture, not an authortransfer product endpoint. Added403-vs409 classification regression; full lint/types279unit tests passed (4existingwarnings). Fixtures archived/ownershiprestored. No sharedDB/deployment.
+
+Independent review: pending after draft PR creation. No deployment or physical-device proof.

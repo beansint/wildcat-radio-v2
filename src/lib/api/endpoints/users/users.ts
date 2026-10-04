@@ -23,7 +23,9 @@ import type {
 import type {
   ChangeRoleResultDto,
   ForceRenameResultDto,
+  MeDto,
   MeStandingDto,
+  UpdateMeDto,
   UserSearchResultDto,
   UserStrikeDto,
   UsersControllerSearchUsersParams
@@ -47,9 +49,9 @@ export const getUsersControllerGetMeUrl = () => {
 /**
  * @summary Get current user profile
  */
-export const usersControllerGetMe = async ( options?: RequestInit): Promise<void> => {
+export const usersControllerGetMe = async ( options?: RequestInit): Promise<MeDto> => {
 
-  return customFetch<void>(getUsersControllerGetMeUrl(),
+  return customFetch<MeDto>(getUsersControllerGetMeUrl(),
   {
     ...options,
     method: 'GET'
@@ -147,14 +149,14 @@ export const getUsersControllerUpdateMeUrl = () => {
 /**
  * @summary Update current user profile
  */
-export const usersControllerUpdateMe = async ( options?: RequestInit): Promise<void> => {
+export const usersControllerUpdateMe = async (updateMeDto: UpdateMeDto, options?: RequestInit): Promise<MeDto> => {
 
-  return customFetch<void>(getUsersControllerUpdateMeUrl(),
+  return customFetch<MeDto>(getUsersControllerUpdateMeUrl(),
   {
     ...options,
-    method: 'PATCH'
-
-
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateMeDto)
   }
 );}
 
@@ -162,23 +164,23 @@ export const usersControllerUpdateMe = async ( options?: RequestInit): Promise<v
 
 
 
-export const getUsersControllerUpdateMeQueryKey = () => {
+export const getUsersControllerUpdateMeQueryKey = (updateMeDto?: UpdateMeDto,) => {
     return [
-    'PATCH', `/api/users/me`
+    'PATCH', `/api/users/me`, updateMeDto
     ] as const;
     }
 
 
-export const getUsersControllerUpdateMeQueryOptions = <TData = Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getUsersControllerUpdateMeQueryOptions = <TData = Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError = unknown>(updateMeDto: UpdateMeDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getUsersControllerUpdateMeQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getUsersControllerUpdateMeQueryKey(updateMeDto);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof usersControllerUpdateMe>>> = ({ signal }) => usersControllerUpdateMe({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof usersControllerUpdateMe>>> = ({ signal }) => usersControllerUpdateMe(updateMeDto, { signal, ...requestOptions });
 
 
 
@@ -192,7 +194,7 @@ export type UsersControllerUpdateMeQueryError = unknown
 
 
 export function useUsersControllerUpdateMe<TData = Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError, TData>> & Pick<
+ updateMeDto: UpdateMeDto, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof usersControllerUpdateMe>>,
           TError,
@@ -202,7 +204,7 @@ export function useUsersControllerUpdateMe<TData = Awaited<ReturnType<typeof use
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useUsersControllerUpdateMe<TData = Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError, TData>> & Pick<
+ updateMeDto: UpdateMeDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof usersControllerUpdateMe>>,
           TError,
@@ -212,7 +214,7 @@ export function useUsersControllerUpdateMe<TData = Awaited<ReturnType<typeof use
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useUsersControllerUpdateMe<TData = Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ updateMeDto: UpdateMeDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -220,11 +222,11 @@ export function useUsersControllerUpdateMe<TData = Awaited<ReturnType<typeof use
  */
 
 export function useUsersControllerUpdateMe<TData = Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ updateMeDto: UpdateMeDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof usersControllerUpdateMe>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getUsersControllerUpdateMeQueryOptions(options)
+  const queryOptions = getUsersControllerUpdateMeQueryOptions(updateMeDto,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

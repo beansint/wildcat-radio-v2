@@ -31,7 +31,6 @@ import {
   toDaypartGrid,
   buildDayItems,
   clockRangeLabel,
-  daypartLabel,
   PUBLIC_WEEKDAYS,
   type ScheduleDto,
   type ScheduleShowCell,
@@ -99,7 +98,7 @@ function ShowCard({ cell, live, mark }: { cell: ScheduleShowCell; live: boolean;
         </div>
         <div className="text-sm wc-muted truncate">
           {(cell.roster.join(", ") || "—") + " · "}
-          <span className="tnum">{daypartLabel(cell.start, cell.end)}</span>
+          <span className="tnum">{clockRangeLabel(cell.start, cell.end)}</span>
         </div>
       </div>
     </div>
@@ -117,7 +116,7 @@ function ShowCard({ cell, live, mark }: { cell: ScheduleShowCell; live: boolean;
 }
 
 export function ScheduleClient() {
-  const scheduleQuery = useGetWeeklySchedule<ScheduleDto>();
+  const scheduleQuery = useGetWeeklySchedule<ScheduleDto>({ query: { refetchInterval: 60_000 } });
   const schedule = scheduleQuery.data;
   const grid = schedule ? toDaypartGrid(schedule) : null;
 
@@ -210,7 +209,7 @@ export function ScheduleClient() {
                                   </div>
                                   <div className="text-xs wc-muted">
                                     {cell.roster.join(", ") || "—"} ·{" "}
-                                    <span className="tnum">{daypartLabel(cell.start, cell.end)}</span>
+                                    <span className="tnum">{clockRangeLabel(cell.start, cell.end)}</span>
                                   </div>
                                 </Link>
                               ) : (
@@ -218,7 +217,7 @@ export function ScheduleClient() {
                                   <div className="font-bold text-sm leading-tight">{cell.name}</div>
                                   <div className="text-xs wc-muted">
                                     {cell.roster.join(", ") || "—"} ·{" "}
-                                    <span className="tnum">{daypartLabel(cell.start, cell.end)}</span>
+                                    <span className="tnum">{clockRangeLabel(cell.start, cell.end)}</span>
                                   </div>
                                 </div>
                               )
@@ -272,7 +271,7 @@ export function ScheduleClient() {
                       key={`gap-${item.start}-${item.end}`}
                       className="wc-card wc-card-pad bg-muted text-sm wc-muted"
                     >
-                      <span className="tnum">{daypartLabel(item.start, item.end)}</span> · Music rotation
+                      <span className="tnum">{clockRangeLabel(item.start, item.end)}</span> · Music rotation
                     </div>
                   ),
                 )

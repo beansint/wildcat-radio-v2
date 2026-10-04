@@ -151,7 +151,7 @@ export const getGetHealthDbQueryKey = () => {
     }
 
 
-export const getGetHealthDbQueryOptions = <TData = Awaited<ReturnType<typeof getHealthDb>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getHealthDb>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetHealthDbQueryOptions = <TData = Awaited<ReturnType<typeof getHealthDb>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getHealthDb>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -170,10 +170,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetHealthDbQueryResult = NonNullable<Awaited<ReturnType<typeof getHealthDb>>>
-export type GetHealthDbQueryError = unknown
+export type GetHealthDbQueryError = void
 
 
-export function useGetHealthDb<TData = Awaited<ReturnType<typeof getHealthDb>>, TError = unknown>(
+export function useGetHealthDb<TData = Awaited<ReturnType<typeof getHealthDb>>, TError = void>(
   options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getHealthDb>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getHealthDb>>,
@@ -183,7 +183,7 @@ export function useGetHealthDb<TData = Awaited<ReturnType<typeof getHealthDb>>, 
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetHealthDb<TData = Awaited<ReturnType<typeof getHealthDb>>, TError = unknown>(
+export function useGetHealthDb<TData = Awaited<ReturnType<typeof getHealthDb>>, TError = void>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getHealthDb>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getHealthDb>>,
@@ -193,12 +193,12 @@ export function useGetHealthDb<TData = Awaited<ReturnType<typeof getHealthDb>>, 
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetHealthDb<TData = Awaited<ReturnType<typeof getHealthDb>>, TError = unknown>(
+export function useGetHealthDb<TData = Awaited<ReturnType<typeof getHealthDb>>, TError = void>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getHealthDb>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useGetHealthDb<TData = Awaited<ReturnType<typeof getHealthDb>>, TError = unknown>(
+export function useGetHealthDb<TData = Awaited<ReturnType<typeof getHealthDb>>, TError = void>(
   options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getHealthDb>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

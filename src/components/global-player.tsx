@@ -43,6 +43,7 @@ export const GlobalPlayer = memo(function GlobalPlayer() {
   const {
     status,
     djs,
+    showName,
     listeners,
     manifestAvailability,
     isPlaying,
@@ -89,7 +90,7 @@ export const GlobalPlayer = memo(function GlobalPlayer() {
   const isListenPage = pathname === "/listen";
 
   const showTitle =
-    status === "LIVE" && djs.length > 0 ? djs[0] : "Wildcat Radio";
+    status === "LIVE" ? (showName ?? djs[0] ?? "Wildcat Radio") : "Wildcat Radio";
 
   const showSub =
     manifestAvailability === "loading"
@@ -155,7 +156,8 @@ export const GlobalPlayer = memo(function GlobalPlayer() {
     mutationFn: (emoji: CreateReactionDtoEmoji) =>
       react(episodeId as string, { emoji }),
   });
-  const canReact = status === "LIVE" && !!episodeId;
+  const isLive = manifestAvailability === "ready" && status === "LIVE";
+  const canReact = isLive && !!episodeId;
 
   /* One definition, rendered either bare or wrapped in the /listen link —
      previously this markup was duplicated in full across both branches. */
@@ -165,7 +167,7 @@ export const GlobalPlayer = memo(function GlobalPlayer() {
       <div className="meta">
         <div className="title flex items-center gap-1.5">
           <span data-testid="now-playing">{showTitle}</span>
-          {status === "LIVE" && (
+          {isLive && (
             <span
               className="wc-badge-live"
               style={{ fontSize: ".55rem", padding: ".1rem .4rem", lineHeight: 1.4 }}
@@ -240,12 +242,12 @@ export const GlobalPlayer = memo(function GlobalPlayer() {
           {isListenPage ? (
             <div className="wc-player-mini-art">
               <div className="wc-art cover" />
-              {status === "LIVE" && <span className="wc-player-mini-live" aria-hidden="true" />}
+              {isLive && <span className="wc-player-mini-live" aria-hidden="true" />}
             </div>
           ) : (
             <Link href="/listen" aria-label={`Open the live listening room — ${showTitle}`} className="wc-player-mini-art">
               <div className="wc-art cover" />
-              {status === "LIVE" && <span className="wc-player-mini-live" aria-hidden="true" />}
+              {isLive && <span className="wc-player-mini-live" aria-hidden="true" />}
             </Link>
           )}
           {isPlaying && (
@@ -296,7 +298,7 @@ export const GlobalPlayer = memo(function GlobalPlayer() {
             {/* Up next — only exists while listening, because the queue arrives over
                 the socket that only listening opens (see useStreamPresence). Absent
                 rather than stale when idle. */}
-            {status === "LIVE" && upNext && (
+            {isLive && upNext && (
               <span className="wc-player-upnext" data-testid="player-upnext">
                 <span className="label">Up next</span>
                 <span className="text">{upNext.text}</span>

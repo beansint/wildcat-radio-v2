@@ -83,3 +83,25 @@ test('AC-4: anonymous report requires sign-in and never submits a complaint', as
   await expect(dialog.getByRole('button',{name:'Send report',exact:true})).toHaveCount(0);
   await page.keyboard.press('Escape'); await expect(opener).toBeFocused();
 });
+
+test('AC-5: a legal long-word quote remains usable and escaped on mobile', async ({ page }) => {
+  const text = 'x'.repeat(880) + ' <img src=x onerror=alert(1)>';
+  const longId = `${prefix}_long`;
+  const unknownId = `${prefix}_unknown`;
+  execBackendTsx(`import { PrismaService } from './src/prisma/prisma.service'; const p=new PrismaService(); async function main(){await p.chatMessage.createMany({data:${JSON.stringify([{id:longId,episodeId,userId:authorId,content:text},{id:unknownId,episodeId,content:'No attributable listener'}])}});await p.$disconnect();}main().catch(e=>{console.error(e);process.exit(1)});`);
+  try {
+    await page.setViewportSize({width:375,height:812});
+    await loginAs(page,'listener'); await page.goto('/listen');
+    const unknown=page.getByTestId('chat-report-message').filter({hasText:'No attributable listener'});
+    await expect(unknown).toBeVisible(); await expect(unknown.getByRole('button',{name:'Report message',exact:true})).toHaveCount(0);
+    await page.getByTestId('chat-report-message').filter({hasText:text}).getByRole('button',{name:'Report message',exact:true}).click();
+    const dialog=page.getByTestId('chat-report-dialog');
+    await expect(dialog).toContainText(text); await expect(dialog.locator('img')).toHaveCount(0);
+    const geometry=await dialog.evaluate(el=>({scroll:el.scrollWidth,client:el.clientWidth,viewport:document.documentElement.clientWidth,left:el.getBoundingClientRect().left,right:el.getBoundingClientRect().right}));
+    expect(geometry.scroll).toBeLessThanOrEqual(geometry.client+1);
+    expect(geometry.left).toBeGreaterThanOrEqual(0); expect(geometry.right).toBeLessThanOrEqual(geometry.viewport);
+    await expect(dialog.getByLabel('Reason for reporting')).toBeVisible(); await expect(dialog.getByRole('button',{name:'Send report',exact:true})).toBeVisible();
+  } finally {
+    execBackendTsx(`import { PrismaService } from './src/prisma/prisma.service'; const p=new PrismaService(); async function main(){await p.chatMessage.deleteMany({where:{id:{in:${JSON.stringify([longId,unknownId])}}}});await p.$disconnect();}main().catch(e=>{console.error(e);process.exit(1)});`);
+  }
+});

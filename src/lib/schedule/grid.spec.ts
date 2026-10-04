@@ -162,17 +162,40 @@ it("merges consecutive empty dayparts into a single gap and keeps show cells sep
   // 08:00-10:00 row on TUE is a lone leading gap.
   const grid = toDaypartGrid(schedule);
   const mon = buildDayItems(grid, "MON");
-  assert.equal(mon.length, 2);
+  assert.equal(mon.length, 3);
   assert.equal(mon[0].type, "show");
-  assert.equal(mon[1].type, "show");
+  assert.equal(mon[1].type, "gap");
+  assert.equal(mon[2].type, "show");
 
   const tue = buildDayItems(grid, "TUE");
   assert.equal(tue.length, 2);
   assert.equal(tue[0].type, "gap");
   if (tue[0].type === "gap") {
     assert.equal(tue[0].start, "08:00");
-    assert.equal(tue[0].end, "10:00");
+    assert.equal(tue[0].end, "14:00");
   }
   assert.equal(tue[1].type, "show");
 });
+});
+
+describe('schedule regressions', () => {
+  it('keeps both legacy shows occupying the same day and window', () => {
+    const schedule = scheduleWith({ id: 'a', name: 'A', start: '19:00', end: '22:00', roster: [] });
+    schedule.days[0].shows.push({ id: 'b', name: 'B', start: '19:00', end: '22:00', roster: [] });
+    assert.deepEqual(toDaypartGrid(schedule).rows.map(r => r.cells.MON?.id), ['a', 'b']);
+  });
+  it('preserves minute precision in row labels', () => {
+    const grid = toDaypartGrid(scheduleWith({ id: 'a', name: 'A', start: '20:48', end: '21:05', roster: [] }));
+    assert.equal(grid.rows[0].label, '8:48–9:05 PM');
+  });
+  it('does not insert rotation inside a show because another day has a shorter slot', () => {
+    const schedule = scheduleWith({ id: 'a', name: 'A', start: '19:00', end: '22:00', roster: [] });
+    schedule.days[1].shows.push({ id: 'b', name: 'B', start: '20:00', end: '21:00', roster: [] });
+    assert.deepEqual(buildDayItems(toDaypartGrid(schedule), 'MON').map(i => i.type), ['show']);
+  });
+  it('includes a genuine gap between shows with no grid row there', () => {
+    const schedule = scheduleWith({ id: 'a', name: 'A', start: '19:00', end: '20:00', roster: [] });
+    schedule.days[0].shows.push({ id: 'b', name: 'B', start: '21:00', end: '22:00', roster: [] });
+    assert.deepEqual(buildDayItems(toDaypartGrid(schedule), 'MON')[1], { type: 'gap', start: '20:00', end: '21:00' });
+  });
 });

@@ -69,7 +69,7 @@ function SlotCard({
 export function NowNext() {
   const { status, showId: liveShowId } = useStream();
   const now = useStationNow();
-  const query = useGetWeeklySchedule<ScheduleDto>({ query: { retry: false } });
+  const query = useGetWeeklySchedule<ScheduleDto>({ query: { retry: false, refetchInterval: 60_000 } });
   // #106: today's delays/cancellations; refetched with the minute ticker's cadence.
   const todayQuery = useGetTodaySchedule({ query: { retry: false, refetchInterval: 60_000 } });
 

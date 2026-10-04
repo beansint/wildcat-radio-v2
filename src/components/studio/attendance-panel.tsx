@@ -196,7 +196,7 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
               <Hourglass className="h-5 w-5 text-gold flex-none" aria-hidden="true" />
               <div className="flex-1 min-w-0">
                 <div className="font-bold">
-                  {pending.showName ?? "Next show"} is waiting to go on air
+                  {pending.showName ?? "Next show"} {pending.continuingCrew ? "is ready to start" : "is waiting to go on air"}
                 </div>
                 <div className="text-sm wc-muted">
                   {pending.attendees.map((a) => `${a.displayName} (in ${formatClock(a.timeIn)})`).join(", ")}
@@ -210,7 +210,7 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
                 onClick={handleHandover}
               >
                 <Play className="h-4 w-4" aria-hidden="true" />
-                {handoverMutation.isPending ? "Starting…" : "Start my show"}
+                {handoverMutation.isPending ? "Starting…" : pending.continuingCrew ? "Start next show" : "Start my show"}
               </Button>
             </div>
           )}

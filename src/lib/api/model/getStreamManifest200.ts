@@ -21,4 +21,6 @@ export type GetStreamManifest200 = {
   episodeId: string | null;
   /** @nullable */
   showId: string | null;
+  /** @nullable */
+  showName: string | null;
 };

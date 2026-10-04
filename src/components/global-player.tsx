@@ -43,6 +43,7 @@ export const GlobalPlayer = memo(function GlobalPlayer() {
   const {
     status,
     djs,
+    showName,
     listeners,
     manifestAvailability,
     isPlaying,
@@ -89,7 +90,7 @@ export const GlobalPlayer = memo(function GlobalPlayer() {
   const isListenPage = pathname === "/listen";
 
   const showTitle =
-    status === "LIVE" && djs.length > 0 ? djs[0] : "Wildcat Radio";
+    status === "LIVE" ? (showName ?? djs[0] ?? "Wildcat Radio") : "Wildcat Radio";
 
   const showSub =
     manifestAvailability === "loading"

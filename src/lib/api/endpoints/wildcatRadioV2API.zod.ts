@@ -750,7 +750,8 @@ export const GetStreamManifestResponse = zod.object({
   "url": zod.string().nullable(),
   "dj": zod.array(zod.string()),
   "episodeId": zod.string().nullable(),
-  "showId": zod.string().nullable()
+  "showId": zod.string().nullable(),
+  "showName": zod.string().nullable()
 })
 
 
@@ -839,7 +840,8 @@ export const GetStudioTodayResponse = zod.object({
   "djs": zod.array(zod.string())
 })),
   "pendingHandover": zod.object({
-  "episodeId": zod.string(),
+  "episodeId": zod.string().nullable().describe('Null when a continuing crew has not started the next episode'),
+  "continuingCrew": zod.boolean(),
   "showId": zod.string().nullable(),
   "showName": zod.string().nullable(),
   "attendees": zod.array(zod.object({

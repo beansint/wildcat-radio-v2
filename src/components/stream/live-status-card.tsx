@@ -10,7 +10,7 @@ import { useStream } from "@/lib/stream/stream-context";
  * Used on the landing page hero.
  */
 export function LiveStatusCard() {
-  const { status, djs, listeners, isPlaying, play, pause } = useStream();
+  const { status, djs, showName: activeShowName, listeners, isPlaying, play, pause } = useStream();
 
   const canPlay = status !== "OFF_AIR";
 
@@ -24,9 +24,7 @@ export function LiveStatusCard() {
 
   const showName =
     status === "LIVE"
-      ? djs.length > 0
-        ? `${djs[0]}'s Show`
-        : "Wildcat Radio Live"
+      ? activeShowName ?? "Wildcat Radio Live"
       : status === "STATION_ROTATION"
         ? "Station Rotation"
         : "Off Air";

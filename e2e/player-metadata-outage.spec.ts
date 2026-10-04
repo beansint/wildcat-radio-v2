@@ -10,7 +10,7 @@ wave.writeUInt16LE(2, 32); wave.writeUInt16LE(16, 34); wave.write('data', 36);
 wave.writeUInt32LE(sampleCount * 2, 40);
 for (let i = 0; i < sampleCount; i++) wave.writeInt16LE(Math.round(Math.sin(i * 2 * Math.PI * 220 / sampleRate) * 1000), 44 + i * 2);
 
-async function fixture(page: Page, initial: 'ready' | 'error' = 'ready') {
+async function fixture(page: Page, initial: 'ready' | 'error' = 'ready', live = false) {
   let response: 'ready' | 'error' | 'off-air' = initial;
   await page.clock.install();
   await page.addInitScript(() => {
@@ -26,7 +26,7 @@ async function fixture(page: Page, initial: 'ready' | 'error' = 'ready') {
   await page.route('**/metadata-fixture.wav', route => route.fulfill({ contentType: 'audio/wav', body: wave }));
   await page.route('**/api/stream/manifest', route => response === 'error'
     ? route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'Controlled metadata outage' }) })
-    : route.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: response === 'off-air' ? 'OFF_AIR' : 'STATION_ROTATION', reason: response === 'off-air' ? 'SOURCE_STALE' : null, type: 'hls', url: response === 'off-air' ? null : 'http://localhost:3311/metadata-fixture.wav', dj: [], episodeId: null, showId: null, showName: null }) }));
+    : route.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: response === 'off-air' ? 'OFF_AIR' : (live ? 'LIVE' : 'STATION_ROTATION'), reason: response === 'off-air' ? 'SOURCE_STALE' : null, type: 'hls', url: response === 'off-air' ? null : `${process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3311'}/metadata-fixture.wav`, dj: [], episodeId: live ? 'metadata-live-fixture' : null, showId: null, showName: null }) }));
   await page.goto('/');
   return (next: typeof response) => { response = next; };
 }
@@ -79,4 +79,23 @@ test('AC-4: fresh off-air evidence stops playback immediately', async ({ page })
   await expect(page.getByTestId('player-status')).toHaveText('OFF_AIR');
   await expect.poll(() => paused(page)).toBe(true);
   await expect(page.getByTestId('player-play')).toBeDisabled();
+});
+
+
+test('AC-5: retained LIVE audio cannot authorize reactions or claim fresh Live during outage', async ({ page }) => {
+  let writes = 0;
+  await page.route('**/api/episodes/*/reactions', route => { writes++; return route.fulfill({ json: {} }); });
+  const respond = await fixture(page, 'ready', true);
+  await expect(page.getByTestId('player-status')).toHaveText('LIVE');
+  await page.getByTestId('player-play').click();
+  await expect.poll(() => paused(page)).toBe(false);
+  await expect(page.getByTestId('player-react')).toBeVisible();
+  respond('error'); await page.clock.fastForward(15_100);
+  await expect(page.getByTestId('player-status')).toHaveText('UNAVAILABLE');
+  await expect.poll(() => paused(page)).toBe(false);
+  await expect(page.getByTestId('player-react')).toHaveCount(0);
+  await expect(page.locator('.wc-badge-live, .wc-player-mini-live')).toHaveCount(0);
+  expect(writes).toBe(0);
+  respond('ready'); await page.clock.fastForward(15_100);
+  await expect(page.getByTestId('player-react')).toBeVisible();
 });

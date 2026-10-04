@@ -30,8 +30,8 @@
  * because a lifecycle transition moves a row between tabs and the source
  * tab's cached page would otherwise stay stale.
  */
-import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import {
   useAnnouncementsControllerList,
@@ -53,6 +53,7 @@ import { getApiErrorMessage } from "@/lib/api/error-message";
 import { humanizeAnnouncementError } from "@/lib/announcements/errors";
 import { SegTabs } from "@/components/mod/seg-tabs";
 import { Button } from "@/components/ui/button";
+import { TablePagination } from "@/components/mod/table-pagination";
 import { AnnouncementCard } from "@/components/mod/announcements/announcement-card";
 import { AnnouncementFormDialog } from "@/components/mod/announcements/announcement-form-dialog";
 import { PublishDialog, type PublishSubmitValues } from "@/components/mod/announcements/publish-dialog";
@@ -87,12 +88,14 @@ export default function AnnouncementsPage() {
   // The selected tab is a *server-side* filter. Tallying statuses from one
   // returned page silently truncated at the page size — with four figures of
   // rows the badges under-reported and older rows were unreachable entirely.
-  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [page, setPage] = useState(1);
   const listParams = useMemo(() => {
     const status = tabStatusParam(tab);
-    return { pageSize, ...(status ? { status } : {}) };
-  }, [tab, pageSize]);
-  const listQuery = useAnnouncementsControllerList<AnnouncementStaffPageDto>(listParams);
+    return { page, pageSize: PAGE_SIZE, ...(status ? { status } : {}) };
+  }, [tab, page]);
+  const listQuery = useAnnouncementsControllerList<AnnouncementStaffPageDto>(listParams, {
+    query: { placeholderData: keepPreviousData },
+  });
   // The pin cap comes from the settings registry, but it is read off the
   // whole-registry admin list rather than `GET /settings/announcements.pinLimit`:
   // a key that has never been written 404s, and a 404 on every page load is a
@@ -113,7 +116,13 @@ export default function AnnouncementsPage() {
   const visibleItems = useMemo(() => filterByTab(items, tab), [items, tab]);
   const pinnedCount = listQuery.data?.pinnedCount ?? 0;
   const totalForTab = listQuery.data?.total ?? 0;
-  const hasMore = items.length < totalForTab;
+  useEffect(() => {
+    if (!listQuery.data || listQuery.isFetching || listQuery.isError || listQuery.isPlaceholderData) return;
+    const lastPage = Math.max(1, Math.ceil(listQuery.data.total / PAGE_SIZE));
+    // A successful status transition can remove the final page; sync to the remaining server result.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- server pagination reconciliation
+    if (page > lastPage) setPage(lastPage);
+  }, [page, listQuery.data, listQuery.isFetching, listQuery.isError, listQuery.isPlaceholderData]);
   const rawPinLimit = settingsQuery.data?.find((row) => row.key === "announcements.pinLimit")?.value;
   const pinLimit =
     typeof rawPinLimit === "number" && Number.isFinite(rawPinLimit) ? rawPinLimit : DEFAULT_PIN_LIMIT;
@@ -242,7 +251,10 @@ export default function AnnouncementsPage() {
         className="mb-4 flex-wrap"
         testid="mod-ann-tabs"
         value={tab}
-        onValueChange={(key) => setTab(key as AnnouncementTabKey)}
+        onValueChange={(key) => {
+          setTab(key as AnnouncementTabKey);
+          setPage(1);
+        }}
         tabs={tabs}
       />
 
@@ -266,7 +278,7 @@ export default function AnnouncementsPage() {
               announcement={announcement}
               pinnedCount={pinnedCount}
               pinLimit={pinLimit}
-              busy={transitionMutation.isPending}
+              busy={transitionMutation.isPending || listQuery.isFetching}
               onEdit={() => {
                 setActionError(null);
                 saveMutation.reset();
@@ -284,24 +296,19 @@ export default function AnnouncementsPage() {
               }
             />
           ))}
-          {/* Without this the list silently stopped at the page size and older
-              announcements were simply unreachable — no pager, no indication
-              anything had been cut off. */}
-          {hasMore && (
-            <div className="text-center">
-              <Button
-                variant="ghost"
-                data-testid="mod-ann-load-more"
-                disabled={listQuery.isFetching}
-                onClick={() => setPageSize((size) => size + PAGE_SIZE)}
-              >
-                {listQuery.isFetching
-                  ? "Loading…"
-                  : `Load more (${items.length} of ${totalForTab})`}
-              </Button>
-            </div>
-          )}
         </div>
+      )}
+
+      {totalForTab > 0 && (
+        <TablePagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={totalForTab}
+          busy={listQuery.isFetching}
+          onPrev={() => setPage((current) => Math.max(1, current - 1))}
+          onNext={() => setPage((current) => current + 1)}
+          testidPrefix="mod-ann-pagination"
+        />
       )}
 
       {creating && (

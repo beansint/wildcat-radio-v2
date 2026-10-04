@@ -54,9 +54,12 @@ export interface StreamState {
 }
 
 const StreamContext = createContext<StreamState | null>(null);
+const LAST_GOOD_MANIFEST_MS = 60_000;
 
 export function StreamProvider({ children }: { children: ReactNode }) {
-  const { data: manifest, isPending, isError } = useGetStreamManifest({
+  const [phase, setPhase] = useState<PlayerPhase>("idle");
+  const [expiredManifestAt, setExpiredManifestAt] = useState<number | null>(null);
+  const { data: manifest, dataUpdatedAt, isPending, isError } = useGetStreamManifest({
     query: { refetchInterval: 15_000 },
   });
 
@@ -65,21 +68,31 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     : isPending
       ? "loading"
       : "ready";
-  const manifestReady = manifestAvailability === "ready";
-  const manifestStatus: StreamStatus = manifestReady ? (manifest?.status ?? "OFF_AIR") : "OFF_AIR";
-  const manifestUrl: string | null = manifestReady ? (manifest?.url ?? null) : null;
+  // Cached metadata only keeps an already sounding source alive. It does not
+  // enable a fresh play or claim the status service is currently available.
+  const retainManifest = isError && phase === "playing" && dataUpdatedAt > 0
+    && expiredManifestAt !== dataUpdatedAt && !!manifest?.url && manifest.status !== "OFF_AIR";
+  const manifestUsable = manifestAvailability === "ready" || retainManifest;
+  useEffect(() => {
+    if (!isError || phase !== "playing" || !dataUpdatedAt || !manifest?.url) return;
+    // Absolute deadline from the last success, never extended by failed polls.
+    const timer = window.setTimeout(() => setExpiredManifestAt(dataUpdatedAt),
+      Math.max(0, dataUpdatedAt + LAST_GOOD_MANIFEST_MS - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [dataUpdatedAt, isError, phase, manifest?.url]);
+  const manifestStatus: StreamStatus = manifestUsable ? (manifest?.status ?? "OFF_AIR") : "OFF_AIR";
+  const manifestUrl: string | null = manifestUsable ? (manifest?.url ?? null) : null;
   // FE#47 — `manifest?.dj ?? []` produced a NEW array identity on every render.
   // The manifest query polls every 15s, so that alone re-rendered every
   // consumer (including `GlobalPlayer`, which is in the root layout and
   // therefore on every route) even when the DJ list had not changed.
-  const rawDjs = manifestReady ? manifest?.dj : undefined;
+  const rawDjs = manifestUsable ? manifest?.dj : undefined;
   const djs: string[] = useMemo(() => rawDjs ?? [], [rawDjs]);
-  const episodeId: string | null = manifestReady ? (manifest?.episodeId ?? null) : null;
-  const showId: string | null = manifestReady ? (manifest?.showId ?? null) : null;
+  const episodeId: string | null = manifestUsable ? (manifest?.episodeId ?? null) : null;
+  const showId: string | null = manifestUsable ? (manifest?.showId ?? null) : null;
 
-  const showName = manifestReady ? (manifest?.showName ?? null) : null;
+  const showName = manifestUsable ? (manifest?.showName ?? null) : null;
 
-  const [phase, setPhase] = useState<PlayerPhase>("idle");
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
@@ -116,7 +129,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const socketMatchesCurrentStream =
     socketEpisodeId === null || socketEpisodeId === episodeId;
   const status: StreamStatus =
-    manifestAvailability !== "ready" || manifestStatus === "OFF_AIR"
+    manifestStatus === "OFF_AIR"
       ? manifestStatus
       : socketMatchesCurrentStream
         ? (socketStatus ?? manifestStatus)
@@ -223,10 +236,10 @@ export function StreamProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (manifestAvailability === "loading") return;
-    if (manifestAvailability === "ready" && status !== "OFF_AIR") return;
+    if (manifestUsable && status !== "OFF_AIR") return;
     const timer = window.setTimeout(pause, 0);
     return () => window.clearTimeout(timer);
-  }, [manifestAvailability, pause, status]);
+  }, [manifestAvailability, manifestUsable, pause, status]);
 
   /**
    * The <audio> element is the only thing that actually knows whether sound is

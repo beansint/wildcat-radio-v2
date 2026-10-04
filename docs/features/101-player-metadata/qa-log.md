@@ -1,0 +1,5 @@
+# Verification evidence
+
+Keeps cached manifest metadata only for already sounding audio, bounded60seconds from last successful response; failed polls neverextenddeadline. Statusservice remains UNAVAILABLE and freshplay/engagement controls stay gated. Initialfailedloads cannotinventURL; successfulOFF_AIR evidence ormatchingSocketOFF_AIR stillstops, recoverydoesnotreattachsameURL. RealChromium nativePCM180secondfixture (decoded currentTime advances, no play/paused/time stubs), controlledmetadata and blockedSockettransport: baseline2outage cases stoppedworking audio; fixed4browser casespassedtwice (briefoutage/recovery, repeatedfailuredeadline, initialfailure/manualkeyboardintent, freshoffair). Full lint/type278unit tests passed (4existingwarnings). Testforcesnativecapabilityfallback; no liveHLS, Safari/iOS background, physicalbooth/provider/deployment proof. Absolute timer re-evaluates overdue deadline on error, normalbrowserexecution required.
+
+Independent review: pending after draft PR creation. No deployment or physical-device proof.

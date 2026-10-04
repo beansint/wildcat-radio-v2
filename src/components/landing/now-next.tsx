@@ -67,7 +67,7 @@ function SlotCard({
 }
 
 export function NowNext() {
-  const { status, showId: liveShowId } = useStream();
+  const { status, manifestAvailability, showId: liveShowId } = useStream();
   const now = useStationNow();
   const query = useGetWeeklySchedule<ScheduleDto>({ query: { retry: false, refetchInterval: 60_000 } });
   // #106: today's delays/cancellations; refetched with the minute ticker's cadence.
@@ -83,13 +83,13 @@ export function NowNext() {
   // Broadcast truth beats the clock: if a show is actually live (e.g. an
   // overrun past its slot), it is the "now" card, not whatever is scheduled.
   const liveCell =
-    status === "LIVE" && liveShowId
+    manifestAvailability === "ready" && status === "LIVE" && liveShowId
       ? schedule.days.flatMap((d) => d.shows).find((c) => c.id === liveShowId) ?? null
       : null;
   const nowCell = liveCell ?? pick.now;
   const next = pick.next && pick.next.id === nowCell?.id ? null : pick.next;
   if (!nowCell && !next) return null;
-  const nowLive = !!nowCell && isShowOnAir(status, liveShowId, nowCell.id);
+  const nowLive = manifestAvailability === "ready" && !!nowCell && isShowOnAir(status, liveShowId, nowCell.id);
 
   return (
     <section className="wc-container py-2">

@@ -108,6 +108,8 @@ export function ListenClient() {
         <ChatColumn
           key={`chat:${episodeScope}`}
           messages={engagement.messages}
+          reporterId={session?.user.id}
+          reporterHandle={session?.user.handle}
           onSend={engagement.sendChat}
           listenerCount={listeners}
           polls={engagement.polls}

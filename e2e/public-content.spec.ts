@@ -286,7 +286,8 @@ test('PUB-I-02: landing sections are live (featured, most requested, shows grid)
 
   await page.goto(`${WEB_BASE}/`);
   await expect(page.getByText(pinnedPublished.title as string)).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText(show.name)).toBeVisible({ timeout: 10_000 });
+  const showsGrid = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Shows', exact: true }) });
+  await expect(showsGrid.getByText(show.name, { exact: true })).toBeVisible({ timeout: 10_000 });
 
   guard.assertClean();
 });

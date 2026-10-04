@@ -1646,7 +1646,14 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Current user domain projection"
+            "description": "Current user domain projection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
           }
         },
         "summary": "Get current user profile",
@@ -1657,9 +1664,26 @@
       "patch": {
         "operationId": "UsersController_updateMe",
         "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "Updated user profile"
+            "description": "Updated user profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
           }
         },
         "summary": "Update current user profile",
@@ -5263,6 +5287,109 @@
           "reactions",
           "upNext"
         ]
+      },
+      "MeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "class": {
+            "type": "string",
+            "enum": [
+              "CAMPUS",
+              "GUEST"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "CUSTODIAN",
+              "MODERATOR",
+              "LISTENER"
+            ]
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "notifyEmail": {
+            "type": "boolean"
+          },
+          "notifyInApp": {
+            "type": "boolean"
+          },
+          "yearLevel": {
+            "type": "string",
+            "nullable": true,
+            "description": "Stored year level; PATCH accepts an integer or null"
+          },
+          "college": {
+            "type": "string",
+            "nullable": true
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name",
+          "handle",
+          "avatarUrl",
+          "class",
+          "role",
+          "emailVerified",
+          "notifyEmail",
+          "notifyInApp",
+          "yearLevel",
+          "college",
+          "gender"
+        ]
+      },
+      "UpdateMeDto": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "notifyEmail": {
+            "type": "boolean"
+          },
+          "notifyInApp": {
+            "type": "boolean"
+          },
+          "yearLevel": {
+            "type": "number",
+            "nullable": true
+          },
+          "college": {
+            "type": "string",
+            "nullable": true
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true
+          }
+        }
       },
       "StrikeDto": {
         "type": "object",

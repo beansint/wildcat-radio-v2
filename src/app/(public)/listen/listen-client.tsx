@@ -27,7 +27,10 @@ export function ListenClient() {
   const engagement = useEngagementRoom(
     engagementEpisodeId,
     pushToast,
-    session?.user?.id ?? null,
+    session ? JSON.stringify([
+      session.session.id, session.user.id, session.user.emailVerified,
+      session.user.class, session.user.role,
+    ]) : null,
   );
 
   useEffect(() => {

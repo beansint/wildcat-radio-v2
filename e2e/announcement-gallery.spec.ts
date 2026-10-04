@@ -43,7 +43,22 @@ test('AC-1: all four photos render once at mobile width', async ({ page }) => {
 test('AC-2: unavailable photo gives a readable fallback', async ({ page }) => {
   await page.route('**/_next/image?**', route => route.abort());
   await page.goto(await published([`${MEDIA}/gallery-broken.png`]));
-  await expect(page.getByTestId('announcement-photo-unavailable')).toBeVisible();
+  const fallback = page.getByTestId('announcement-photo-unavailable');
+  await expect(fallback).toBeVisible();
+  const contrasts = await fallback.evaluate(element => {
+    const luminance = (rgb: number[]) => rgb.slice(0, 3).map(value => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+    const text = getComputedStyle(element.querySelector('span')!).color.match(/[\d.]+/g)!.map(Number);
+    const foreground = luminance(text);
+    return [...getComputedStyle(element).backgroundImage.matchAll(/rgba?\(([^)]+)\)/g)].map(match => {
+      const background = luminance(match[1].split(',').map(Number));
+      return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+    });
+  });
+  expect(contrasts.length).toBeGreaterThan(0);
+  expect(Math.min(...contrasts)).toBeGreaterThanOrEqual(4.5);
 });
 
 test('AC-3: an unapproved photo host is never requested', async ({ page }) => {

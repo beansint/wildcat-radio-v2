@@ -9,7 +9,7 @@ test.beforeAll(async () => {
   const url = new URL(API_BASE);
   if (url.hostname !== 'localhost' || url.port !== '3310') throw new Error('Fixtures require isolated local API3310');
   api = await apiLoginAs('moderator');
-  for (let i = 0; i < 105; i += 1) {
+  for (let i = 0; i < 205; i += 1) {
     const title = `${prefix} ${i}`;
     const row = await createAnnouncement(api, { title });
     rows.push({ id: row.id, title });
@@ -26,7 +26,7 @@ test.afterAll(async () => {
   await api.dispose();
 });
 
-test('AC-1: keyboard paging exposes all105 records without duplicating the pinned hero', async ({ page }) => {
+test('AC-1: keyboard paging exposes all205 records without duplicating the pinned hero', async ({ page }) => {
   await page.goto('/announcements');
   const cards = page.getByTestId('public-announcement-card');
   await expect(cards).toHaveCount(100);
@@ -37,9 +37,15 @@ test('AC-1: keyboard paging exposes all105 records without duplicating the pinne
   await next.focus();
   await expect(next).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(cards).toHaveCount(5);
+  await expect(page.getByText('Showing 101–200 of 205', { exact: true })).toBeVisible();
+  await expect(cards).toHaveCount(100);
   const second = await cards.evaluateAll((els) => els.map((el) => el.getAttribute('href')));
-  expect(new Set([...first, ...second]).size).toBe(105);
+  await expect(next).toBeEnabled();
+  await expect(next).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(cards).toHaveCount(5);
+  const third = await cards.evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+  expect(new Set([...first, ...second, ...third]).size).toBe(205);
   await expect(next).toBeDisabled();
   await page.getByTestId('public-ann-pagination-prev').click();
   await expect(cards).toHaveCount(100);
@@ -62,7 +68,8 @@ test('AC-2: failed next page has truthful error and keyboard retry preserves pag
   await retry.focus();
   await expect(retry).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('public-announcement-card')).toHaveCount(5);
+  await expect(page.getByText('Showing 101–200 of 205', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('public-announcement-card')).toHaveCount(100);
   await expect(page.getByTestId('public-ann-pagination-prev')).toBeEnabled();
 });
 

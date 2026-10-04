@@ -3,3 +3,7 @@
 Added fixed100-row server paging through the existing shared Prev/Next component, preserving server ordering and hero de-duplication. Controls remain mounted and disabled during page requests; out-of-range pages reconcile after removals. General fetch errors render an explicit keyboard-operable retry; failed page data is not presented as current news. Real isolated API/Postgres browser regression: missing controls reproduced in2cases before fix; 3cases passed twice after fix (105 unique links across2pages, pinned hero once, keyboard navigation, injected503/retry to correctpage and actual archived-empty result). Network injection only supplies an outage, never fixture data. Full lint/typecheck and278 unit tests passed;4pre-existing warnings. No sharedDB/deployment. Offset paging does not promise a snapshot during concurrent publication; backend137 will add deterministic timestamp tie ordering.
 
 Independent review: pending after draft PR creation. No deployment or physical-device proof.
+
+## Review correction
+
+Independent review identified the shared native-busy-disable focus loss. Busy now aria-disabled with guarded activation while first/last-page native disabled semantics remain. Real browser fixture expanded to205 published records across3pages; keyboard focus survives intermediate request and a second Enter reaches lastpage. Pin once/no duplicate205links, injected503 keyboardretry and actualempty all passed3cases twice. Full lint/types278unit tests passed. Updated-head independent re-review pending.

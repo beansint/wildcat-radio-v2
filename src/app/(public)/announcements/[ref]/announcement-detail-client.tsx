@@ -15,7 +15,7 @@
  * would leak moderator identity onto a public page. See feature report for
  * the full deviation note.
  */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -25,6 +25,33 @@ import { classifyQueryError, filterAllowedPhotoUrls, formatPublishedAt, toParagr
 import { coverClassFor, initialsFor } from "@/lib/content/cover";
 import { PublicGenericError, PublicNotFound, PublicRateLimited } from "@/components/public/public-states";
 import { announcementPath, isCanonicalRef } from "@/lib/announcements/public-url";
+
+function AnnouncementPhoto({ src, position, title }: { src: string; position: number; title: string }) {
+  const [unavailable, setUnavailable] = useState(false);
+  if (unavailable) {
+    return (
+      <div
+        className="wc-cover w-full min-h-32 rounded-2xl"
+        role="img"
+        aria-label={`Photo ${position} for ${title} is unavailable`}
+        data-testid="announcement-photo-unavailable"
+      >
+        <span className="wc-muted">Photo unavailable</span>
+      </div>
+    );
+  }
+  return (
+    <Image
+      src={src}
+      alt={`Photo ${position} attached to ${title}`}
+      width={900}
+      height={500}
+      sizes="(max-width: 768px) 100vw, 768px"
+      className="wc-card w-full h-auto object-cover"
+      onError={() => setUnavailable(true)}
+    />
+  );
+}
 
 export function AnnouncementDetailClient() {
   const { ref } = useParams<{ ref: string }>();
@@ -104,14 +131,12 @@ export function AnnouncementDetailClient() {
 
       <h1 className="text-3xl font-extrabold mb-4">{announcement.title}</h1>
 
-      {photos[0] ? (
-        <Image
-          src={photos[0]}
-          alt=""
-          width={900}
-          height={500}
-          className="wc-card w-full mb-5 object-cover"
-        />
+      {photos.length > 0 ? (
+        <div className="space-y-4 mb-5" aria-label="Announcement photos">
+          {photos.map((src, index) => (
+            <AnnouncementPhoto key={`${src}:${index}`} src={src} position={index + 1} title={announcement.title} />
+          ))}
+        </div>
       ) : (
         <div className={`wc-cover ${coverClassFor(announcement.id)} w-full h-48 md:h-64 rounded-2xl mb-5`}>
           <span className="init">{initialsFor(announcement.title)}</span>

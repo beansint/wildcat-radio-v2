@@ -183,7 +183,7 @@ export default function QueuePage() {
 
   const resolveAppealMutation = useMutation({
     mutationFn: ({ id, status, writtenResponse }: { id: string; status: AppealDtoStatus; writtenResponse: string }) =>
-      moderationControllerResolveAppeal(id, { body: JSON.stringify({ status, writtenResponse }) }),
+      moderationControllerResolveAppeal(id, { status: status as Exclude<AppealDtoStatus, "OPEN">, writtenResponse }),
     onSuccess: () => {
       invalidate();
       setAppealDialog(null);

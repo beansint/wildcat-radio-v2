@@ -23,6 +23,9 @@
         "responses": {
           "200": {
             "description": "Database readiness probe"
+          },
+          "503": {
+            "description": "Database unavailable"
           }
         },
         "summary": "",
@@ -529,13 +532,23 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveAppealDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Resolved appeal",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AppealDto"
+                  "$ref": "#/components/schemas/AppealDecisionDto"
                 }
               }
             }
@@ -1245,6 +1258,50 @@
         ]
       }
     },
+    "/api/stream/publisher-lease": {
+      "post": {
+        "operationId": "postPublisherLease",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "stationId",
+                    "generation",
+                    "prefix",
+                    "expiresAt"
+                  ],
+                  "properties": {
+                    "stationId": {
+                      "type": "string"
+                    },
+                    "generation": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "prefix": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Authenticate current publication generation",
+        "tags": [
+          "stream"
+        ]
+      }
+    },
     "/api/stream/manifest": {
       "get": {
         "operationId": "getStreamManifest",
@@ -1330,6 +1387,16 @@
       "post": {
         "operationId": "postStreamHeartbeat",
         "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartbeatDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -1339,7 +1406,8 @@
                   "type": "object",
                   "required": [
                     "status",
-                    "reason"
+                    "reason",
+                    "publisherLease"
                   ],
                   "properties": {
                     "status": {
@@ -1360,6 +1428,31 @@
                         "PUBLICATION_STALE",
                         "CONFIGURATION_ERROR"
                       ]
+                    },
+                    "publisherLease": {
+                      "type": "object",
+                      "required": [
+                        "stationId",
+                        "generation",
+                        "prefix",
+                        "expiresAt"
+                      ],
+                      "properties": {
+                        "stationId": {
+                          "type": "string"
+                        },
+                        "generation": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "prefix": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
                     }
                   }
                 }
@@ -1550,9 +1643,42 @@
       "post": {
         "operationId": "timeOutStudio",
         "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimeOutDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "LIVE",
+                        "STATION_ROTATION",
+                        "OFF_AIR"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Pending check-in changed or was already started/withdrawn; no on-air timeout applied"
           }
         },
         "summary": "DJ time-out (tap out)",
@@ -2904,6 +3030,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectAttendanceDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Corrected attendance row",
@@ -2916,7 +3052,7 @@
             }
           }
         },
-        "summary": "Correct an attendance record (time in/out, note)",
+        "summary": "Correct arrival, first broadcast start, timeout or note",
         "tags": [
           "attendance"
         ]
@@ -3406,6 +3542,47 @@
           }
         },
         "summary": "Unpin, freeing a pin slot",
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/announcements/{id}/photos": {
+      "patch": {
+        "operationId": "AnnouncementsController_updatePhotos",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAnnouncementPhotosDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Active photos and durable storage-cleanup status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Remove/reorder attached photos, or retry detached-object cleanup with an unchanged snapshot",
         "tags": [
           "announcements"
         ]
@@ -4192,6 +4369,112 @@
           "total"
         ]
       },
+      "ResolveAppealDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "UPHELD",
+              "REDUCED",
+              "OVERTURNED"
+            ]
+          },
+          "writtenResponse": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "status",
+          "writtenResponse"
+        ]
+      },
+      "AppealDecisionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "subjectStrikeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "text": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "UPHELD",
+              "REDUCED",
+              "OVERTURNED"
+            ]
+          },
+          "reviewedById": {
+            "type": "string",
+            "nullable": true
+          },
+          "writtenResponse": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "handle": {
+            "type": "string",
+            "nullable": true,
+            "description": "Subject (userId) handle"
+          },
+          "class": {
+            "type": "string",
+            "nullable": true,
+            "description": "Subject (userId) listener class"
+          },
+          "role": {
+            "type": "string",
+            "nullable": true,
+            "description": "Subject (userId) role"
+          },
+          "sanctionChanged": {
+            "type": "boolean",
+            "description": "Whether this decision changed its identified sanction; independent restrictions can remain."
+          },
+          "notice": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mandatory decision notice when restrictions remain or no current sanction could be identified."
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "subjectStrikeId",
+          "text",
+          "status",
+          "reviewedById",
+          "writtenResponse",
+          "createdAt",
+          "resolvedAt",
+          "handle",
+          "class",
+          "role",
+          "sanctionChanged",
+          "notice"
+        ]
+      },
       "EscalationsDto": {
         "type": "object",
         "properties": {
@@ -4838,6 +5121,30 @@
           "ok"
         ]
       },
+      "HeartbeatDto": {
+        "type": "object",
+        "properties": {
+          "publisherGeneration": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Authenticated publisher generation, required for publication evidence"
+          },
+          "sourceConnected": {
+            "type": "boolean"
+          },
+          "lastSegmentAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastPublishedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "sourceConnected"
+        ]
+      },
       "StationDeviceDto": {
         "type": "object",
         "properties": {
@@ -5192,6 +5499,23 @@
           "episodeId",
           "status",
           "state"
+        ]
+      },
+      "TimeOutDto": {
+        "type": "object",
+        "properties": {
+          "rosterId": {
+            "type": "string"
+          },
+          "expectedPendingEpisodeId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Withdraw only a still-pending check-in for this episode. Reject if handover already started it."
+          }
+        },
+        "required": [
+          "rosterId"
         ]
       },
       "StudioHandoverResultDto": {
@@ -6659,6 +6983,33 @@
           "note"
         ]
       },
+      "CorrectAttendanceDto": {
+        "type": "object",
+        "properties": {
+          "onAirStartAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "First broadcast start, distinct from arrival; null removes broadcast attribution"
+          },
+          "timeIn": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timeOut": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "note": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason for the correction"
+          }
+        }
+      },
       "ResolvedActorDto": {
         "type": "object",
         "properties": {
@@ -6801,6 +7152,10 @@
             "items": {
               "type": "string"
             }
+          },
+          "photoCleanupPending": {
+            "type": "boolean",
+            "description": "Removed attachments still awaiting a successful storage cleanup attempt; not a permanent URL-revocation guarantee"
           }
         },
         "required": [
@@ -6824,7 +7179,8 @@
           "publishedBy",
           "featuredBy",
           "lastEditedBy",
-          "photos"
+          "photos",
+          "photoCleanupPending"
         ]
       },
       "AnnouncementStaffPageDto": {
@@ -6855,6 +7211,33 @@
           "total",
           "countsByStatus",
           "pinnedCount"
+        ]
+      },
+      "UpdateAnnouncementPhotosDto": {
+        "type": "object",
+        "properties": {
+          "photos": {
+            "maxItems": 4,
+            "uniqueItems": true,
+            "description": "Desired ordered subset of currently attached active photo URLs",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expectedPhotos": {
+            "maxItems": 4,
+            "uniqueItems": true,
+            "description": "Original ordered active photo snapshot; stale snapshots return 409",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "photos",
+          "expectedPhotos"
         ]
       },
       "AnnouncementPhotoUploadUrlDto": {
@@ -6895,6 +7278,9 @@
           "isPinned": {
             "type": "boolean"
           },
+          "isFeatured": {
+            "type": "boolean"
+          },
           "publishedAt": {
             "type": "string",
             "format": "date-time",
@@ -6914,6 +7300,7 @@
           "publicId",
           "content",
           "isPinned",
+          "isFeatured",
           "publishedAt",
           "photos"
         ]

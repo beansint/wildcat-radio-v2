@@ -5,6 +5,7 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
+import type { PostStreamHeartbeat200PublisherLease } from './postStreamHeartbeat200PublisherLease.ts';
 import type { PostStreamHeartbeat200Reason } from './postStreamHeartbeat200Reason.ts';
 import type { PostStreamHeartbeat200Status } from './postStreamHeartbeat200Status.ts';
 
@@ -12,4 +13,5 @@ export type PostStreamHeartbeat200 = {
   status: PostStreamHeartbeat200Status;
   /** @nullable */
   reason: PostStreamHeartbeat200Reason;
+  publisherLease: PostStreamHeartbeat200PublisherLease;
 };

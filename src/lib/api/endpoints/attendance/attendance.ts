@@ -22,7 +22,8 @@ import type {
 
 import type {
   AttendanceControllerListParams,
-  AttendanceRowDto
+  AttendanceRowDto,
+  CorrectAttendanceDto
 } from '../../model';
 
 import { customFetch } from '../../fetcher';
@@ -248,16 +249,17 @@ export const getAttendanceControllerCorrectUrl = (recordId: string,) => {
 }
 
 /**
- * @summary Correct an attendance record (time in/out, note)
+ * @summary Correct arrival, first broadcast start, timeout or note
  */
-export const attendanceControllerCorrect = async (recordId: string, options?: RequestInit): Promise<AttendanceRowDto> => {
+export const attendanceControllerCorrect = async (recordId: string,
+    correctAttendanceDto: CorrectAttendanceDto, options?: RequestInit): Promise<AttendanceRowDto> => {
 
   return customFetch<AttendanceRowDto>(getAttendanceControllerCorrectUrl(recordId),
   {
     ...options,
-    method: 'PATCH'
-
-
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(correctAttendanceDto)
   }
 );}
 
@@ -265,23 +267,25 @@ export const attendanceControllerCorrect = async (recordId: string, options?: Re
 
 
 
-export const getAttendanceControllerCorrectQueryKey = (recordId: string,) => {
+export const getAttendanceControllerCorrectQueryKey = (recordId: string,
+    correctAttendanceDto?: CorrectAttendanceDto,) => {
     return [
-    'PATCH', `/api/attendance/${recordId}`
+    'PATCH', `/api/attendance/${recordId}`, correctAttendanceDto
     ] as const;
     }
 
 
-export const getAttendanceControllerCorrectQueryOptions = <TData = Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError = unknown>(recordId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getAttendanceControllerCorrectQueryOptions = <TData = Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError = unknown>(recordId: string,
+    correctAttendanceDto: CorrectAttendanceDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getAttendanceControllerCorrectQueryKey(recordId);
+  const queryKey =  queryOptions?.queryKey ?? getAttendanceControllerCorrectQueryKey(recordId,correctAttendanceDto);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof attendanceControllerCorrect>>> = ({ signal }) => attendanceControllerCorrect(recordId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof attendanceControllerCorrect>>> = ({ signal }) => attendanceControllerCorrect(recordId,correctAttendanceDto, { signal, ...requestOptions });
 
 
 
@@ -295,7 +299,8 @@ export type AttendanceControllerCorrectQueryError = unknown
 
 
 export function useAttendanceControllerCorrect<TData = Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError = unknown>(
- recordId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError, TData>> & Pick<
+ recordId: string,
+    correctAttendanceDto: CorrectAttendanceDto, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof attendanceControllerCorrect>>,
           TError,
@@ -305,7 +310,8 @@ export function useAttendanceControllerCorrect<TData = Awaited<ReturnType<typeof
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAttendanceControllerCorrect<TData = Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError = unknown>(
- recordId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError, TData>> & Pick<
+ recordId: string,
+    correctAttendanceDto: CorrectAttendanceDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof attendanceControllerCorrect>>,
           TError,
@@ -315,19 +321,21 @@ export function useAttendanceControllerCorrect<TData = Awaited<ReturnType<typeof
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAttendanceControllerCorrect<TData = Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError = unknown>(
- recordId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ recordId: string,
+    correctAttendanceDto: CorrectAttendanceDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Correct an attendance record (time in/out, note)
+ * @summary Correct arrival, first broadcast start, timeout or note
  */
 
 export function useAttendanceControllerCorrect<TData = Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError = unknown>(
- recordId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ recordId: string,
+    correctAttendanceDto: CorrectAttendanceDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceControllerCorrect>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getAttendanceControllerCorrectQueryOptions(recordId,options)
+  const queryOptions = getAttendanceControllerCorrectQueryOptions(recordId,correctAttendanceDto,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

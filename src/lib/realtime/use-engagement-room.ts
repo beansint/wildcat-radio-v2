@@ -38,7 +38,7 @@ interface ChatEvent {
   content: string;
   asBooth?: boolean;
   createdAt?: string;
-  author?: { handle?: string | null; name?: string | null } | null;
+  author?: { id?: string; handle?: string | null; name?: string | null } | null;
 }
 
 function formatTime(value?: string) {
@@ -52,6 +52,8 @@ function toChatMessage(event: ChatEvent): LiveChatMessage {
   const author = event.author?.handle ?? event.author?.name ?? "@listener";
   return {
     id: event.id,
+    authorId: event.author?.id ?? null,
+    authorHandle: event.author?.handle ?? null,
     // TODO: the listener manifest doesn't yet expose the live show name.
     // Fall back to a neutral booth label until it does.
     name: event.asBooth ? "🎙 Booth" : author,

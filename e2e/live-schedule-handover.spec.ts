@@ -414,7 +414,7 @@ test.describe('#114 explicit continuing-crew handover', () => {
   });
   test('a pending incoming DJ starts the show without dropping the continuing outgoing DJ', async ({ page }) => {
     await unlockStudio(page);
-    const arrival = await stationPost(page, 'time-in', { rosterId: ids.djB });
+    const arrival = await stationPost(page, 'studio/time-in', { rosterId: ids.djB });
     expect(arrival.ok()).toBeTruthy();
     expect((await arrival.json()).state).toBe('PENDING_HANDOVER');
     await page.reload();

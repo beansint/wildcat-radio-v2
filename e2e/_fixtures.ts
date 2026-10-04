@@ -273,7 +273,8 @@ export async function createShow(
     data: {
       name: overrides.name ?? `E2E FE9 Show ${id}`,
       description: overrides.description ?? `Fixture show ${id}.`,
-      cadence: { kind: 'WEEKLY', days: ['MON', 'WED', 'FRI'], start: '13:00', end: '16:00' },
+      // Keep the fixture clear of seeded Afternoon Vibes (13:00-16:00).
+      cadence: { kind: 'WEEKLY', days: ['MON', 'WED', 'FRI'], start: '03:00', end: '04:00' },
       rosterIds,
     },
   });

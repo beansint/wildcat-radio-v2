@@ -120,7 +120,7 @@ export function AnnouncementDetailClient() {
 
       <div className="space-y-4 text-[1.02rem] leading-relaxed" data-testid="public-announcement-body">
         {paragraphs.map((paragraph, index) => (
-          <p key={index}>{paragraph}</p>
+          <p key={index} className="whitespace-pre-line">{paragraph}</p>
         ))}
       </div>
       </article>

@@ -383,7 +383,7 @@ test.describe('#106 live schedule, handover, approved overtime', () => {
 test.describe('#114 explicit continuing-crew handover', () => {
   test.skip(!process.env.CI || !process.env.DATABASE_URL?.includes('@localhost:'), 'global fixtures are allowed only on CI isolated Postgres');
   test.skip(NOW < 95 || NOW + 125 > 24 * 60, 'fixtures require a same-day station window');
-  test.beforeAll(() => {
+  test.beforeEach(() => {
     cleanup();
     seed();
     prismaScript(`await prisma.showRosterEntry.create({ data: { showId: ${JSON.stringify(ids.showB)}, rosterId: ${JSON.stringify(ids.djA)} } });`);
@@ -412,4 +412,21 @@ test.describe('#114 explicit continuing-crew handover', () => {
     `);
     expect(errors).toEqual([]);
   });
+  test('a pending incoming DJ starts the show without dropping the continuing outgoing DJ', async ({ page }) => {
+    await unlockStudio(page);
+    const arrival = await stationPost(page, 'time-in', { rosterId: ids.djB });
+    expect(arrival.ok()).toBeTruthy();
+    expect((await arrival.json()).state).toBe('PENDING_HANDOVER');
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Start my show', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Start my show', exact: true }).click();
+    await expect(studioRow(page, names.B)).toHaveAttribute('data-status', 'ON_AIR');
+    prismaScript(`
+      const incoming = await prisma.episode.findFirstOrThrow({ where: { showId: ${JSON.stringify(ids.showB)}, endedAt: null }, include: { attendance: true } });
+      for (const rosterId of [${JSON.stringify(ids.djA)}, ${JSON.stringify(ids.djB)}]) {
+        if (!incoming.attendance.some(a => a.rosterId === rosterId && !a.timeOut && a.onAirStartAt)) throw new Error('Incoming or continuing DJ was dropped');
+      }
+    `);
+  });
+
 });

@@ -40,7 +40,8 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent data-testid={testid}>
+      {/* Stacks above a parent dialog (e.g. delete from inside Edit show). */}
+      <DialogContent data-testid={testid} className="z-[91]" overlayClassName="z-[90]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>

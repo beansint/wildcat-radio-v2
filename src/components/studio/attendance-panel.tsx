@@ -87,10 +87,20 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
   });
   const today = todayQuery.data;
 
-  const activeShow = useMemo(
-    () => today?.todayShows.find((s) => s.id === today.episode?.id) ?? null,
-    [today],
-  );
+  // With nothing open yet, the slot airing right now is the one DJs tap into.
+  const activeShow = useMemo(() => {
+    if (!today) return null;
+    if (today.episode) return today.todayShows.find((s) => s.id === today.episode?.id) ?? null;
+    const now = todayQuery.dataUpdatedAt; // fetch time, refreshed every 15s
+    return (
+      today.todayShows.find(
+        (s) =>
+          (s.status === "SCHEDULED" || s.status === "DELAYED" || s.status === "DONE") &&
+          new Date(s.effectiveStart).getTime() <= now &&
+          now < new Date(s.effectiveEnd).getTime(),
+      ) ?? null
+    );
+  }, [today, todayQuery.dataUpdatedAt]);
 
   function invalidateToday() {
     return queryClient.invalidateQueries({ queryKey: getGetStudioTodayQueryKey() });
@@ -175,6 +185,8 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
                 <span className="dot" />
                 On air now
               </span>
+            ) : activeShow ? (
+              <span className="wc-pill wc-pill-warn">Up now · nobody timed in</span>
             ) : (
               <span className="wc-pill wc-pill-neutral">No open episode</span>
             )}

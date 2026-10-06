@@ -11,7 +11,9 @@ export type StudioOccurrenceStatus =
   | "HIATUS"
   | "PENDING_HANDOVER"
   | "ON_AIR"
-  | "DONE";
+  | "DONE"
+  /** #127: the episode ended while its slot window is still open. */
+  | "ENDED_EARLY";
 
 export interface StatusPill {
   label: string;
@@ -27,6 +29,7 @@ const PILLS: Record<StudioOccurrenceStatus, StatusPill> = {
   CANCELLED: { label: "Cancelled", pillClass: "wc-pill-bad" },
   HIATUS: { label: "On hiatus", pillClass: "wc-pill-neutral" },
   DONE: { label: "Done", pillClass: "wc-pill-ok" },
+  ENDED_EARLY: { label: "Ended early — time in to restart", pillClass: "wc-pill-warn" },
 };
 
 export function occurrencePill(status: string): StatusPill {

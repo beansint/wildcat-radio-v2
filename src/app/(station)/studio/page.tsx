@@ -17,6 +17,7 @@ import {
   Radio,
   RefreshCw,
   Send,
+  WifiOff,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
@@ -43,6 +44,11 @@ import type {
   StudioTodayDto,
 } from "@/lib/api/model";
 import { acquireSocket, type SocketLease } from "@/lib/realtime/socket";
+import type { StreamStatusEvent } from "@/lib/realtime/use-stream-presence";
+import { getEpisodeEngagementSnapshot } from "@/lib/api/endpoints/episodes/episodes";
+import { useStream } from "@/lib/stream/stream-context";
+import { isAuthFailure, mergeSnapshotChat, mergeSnapshotPolls } from "@/lib/studio/console-snapshot";
+import { type KioskBroadcastStatus } from "@/components/studio/broadcast-badge";
 import type { Socket } from "socket.io-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,13 +147,20 @@ export default function StudioPage() {
   // Cookie-backed session check. `GET /studio/session` always resolves 200 with
   // `{ active }` — `active: true` means the httpOnly `wc_station` cookie is
   // present and valid; `active: false` means locked.
+  //
+  // #127 — a 503 / network blip used to land on the "Open the dashboard from
+  // WildCat Studio" lock screen, which tells the booth to redo the handoff
+  // when nothing is wrong with it. Retry transient failures; only a real
+  // 401/403 (or `active: false`) is a lock. Otherwise: "Can't reach server".
   const sessionQuery = useQuery({
     queryKey: ["station-session"],
     queryFn: () => getStationSession(),
-    retry: false,
+    retry: (failureCount, error) => !isAuthFailure(error) && failureCount < 2,
     refetchOnWindowFocus: false,
   });
   const unlocked = sessionQuery.data?.active === true;
+  const sessionUnreachable =
+    sessionQuery.isError && !isAuthFailure(sessionQuery.error) && sessionQuery.data === undefined;
 
   // Same query key `AttendancePanel` uses, so React Query dedupes the two
   // callers onto a single request rather than polling `/studio/today` twice.
@@ -206,6 +219,32 @@ export default function StudioPage() {
   });
 
   const episodeId = unlocked ? (today?.episode?.id ?? null) : null;
+
+  // #127 — the kiosk shows what listeners hear: the manifest's status/reason
+  // (polled by StreamProvider) overlaid with the newer `stream:status` socket
+  // event when one arrives. A fresh manifest change supersedes an older event.
+  const stream = useStream();
+  const manifestBroadcast: KioskBroadcastStatus = {
+    status: stream.manifestAvailability === "ready" ? stream.status : null,
+    reason: stream.reason,
+    autoEndsAt: stream.autoEndsAt,
+  };
+  const manifestKey = `${manifestBroadcast.status}|${manifestBroadcast.reason}|${manifestBroadcast.autoEndsAt}`;
+  const [socketBroadcast, setSocketBroadcast] = useState<{
+    manifestKey: string;
+    episodeId: string | null;
+    value: KioskBroadcastStatus;
+  } | null>(null);
+  const broadcast: KioskBroadcastStatus =
+    socketBroadcast &&
+    socketBroadcast.manifestKey === manifestKey &&
+    (socketBroadcast.episodeId === null || socketBroadcast.episodeId === episodeId)
+      ? socketBroadcast.value
+      : manifestBroadcast;
+  const manifestKeyRef = useRef(manifestKey);
+  useEffect(() => {
+    manifestKeyRef.current = manifestKey;
+  }, [manifestKey]);
   const queue = episodeId && queueQuery.data?.episodeId === episodeId ? queueQuery.data : undefined;
   const showName = queue?.showName ?? null;
 
@@ -249,6 +288,33 @@ export default function StudioPage() {
       if (cancelled) return;
       addChatMessage(event);
     }
+    function onStreamStatus(event: StreamStatusEvent) {
+      if (cancelled) return;
+      setSocketBroadcast({
+        manifestKey: manifestKeyRef.current,
+        episodeId: event.episodeId ?? null,
+        value: { status: event.status, reason: event.reason ?? null, autoEndsAt: event.autoEndsAt ?? null },
+      });
+    }
+    // #127 — the console used to start empty after a reload or a socket
+    // reconnect: only events emitted while connected ever reached it. Load the
+    // episode's engagement snapshot on join and again on every reconnect.
+    const currentEpisodeId = episodeId;
+    async function loadSnapshot() {
+      try {
+        const snapshot = await getEpisodeEngagementSnapshot(currentEpisodeId);
+        if (cancelled || snapshot.episodeId !== currentEpisodeId) return;
+        setMessages((prev) => mergeSnapshotChat(prev, snapshot));
+        setPolls((prev) => mergeSnapshotPolls(prev, snapshot.polls));
+        if (snapshot.pinnedTopic) {
+          const text = snapshot.pinnedTopic.text;
+          setPinnedTopicState((prev) => prev || text);
+        }
+      } catch {
+        // Live events still flow; the next reconnect retries the snapshot.
+      }
+    }
+    void loadSnapshot();
     acquireSocket()
       .then((nextLease) => {
         if (cancelled) {
@@ -258,9 +324,16 @@ export default function StudioPage() {
         lease = nextLease;
         socket = nextLease.socket;
         const s = nextLease.socket;
-        joinEpisode = () => s.emit("episode:join", { episodeId });
+        let joined = false;
+        joinEpisode = () => {
+          s.emit("episode:join", { episodeId });
+          // The first join's snapshot is already loading (above).
+          if (joined) void loadSnapshot();
+          joined = true;
+        };
         s.on("connect", joinEpisode);
         if (s.connected) joinEpisode();
+        s.on("stream:status", onStreamStatus);
         s.on("poll:updated", onPollUpdated);
         s.on("hype:tick", onHypeTick);
         s.on("topic:pinned", onTopicPinned);
@@ -278,6 +351,7 @@ export default function StudioPage() {
         socket.off("hype:tick", onHypeTick);
         socket.off("topic:pinned", onTopicPinned);
         socket.off("chat:new", onChatNew);
+        socket.off("stream:status", onStreamStatus);
       }
       lease?.release();
     };
@@ -377,6 +451,35 @@ export default function StudioPage() {
     );
   }
 
+  if (sessionUnreachable) {
+    return (
+      <main className="min-h-screen bg-background pb-28 text-foreground">
+        <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4">
+          <div className="wc-card wc-card-pad" data-testid="studio-unreachable">
+            <h1 className="mb-4 flex items-center gap-2 text-xl font-extrabold">
+              <WifiOff className="h-5 w-5 text-gold" aria-hidden="true" />
+              Can&apos;t reach server
+            </h1>
+            <p role="alert" className="text-sm wc-muted">
+              The Wildcat Radio server didn&apos;t answer. The booth session is fine — this is a
+              connection problem. Retrying won&apos;t sign anyone out.
+            </p>
+            <Button
+              type="button"
+              className="mt-4 wc-btn-block"
+              data-testid="studio-session-retry"
+              disabled={sessionQuery.isFetching}
+              onClick={() => void sessionQuery.refetch()}
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+              {sessionQuery.isFetching ? "Retrying…" : "Retry"}
+            </Button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   if (!unlocked) {
     return (
       <main className="min-h-screen bg-background pb-28 text-foreground">
@@ -410,6 +513,7 @@ export default function StudioPage() {
         mode={mode}
         onModeChange={setMode}
         today={today}
+        broadcast={broadcast}
         onAddDj={() => setSubDialogOpen(true)}
       />
 
@@ -419,6 +523,7 @@ export default function StudioPage() {
             onOpenConsole={() => setMode("console")}
             pushToast={pushToast}
             onOpenSubDialog={() => setSubDialogOpen(true)}
+            broadcast={broadcast}
           />
         </div>
       ) : (

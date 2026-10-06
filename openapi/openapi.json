@@ -1370,6 +1370,12 @@
                     "showName": {
                       "type": "string",
                       "nullable": true
+                    },
+                    "autoEndsAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "date-time",
+                      "description": "Set when the open episode went LIVE and its encoder source is stale: the server auto-ends the show at this instant."
                     }
                   }
                 }
@@ -5330,7 +5336,8 @@
               "HIATUS",
               "PENDING_HANDOVER",
               "ON_AIR",
-              "DONE"
+              "DONE",
+              "ENDED_EARLY"
             ]
           },
           "showName": {

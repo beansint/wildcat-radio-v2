@@ -66,7 +66,10 @@ test("#64: API failure is unavailable, not genuine OFF_AIR", async ({ page }, te
   ]);
 });
 
-test("#64: a failed poll clears prior LIVE data and stops playback", async ({ page }) => {
+// #127: a SINGLE failed poll no longer clears LIVE (see live-path-listener.spec.ts
+// W-E1). A sustained outage — 30 s without a good poll — still clears it.
+test("#64: a sustained manifest outage clears prior LIVE data and stops playback", async ({ page }) => {
+  test.setTimeout(120_000);
   let unavailable = false;
   await page.route("**/api/stream/manifest", (route) =>
     unavailable
@@ -135,7 +138,7 @@ test("#64: a failed poll clears prior LIVE data and stops playback", async ({ pa
 
   unavailable = true;
   await expect(page.getByTestId("player-status")).toHaveText("UNAVAILABLE", {
-    timeout: 20_000,
+    timeout: 45_000,
   });
   await expect(page.getByText("DJ Test")).toHaveCount(0);
   await expect(page.locator(".wc-player .wc-badge-live")).toHaveCount(0);
@@ -143,7 +146,7 @@ test("#64: a failed poll clears prior LIVE data and stops playback", async ({ pa
   await expect
     .poll(() =>
       page.evaluate(() => (window as typeof window & { __pauseCalls: number }).__pauseCalls),
-    )
+    { timeout: 45_000 })
     .toBeGreaterThan(0);
 });
 

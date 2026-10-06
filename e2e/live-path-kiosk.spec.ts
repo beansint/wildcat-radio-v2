@@ -146,7 +146,8 @@ test.describe('live-path kiosk', () => {
     k.setToday(503);
     await page.clock.fastForward(15_100);
     const alert = page.getByTestId('studio-attendance-alert');
-    await expect(alert).toHaveText(/^Connection lost — updated 10:3\d$/, { timeout: 10_000 });
+    await expect.poll(async () => { await page.clock.fastForward(1_000); return alert.isVisible(); }, { timeout: 30_000 }).toBe(true);
+    await expect(alert).toHaveText(/^Connection lost — updated 10:3\d$/);
     await expect(rows).toHaveCount(2);
     await expect(page.getByTestId('studio-schedule-row')).toHaveCount(1);
     await expect(page.getByTestId('studio-kiosk-onair')).toBeVisible();
@@ -172,7 +173,8 @@ test.describe('live-path kiosk', () => {
     const k = await kiosk(page, { session: 503 });
     await page.goto('/studio');
     const card = page.getByTestId('studio-unreachable');
-    await expect(card).toBeVisible({ timeout: 15_000 });
+    // Drive the two retry backoffs (1 s, 2 s) on the fake clock.
+    await expect.poll(async () => { await page.clock.fastForward(1_000); return card.isVisible(); }, { timeout: 30_000 }).toBe(true);
     await expect(card.getByRole('heading', { name: "Can't reach server" })).toBeVisible();
     await expect(page.getByTestId('studio-handoff-required')).toHaveCount(0);
     expect(k.sessionRequests()).toBe(3); // first try + 2 retries

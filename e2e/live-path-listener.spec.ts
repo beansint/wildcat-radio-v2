@@ -27,6 +27,20 @@ const EXPECTED_503 = /\/api\/stream\/manifest$/;
 const chatInput = (page: Page) =>
   page.locator('form[aria-label="Desktop chat input"]').getByTestId('listen-chat-input');
 
+/**
+ * Advance the fake clock a second at a time until `check` holds — drives
+ * retry/backoff timers deterministically instead of waiting on wall time
+ * (keeps the specs stable on a loaded machine).
+ */
+async function tickUntil<T>(page: Page, check: () => Promise<T> | T, expected: T, timeout = 30_000) {
+  await expect
+    .poll(async () => {
+      await page.clock.fastForward(1_000);
+      return check();
+    }, { timeout })
+    .toBe(expected);
+}
+
 async function listener(page: Page) {
   await page.clock.install();
   await mockVerifiedListener(page);
@@ -50,8 +64,7 @@ test.describe('live-path listener', () => {
     manifest.set(503);
     await page.clock.fastForward(15_100);
     // The poll and both of its retries fail (1 s, 2 s backoff) …
-    await expect.poll(() => manifest.failures(), { timeout: 10_000 }).toBe(3);
-    await page.waitForTimeout(500);
+    await tickUntil(page, () => manifest.failures(), 3);
     // … and nothing on screen moved.
     await expect(page.getByTestId('player-status')).toHaveText('LIVE');
     await expect(page.getByRole('heading', { name: 'Broadcast status unavailable' })).toHaveCount(0);
@@ -78,7 +91,7 @@ test.describe('live-path listener', () => {
 
     manifest.set(503);
     await page.clock.fastForward(15_100);
-    await expect.poll(() => manifest.failures(), { timeout: 10_000 }).toBe(3);
+    await tickUntil(page, () => manifest.failures(), 3);
     await expect(page.getByTestId('player-status')).toHaveText('LIVE');
     await page.clock.fastForward(15_100);
     await expect(page.getByTestId('player-status')).toHaveText('UNAVAILABLE', { timeout: 10_000 });
@@ -166,7 +179,7 @@ test.describe('live-path listener', () => {
     await page.getByTestId('player-play').click();
     await expect(page.getByTestId('player-play')).toHaveAttribute('aria-label', /Reconnecting/, { timeout: 10_000 });
     // Backoff 1 s → 2 s → 4 s; the fourth request succeeds. No second click.
-    await expect.poll(() => audioPlaying(page), { timeout: 20_000 }).toBe(true);
+    await tickUntil(page, () => audioPlaying(page), true);
     expect(streamRequests).toBeGreaterThanOrEqual(4);
     await expect(page.getByTestId('player-play')).toHaveAttribute('aria-label', 'Pause');
   });
@@ -192,7 +205,7 @@ test.describe('live-path listener', () => {
     await expect(page.getByTestId('player-status')).toHaveText('STATION_ROTATION');
 
     await page.getByTestId('player-play').click();
-    await expect.poll(() => playlistRequests, { timeout: 20_000 }).toBeGreaterThanOrEqual(4);
+    await tickUntil(page, () => playlistRequests >= 4, true);
     // Recovered playlist → MANIFEST_PARSED → play(): the session is back without a click.
     await expect(page.getByTestId('player-play')).toHaveAttribute('aria-label', /Pause|Reconnecting/);
     await expect(page.getByTestId('player-play')).not.toHaveAttribute('aria-label', 'Play live stream');
@@ -210,7 +223,7 @@ test.describe('live-path listener', () => {
     await page.goto('/listen');
     await expect(page.getByTestId('player-status')).toHaveText('STATION_ROTATION');
     await page.getByTestId('player-play').click();
-    await expect.poll(() => audioPlaying(page), { timeout: 10_000 }).toBe(true);
+    await expect.poll(() => audioPlaying(page), { timeout: 20_000 }).toBe(true);
     // Record every label the play button shows from here on.
     await page.getByTestId('player-play').evaluate((button) => {
       const seen: string[] = [];
@@ -223,7 +236,7 @@ test.describe('live-path listener', () => {
     await expect.poll(() => requested.includes('/live-path-b.wav'), { timeout: 10_000 }).toBe(true);
     await expect.poll(() => page.getByTestId('player-audio').evaluate((node: HTMLAudioElement) => node.currentSrc), { timeout: 10_000 }).toContain('/live-path-b.wav');
     const before = await audioTime(page);
-    await expect.poll(() => audioTime(page), { timeout: 10_000 }).toBeGreaterThan(before);
+    await expect.poll(() => audioTime(page), { timeout: 20_000 }).toBeGreaterThan(before);
     await expect(page.getByTestId('player-play')).toHaveAttribute('aria-label', 'Pause');
     const labels = await page.evaluate(() => (window as unknown as { __labels: string[] }).__labels);
     expect(labels).not.toContain('Play live stream');

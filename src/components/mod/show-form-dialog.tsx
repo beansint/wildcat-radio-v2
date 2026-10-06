@@ -250,6 +250,8 @@ export function ShowFormDialog({
       setConfirmDelete(false);
       onDeleted();
     },
+    // Drop back to the edit dialog so its alert shows why (e.g. show is airing).
+    onError: () => setConfirmDelete(false),
   });
 
   const alertMessage =

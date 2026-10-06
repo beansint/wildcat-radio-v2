@@ -266,7 +266,9 @@ export function ShowFormDialog({
     (saveMutation.isError ? getApiErrorMessage(saveMutation.error) : null) ??
     (deleteMutation.isError ? getApiErrorMessage(deleteMutation.error) : null);
 
-  const busy = isSubmitting || saveMutation.isPending;
+  // #127 — a pending delete is busy too: no saving over a show mid-delete. A
+  // 409 (e.g. the show's episode is airing or in overtime) lands in the alert.
+  const busy = isSubmitting || saveMutation.isPending || deleteMutation.isPending;
 
   function onSubmit(values: FormValues) {
     saveMutation.mutate(values);
@@ -510,7 +512,7 @@ export function ShowFormDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={busy} data-testid="show-save">
-                {busy ? "Saving…" : "Save"}
+                {isSubmitting || saveMutation.isPending ? "Saving…" : "Save"}
               </Button>
             </DialogFooter>
           </form>

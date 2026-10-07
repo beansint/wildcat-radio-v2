@@ -28,7 +28,6 @@
  * instance. This panel now takes `pushToast`/`onOpenSubDialog` as props
  * rather than owning `useToast()`/`useState` for the dialog itself.
  */
-import { useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
@@ -48,6 +47,9 @@ import {
   useGetStudioToday,
 } from "@/lib/api/endpoints/studio/studio";
 import { occurrencePill } from "@/lib/studio/occurrence-status";
+import { pickActiveSlot } from "@/lib/studio/active-slot";
+import { useNow } from "@/lib/time/use-now";
+import { BroadcastBadge, type KioskBroadcastStatus } from "@/components/studio/broadcast-badge";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import type { StudioTodayDto, StudioTodayShowDto } from "@/lib/api/model";
 import { stationHhmm } from "@/lib/time/station";
@@ -77,56 +79,57 @@ interface AttendancePanelProps {
   onOpenConsole: () => void;
   pushToast: (message: string) => void;
   onOpenSubDialog: () => void;
+  /** #127 — the stream's real status, so "On air" is never claimed over rotation. */
+  broadcast: KioskBroadcastStatus;
 }
 
-export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: AttendancePanelProps) {
+export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog, broadcast }: AttendancePanelProps) {
   const queryClient = useQueryClient();
 
   const todayQuery = useGetStudioToday<StudioTodayDto>({
-    query: { refetchInterval: 15_000 },
+    query: { refetchInterval: 15_000, retry: 2 },
   });
+  // #127 — stale-while-error: React Query keeps the last good payload on a
+  // failed refetch; the roster stays on screen with a "Connection lost" note
+  // instead of disappearing on the first blip.
   const today = todayQuery.data;
+  const connectionLost = todayQuery.isError && today !== undefined;
 
-  // With nothing open yet, the slot airing right now is the one DJs tap into.
-  const activeShow = useMemo(() => {
-    if (!today) return null;
-    if (today.episode) return today.todayShows.find((s) => s.id === today.episode?.id) ?? null;
-    const now = todayQuery.dataUpdatedAt; // fetch time, refreshed every 15s
-    return (
-      today.todayShows.find(
-        (s) =>
-          (s.status === "SCHEDULED" || s.status === "DELAYED" || s.status === "DONE") &&
-          new Date(s.effectiveStart).getTime() <= now &&
-          now < new Date(s.effectiveEnd).getTime(),
-      ) ?? null
-    );
-  }, [today, todayQuery.dataUpdatedAt]);
+  // #127 — a ticking clock, not the fetch time (which froze on a fetch error
+  // or in a background tab). With nothing open yet, the slot airing right now
+  // is the one DJs tap into; DONE is never "Up now".
+  const now = useNow(15_000);
+  const activeSlot = pickActiveSlot(today, now);
+  const activeShow = activeSlot?.show ?? null;
 
   function invalidateToday() {
     return queryClient.invalidateQueries({ queryKey: getGetStudioTodayQueryKey() });
   }
 
+  // #127 — every mutation refetches today's view when it settles, success OR
+  // failure: a 409/timeout usually means the kiosk's picture is out of date.
+  // Returning the promise keeps the mutation pending until the refetch lands,
+  // so buttons never flash pre-mutation state.
   const timeInMutation = useMutation({
     mutationFn: (rosterId: string) => timeInStudio({ body: JSON.stringify({ rosterId }) }),
+    onSettled: () => invalidateToday(),
   });
 
   const timeOutMutation = useMutation({
     mutationFn: (rosterId: string) => timeOutStudio({ rosterId }),
+    onSettled: () => invalidateToday(),
   });
 
-  // Stays pending until today's view has refetched, so the banner never
-  // flashes "Start my show" again with pre-handover data (seen in live QA).
   const handoverMutation = useMutation({
     mutationFn: (rosterId: string) => handoverStudio({ body: JSON.stringify({ rosterId }) }),
-    onSuccess: () => invalidateToday(),
+    onSettled: () => invalidateToday(),
   });
 
   const pending = today?.pendingHandover ?? null;
 
   function handleTimeIn(rosterId: string, displayName: string) {
     timeInMutation.mutate(rosterId, {
-      onSuccess: async (result) => {
-        await invalidateToday();
+      onSuccess: (result) => {
         const at = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
         pushToast(
           result.state === "PENDING_HANDOVER"
@@ -147,8 +150,7 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
 
   function handleTimeOut(rosterId: string, displayName: string) {
     timeOutMutation.mutate(rosterId, {
-      onSuccess: async () => {
-        await invalidateToday();
+      onSuccess: () => {
         pushToast(`↩ ${displayName} timed out ${new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`);
       },
     });
@@ -165,7 +167,9 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
   // Single role="alert" region for the panel — query load failures win over a
   // stale time-in mutation error (matches the design gate's "one alert
   // region per view" rule).
-  const panelAlert = todayQuery.isError
+  const panelAlert = connectionLost
+    ? `Connection lost — updated ${stationHhmm(new Date(todayQuery.dataUpdatedAt))}`
+    : todayQuery.isError
     ? getApiErrorMessage(todayQuery.error)
     : timeInMutation.isError
       ? getApiErrorMessage(timeInMutation.error)
@@ -181,12 +185,19 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
         <section className="wc-card">
           <div className="wc-card-pad border-b border-border flex items-center gap-3 flex-wrap">
             {today?.episode ? (
-              <span className="wc-badge-live text-[.6rem] py-0.5">
-                <span className="dot" />
-                On air now
+              <BroadcastBadge
+                broadcast={broadcast}
+                episodeOpen
+                showName={activeShow?.showName ?? null}
+                liveLabel="On air now"
+                testid="studio-attendance-broadcast"
+              />
+            ) : activeSlot?.endedEarly ? (
+              <span className="wc-pill wc-pill-warn" data-testid="studio-ended-early">
+                {occurrencePill("ENDED_EARLY").label}
               </span>
             ) : activeShow ? (
-              <span className="wc-pill wc-pill-warn">Up now · nobody timed in</span>
+              <span className="wc-pill wc-pill-warn" data-testid="studio-up-now">Up now · nobody timed in</span>
             ) : (
               <span className="wc-pill wc-pill-neutral">No open episode</span>
             )}
@@ -229,14 +240,14 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
 
           <div className="p-3 sm:p-4 flex flex-col gap-3">
             {panelAlert && (
-              <div role="alert" className="text-sm font-semibold text-destructive">
+              <div role="alert" className="text-sm font-semibold text-destructive" data-testid="studio-attendance-alert">
                 {panelAlert}
               </div>
             )}
 
             {todayQuery.isLoading ? (
               <p className="wc-muted text-sm">Loading today&apos;s check-in…</p>
-            ) : todayQuery.isError ? null : today && today.slotRoster.length > 0 ? (
+            ) : !today ? null : today.slotRoster.length > 0 ? (
               today.slotRoster.map((entry, index) => (
                 <div
                   key={entry.rosterId}
@@ -291,7 +302,7 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
                   )}
                 </div>
               ))
-            ) : today && today.attendees.length > 0 ? (
+            ) : today.attendees.length > 0 ? (
               <>
                 <p className="wc-help" data-testid="studio-attendance-guidance">
                   This episode isn&apos;t tied to a scheduled show roster — showing everyone who&apos;s
@@ -395,7 +406,17 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog }: A
         {today && today.todayShows.length > 0 ? (
           <ul>
             {today.todayShows.map((show) => {
-              const meta = occurrencePill(show.status);
+              // #127 — the occurrence is open, but listeners hear rotation:
+              // never pulse "On air" over a known non-LIVE stream.
+              const meta =
+                show.status === "ON_AIR" && broadcast.status !== null && broadcast.status !== "LIVE"
+                  ? {
+                      label: broadcast.reason === "SOURCE_STALE" || broadcast.reason === "SEGMENT_STALE"
+                        ? "Open · encoder offline"
+                        : "Open · not on air",
+                      pillClass: "wc-pill-warn",
+                    }
+                  : occurrencePill(show.status);
               const muted = show.status === "CANCELLED" || show.status === "HIATUS";
               return (
                 <li

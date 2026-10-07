@@ -12,7 +12,9 @@
  * component only ever mounts once the station session is confirmed active,
  * so the pill is unconditional), and the staff dark/light toggle.
  *
- * Row 2 (attendance strip): on-air badge + per-DJ time-in chips, sourced
+ * Row 2 (attendance strip): broadcast badge (#127: the stream's real status —
+ * "Encoder offline … auto-ends in m:ss" rather than "On air" while listeners
+ * hear rotation) + per-DJ time-in chips, sourced
  * from the same `GET /api/studio/today` payload `AttendancePanel` reads —
  * React Query dedupes the two `useGetStudioToday` calls onto one request
  * since both use the same query key. Renders nothing extra when there's no
@@ -23,6 +25,7 @@ import { useEffect, useState } from "react";
 import { CircleDot, ClipboardCheck, Plus, SlidersHorizontal } from "lucide-react";
 import { StaffThemeToggle } from "@/components/layout/staff-sidebar";
 import { Button } from "@/components/ui/button";
+import { BroadcastBadge, type KioskBroadcastStatus } from "@/components/studio/broadcast-badge";
 import type { StudioTodayDto } from "@/lib/api/model";
 import { stationLongDate } from "@/lib/time/station";
 import { elapsedHhmm } from "@/lib/time/elapsed";
@@ -33,16 +36,17 @@ interface KioskHeaderProps {
   mode: StudioMode;
   onModeChange: (mode: StudioMode) => void;
   today: StudioTodayDto | undefined;
+  /** #127 — what listeners hear (manifest / socket), not merely "an episode is open". */
+  broadcast: KioskBroadcastStatus;
   onAddDj: () => void;
 }
 
-export function KioskHeader({ mode, onModeChange, today, onAddDj }: KioskHeaderProps) {
+export function KioskHeader({ mode, onModeChange, today, broadcast, onAddDj }: KioskHeaderProps) {
   const activeShow = today?.episode
     ? today.todayShows.find((s) => s.id === today.episode?.id) ?? null
     : null;
-  const onAirLabel = today?.episode
-    ? `On air${activeShow?.showName ? ` · ${activeShow.showName}` : ""}`
-    : null;
+  const episodeOpen = Boolean(today?.episode);
+  const showBroadcast = episodeOpen || broadcast.status === "LIVE";
   // Resolved after mount, never during render: reading the clock while
   // rendering would make the server and client emit different text and
   // hydration would mismatch. The booth stays open for a whole shift, so the
@@ -111,13 +115,15 @@ export function KioskHeader({ mode, onModeChange, today, onAddDj }: KioskHeaderP
         <StaffThemeToggle />
       </div>
 
-      {(onAirLabel || (today && today.attendees.length > 0)) && (
+      {(showBroadcast || (today && today.attendees.length > 0)) && (
         <div className="wc-container flex flex-wrap items-center gap-2 pb-3">
-          {onAirLabel && (
-            <span className="wc-badge-live text-[.6rem] py-0.5" data-testid="studio-kiosk-onair">
-              <span className="dot" />
-              {onAirLabel}
-            </span>
+          {showBroadcast && (
+            <BroadcastBadge
+              broadcast={broadcast}
+              episodeOpen={episodeOpen}
+              showName={activeShow?.showName ?? null}
+              testid="studio-kiosk-onair"
+            />
           )}
           {today?.attendees.map((attendee) => (
             <span key={attendee.rosterId} className="wc-chip-ghost text-xs" data-testid="studio-kiosk-dj-chip">

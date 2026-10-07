@@ -19,6 +19,8 @@ interface StageProps {
   reacting: boolean;
   reactionError: string | null;
   isLive: boolean;
+  /** #127 — the live episode's signal dropped; chat stays open while it reconnects. */
+  signalInterrupted?: boolean;
 }
 
 export const Stage = memo(function Stage({
@@ -30,6 +32,7 @@ export const Stage = memo(function Stage({
   reacting,
   reactionError,
   isLive,
+  signalInterrupted = false,
 }: StageProps) {
   const {
     isPlaying,
@@ -77,7 +80,7 @@ export const Stage = memo(function Stage({
       <div className="p-5 md:p-6">
 
         {/* Live badge + listener count */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <span className={status === "LIVE" && manifestAvailability === "ready" ? "wc-badge-live" : "wc-chip"}>
             {manifestAvailability === "loading" ? (
               <LoaderCircle className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
@@ -88,6 +91,16 @@ export const Stage = memo(function Stage({
             )}
             {headline}
           </span>
+          {signalInterrupted && (
+            <span
+              role="status"
+              className="wc-chip"
+              data-testid="listen-signal-interrupted"
+            >
+              <LoaderCircle className="w-3.5 h-3.5 motion-safe:animate-spin" aria-hidden="true" />
+              Signal interrupted — reconnecting
+            </span>
+          )}
           {canPlay && listeners !== null && (
             <span
               className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-bold"

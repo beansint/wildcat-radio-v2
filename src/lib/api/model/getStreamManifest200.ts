@@ -23,4 +23,9 @@ export type GetStreamManifest200 = {
   showId: string | null;
   /** @nullable */
   showName: string | null;
+  /**
+   * Set when the open episode went LIVE and its encoder source is stale: the server auto-ends the show at this instant.
+   * @nullable
+   */
+  autoEndsAt?: string | null;
 };

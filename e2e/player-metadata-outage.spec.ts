@@ -38,10 +38,13 @@ async function start(page: Page) {
 const paused = (page: Page) => page.getByTestId('player-audio').evaluate((node: HTMLAudioElement) => node.paused);
 const time = (page: Page) => page.getByTestId('player-audio').evaluate((node: HTMLAudioElement) => node.currentTime);
 
-test('AC-1: brief status outage preserves sounding audio and recovers without restart', async ({ page }) => {
+// #127: one failed poll (plus its two retries) keeps the last good status —
+// it must not flip to UNAVAILABLE, and the sounding audio is untouched.
+test('AC-1: brief status outage keeps the last good status and sounding audio', async ({ page }) => {
   const respond = await fixture(page); await start(page); const before = await time(page);
   respond('error'); await page.clock.fastForward(15_100);
-  await expect(page.getByTestId('player-status')).toHaveText('UNAVAILABLE');
+  for (let i = 0; i < 4; i++) await page.clock.fastForward(1_000); // poll + 1 s + 2 s retries all fail
+  await expect(page.getByTestId('player-status')).toHaveText('STATION_ROTATION');
   await expect.poll(() => paused(page)).toBe(false);
   await expect.poll(() => time(page)).toBeGreaterThan(before);
   respond('ready'); await page.clock.fastForward(15_100);
@@ -53,18 +56,21 @@ test('AC-1: brief status outage preserves sounding audio and recovers without re
 test('AC-2: repeated failures do not extend last-good grace forever', async ({ page }) => {
   const respond = await fixture(page); await start(page);
   respond('error'); await page.clock.fastForward(15_100);
-  await expect(page.getByTestId('player-status')).toHaveText('UNAVAILABLE');
-  await expect.poll(() => paused(page)).toBe(false);
-  await page.clock.fastForward(30_000);
+  await page.clock.fastForward(15_100); // 30 s without a good poll → unavailable
+  await expect(page.getByTestId('player-status')).toHaveText('UNAVAILABLE', { timeout: 10_000 });
   await expect.poll(() => paused(page)).toBe(false);
   await page.clock.fastForward(20_000);
+  await expect.poll(() => paused(page)).toBe(false);
+  await page.clock.fastForward(15_000); // past 60 s since the last good poll
   await expect.poll(() => paused(page)).toBe(true);
   await expect(page.getByTestId('player-play')).toBeDisabled();
 });
 
 test('AC-3: initial failure does not invent a playable source and recovery requires intent', async ({ page }) => {
   const respond = await fixture(page, 'error');
-  await expect(page.getByTestId('player-status')).toHaveText('UNAVAILABLE');
+  // No last good status to keep: unavailable once the first poll's retries
+  // (1 s, 2 s backoff, driven on the fake clock) fail.
+  await expect.poll(async () => { await page.clock.fastForward(1_000); return page.getByTestId('player-status').textContent(); }, { timeout: 30_000 }).toBe('UNAVAILABLE');
   await expect(page.getByTestId('player-play')).toBeDisabled();
   await expect.poll(() => paused(page)).toBe(true);
   respond('ready'); await page.clock.fastForward(15_100);
@@ -90,8 +96,8 @@ test('AC-5: retained LIVE audio cannot authorize reactions or claim fresh Live d
   await page.getByTestId('player-play').click();
   await expect.poll(() => paused(page)).toBe(false);
   await expect(page.getByTestId('player-react')).toBeVisible();
-  respond('error'); await page.clock.fastForward(15_100);
-  await expect(page.getByTestId('player-status')).toHaveText('UNAVAILABLE');
+  respond('error'); await page.clock.fastForward(15_100); await page.clock.fastForward(15_100);
+  await expect(page.getByTestId('player-status')).toHaveText('UNAVAILABLE', { timeout: 10_000 });
   await expect.poll(() => paused(page)).toBe(false);
   await expect(page.getByTestId('player-react')).toHaveCount(0);
   await expect(page.locator('.wc-badge-live, .wc-player-mini-live')).toHaveCount(0);

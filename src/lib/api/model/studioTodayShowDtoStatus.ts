@@ -17,4 +17,5 @@ export const StudioTodayShowDtoStatus = {
   PENDING_HANDOVER: 'PENDING_HANDOVER',
   ON_AIR: 'ON_AIR',
   DONE: 'DONE',
+  ENDED_EARLY: 'ENDED_EARLY',
 } as const;

@@ -344,6 +344,14 @@ export const getShowsControllerRemoveUrl = (id: string,) => {
 /**
  * @summary Delete a show
  */
+/**
+ * Archive a show (keeps its history, frees its slot). 409 while it is on air
+ * or a DJ awaits handover. Hand-added until the next `pnpm api:refresh`.
+ */
+export const showsControllerArchive = async (id: string, options?: RequestInit): Promise<void> => {
+  return customFetch<void>(`/api/shows/${id}/archive`, { ...options, method: 'POST' });
+};
+
 export const showsControllerRemove = async (id: string, options?: RequestInit): Promise<void> => {
 
   return customFetch<void>(getShowsControllerRemoveUrl(id),

@@ -25,6 +25,7 @@ import {
   showsControllerCreate,
   showsControllerUpdate,
   showsControllerRemove,
+  showsControllerArchive,
 } from "@/lib/api/endpoints/shows/shows";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import type { ShowDto, RosterEntryDto } from "@/lib/api/model";
@@ -244,7 +245,14 @@ export function ShowFormDialog({
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (!show) return;
-      await showsControllerRemove(show.id);
+      // A show that already aired can't be deleted: archive it instead so its
+      // history stays and its slot is free for a new show.
+      try {
+        await showsControllerRemove(show.id);
+      } catch (error) {
+        if (!getApiErrorMessage(error).includes("Archive it instead")) throw error;
+        await showsControllerArchive(show.id);
+      }
     },
     onSuccess: () => {
       setConfirmDelete(false);
@@ -523,7 +531,7 @@ export function ShowFormDialog({
         <ConfirmDialog
           open
           title="Delete show"
-          description={`Delete ${show?.name ?? "this show"}? This removes it from the schedule immediately.`}
+          description={`Delete ${show?.name ?? "this show"}? This removes it from the schedule immediately. A show that already aired is archived instead, keeping its episode history.`}
           confirmLabel="Delete"
           destructive
           pending={deleteMutation.isPending}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth/client";
 import { useStream } from "@/lib/stream/stream-context";
+import { useLiveGrace } from "@/lib/stream/use-live-grace";
 import { useEngagementRoom } from "@/lib/realtime/use-engagement-room";
 import { Stage } from "@/components/listen/stage";
 import { ChatColumn } from "@/components/listen/chat-column";
@@ -22,8 +23,13 @@ export function ListenClient() {
   const [handoffState, setHandoffState] = useState<"idle" | "consuming" | "error">("idle");
   const { listeners, episodeId, status, manifestAvailability } = useStream();
   const { data: session } = useSession();
-  const isLive = manifestAvailability === "ready" && status === "LIVE" && Boolean(episodeId);
-  const engagementEpisodeId = isLive ? episodeId : null;
+  // #127 — a LIVE→ROTATION blip (BUTT↔harbor reconnect) or a status-service
+  // outage must not close chat: the live episode keeps chat & engagement open
+  // through a grace window (see lib/stream/live-grace.ts). Unknown status is
+  // passed as null — a blip, not the end of the show.
+  const grace = useLiveGrace(manifestAvailability === "ready" ? status : null, episodeId);
+  const isLive = grace.open;
+  const engagementEpisodeId = grace.episodeId;
   const engagement = useEngagementRoom(
     engagementEpisodeId,
     pushToast,
@@ -66,7 +72,9 @@ export function ListenClient() {
     tab: SheetTab;
   }>({ scope: "", open: false, tab: "req" });
 
-  const episodeScope = engagementEpisodeId ?? `${manifestAvailability}:${status}`;
+  // Keyed by episode only: a status flip must never remount the composer
+  // (draft lost) or close the engagement sheet.
+  const episodeScope = engagementEpisodeId ?? "none";
 
   // FE#47 — leaf components below are `memo()`d; these handlers must keep a
   // stable identity or every chat/hype tick re-renders all four leaves anyway.
@@ -105,6 +113,7 @@ export function ListenClient() {
           reacting={engagement.reacting}
           reactionError={engagement.reactionError}
           isLive={isLive}
+          signalInterrupted={grace.interrupted}
         />
 
         {/* Chat column - right column */}

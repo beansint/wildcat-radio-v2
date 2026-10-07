@@ -6,11 +6,13 @@ import type { GetStreamManifest200Reason } from "@/lib/api/model";
 import { acquireSocket, type SocketLease } from "./socket";
 import { computePresenceTransition } from "./presence-actions";
 
-interface StreamStatusEvent {
+export interface StreamStatusEvent {
   episodeId: string | null;
   status: "LIVE" | "STATION_ROTATION" | "OFF_AIR";
   reason: GetStreamManifest200Reason;
   listeners: number;
+  /** #127 — server auto-end deadline while a LIVE episode's encoder is stale (may be absent). */
+  autoEndsAt?: string | null;
 }
 
 /** Minimal shape of a `queue:up-next` payload — the bar only shows the text. */
@@ -23,6 +25,9 @@ export interface UpNextPeek {
 interface PresenceState {
   listeners: number | null;
   socketStatus: "LIVE" | "STATION_ROTATION" | "OFF_AIR" | null;
+  socketReason: GetStreamManifest200Reason | null;
+  /** undefined = the event did not carry the field (older server). */
+  socketAutoEndsAt: string | null | undefined;
   socketEpisodeId: string | null | undefined;
   /**
    * The most recent queue item, for the global player's "up next" peek.
@@ -36,6 +41,15 @@ interface PresenceState {
    */
   upNext: UpNextPeek | null;
 }
+
+const EMPTY: PresenceState = {
+  listeners: null,
+  socketStatus: null,
+  socketReason: null,
+  socketAutoEndsAt: undefined,
+  socketEpisodeId: undefined,
+  upNext: null,
+};
 
 /**
  * Joins the Socket.IO presence room while `active && episodeId` is truthy.
@@ -54,12 +68,7 @@ export function useStreamPresence(
   episodeId: string | null,
   active: boolean
 ): PresenceState {
-  const [state, setState] = useState<PresenceState>({
-    listeners: null,
-    socketStatus: null,
-    socketEpisodeId: undefined,
-    upNext: null,
-  });
+  const [state, setState] = useState<PresenceState>(EMPTY);
 
   // Track previous episodeId so we can leave the old room
   const prevEpisodeId = useRef<string | null>(null);
@@ -73,7 +82,7 @@ export function useStreamPresence(
 
     if (!transition.shouldConnect) {
       prevEpisodeId.current = transition.nextPrevEpisodeId;
-      setState({ listeners: null, socketStatus: null, socketEpisodeId: undefined, upNext: null });
+      setState(EMPTY);
       return;
     }
 
@@ -83,7 +92,7 @@ export function useStreamPresence(
 
     // Never render presence-derived state from a previous episode while the
     // new room is joining.
-    setState({ listeners: null, socketStatus: null, socketEpisodeId: undefined, upNext: null });
+    setState(EMPTY);
 
     function onStreamStatus(event: StreamStatusEvent) {
       if (episodeId && event.episodeId && event.episodeId !== episodeId) return;
@@ -91,6 +100,8 @@ export function useStreamPresence(
         ...prev,
         listeners: event.listeners,
         socketStatus: event.status,
+        socketReason: event.reason ?? null,
+        socketAutoEndsAt: event.autoEndsAt,
         socketEpisodeId: event.episodeId,
       }));
     }
@@ -100,12 +111,7 @@ export function useStreamPresence(
     }
 
     function onDisconnect() {
-      setState({
-        listeners: null,
-        socketStatus: null,
-        socketEpisodeId: undefined,
-        upNext: null,
-      });
+      setState(EMPTY);
     }
 
     // Re-join presence after any (re)connect — the server drops room

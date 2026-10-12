@@ -875,7 +875,8 @@ export const GetStudioTodayResponse = zod.object({
   "startedAt": zod.iso.datetime({"offset":true}).nullable(),
   "endedAt": zod.iso.datetime({"offset":true}).nullable(),
   "showId": zod.string().nullable(),
-  "unscheduled": zod.boolean()
+  "unscheduled": zod.boolean(),
+  "effectiveEndAt": zod.iso.datetime({"offset":true}).nullable().describe('BE#195: slot end (null for an ad-hoc episode)')
 }).nullable(),
   "attendees": zod.array(zod.object({
   "rosterId": zod.string(),
@@ -908,6 +909,19 @@ export const GetStudioTodayResponse = zod.object({
   "rosterId": zod.string(),
   "displayName": zod.string(),
   "timeIn": zod.iso.datetime({"offset":true}).describe('Arrival (tap-in) time')
+}))
+}).nullable(),
+  "nextUp": zod.object({
+  "episodeId": zod.string().nullable().describe('Null until anyone checks in for it'),
+  "showId": zod.string(),
+  "showName": zod.string(),
+  "effectiveStart": zod.iso.datetime({"offset":true}),
+  "effectiveEnd": zod.iso.datetime({"offset":true}),
+  "waiting": zod.boolean().describe('At least one DJ is checked in for it'),
+  "djs": zod.array(zod.object({
+  "rosterId": zod.string(),
+  "displayName": zod.string(),
+  "checkedIn": zod.boolean().describe('Checked in and waiting to go live')
 }))
 }).nullable()
 })
@@ -942,7 +956,8 @@ export const timeOutStudioBodyExpectedPendingEpisodeIdMax = 128;
 
 export const TimeOutStudioBody = zod.object({
   "rosterId": zod.string(),
-  "expectedPendingEpisodeId": zod.string().min(1).max(timeOutStudioBodyExpectedPendingEpisodeIdMax).optional().describe('Withdraw only a still-pending check-in for this episode. Reject if handover already started it.')
+  "expectedPendingEpisodeId": zod.string().min(1).max(timeOutStudioBodyExpectedPendingEpisodeIdMax).optional().describe('Withdraw only a still-pending check-in for this episode. Reject if handover already started it.'),
+  "confirmEnd": zod.boolean().optional().describe('BE#195: required when this tap-out would end the show (last DJ on air). Without it the API answers 409 CONFIRM_END_REQUIRED with a preview.')
 })
 
 export const TimeOutStudioResponse = zod.object({

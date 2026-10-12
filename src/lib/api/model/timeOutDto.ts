@@ -14,4 +14,6 @@ export interface TimeOutDto {
      * @maxLength 128
      */
   expectedPendingEpisodeId?: string;
+  /** BE#195: required when this tap-out would end the show (last DJ on air). Without it the API answers 409 CONFIRM_END_REQUIRED with a preview. */
+  confirmEnd?: boolean;
 }

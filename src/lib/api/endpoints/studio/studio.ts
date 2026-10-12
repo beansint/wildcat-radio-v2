@@ -23,6 +23,7 @@ import type {
 import type {
   BoothChatDto,
   ChatMessageResponseDto,
+  ConfirmEndConflictDto,
   ConsumeStationHandoffDto,
   CreatePollDto,
   PinTopicDto,
@@ -1797,7 +1798,7 @@ export const getTimeOutStudioQueryKey = (timeOutDto?: TimeOutDto,) => {
     }
 
 
-export const getTimeOutStudioQueryOptions = <TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = void>(timeOutDto: TimeOutDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getTimeOutStudioQueryOptions = <TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = ConfirmEndConflictDto>(timeOutDto: TimeOutDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -1816,10 +1817,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type TimeOutStudioQueryResult = NonNullable<Awaited<ReturnType<typeof timeOutStudio>>>
-export type TimeOutStudioQueryError = void
+export type TimeOutStudioQueryError = ConfirmEndConflictDto
 
 
-export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = void>(
+export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = ConfirmEndConflictDto>(
  timeOutDto: TimeOutDto, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof timeOutStudio>>,
@@ -1829,7 +1830,7 @@ export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = void>(
+export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = ConfirmEndConflictDto>(
  timeOutDto: TimeOutDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof timeOutStudio>>,
@@ -1839,7 +1840,7 @@ export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = void>(
+export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = ConfirmEndConflictDto>(
  timeOutDto: TimeOutDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -1847,7 +1848,7 @@ export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio
  * @summary DJ time-out (tap out)
  */
 
-export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = void>(
+export function useTimeOutStudio<TData = Awaited<ReturnType<typeof timeOutStudio>>, TError = ConfirmEndConflictDto>(
  timeOutDto: TimeOutDto, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof timeOutStudio>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

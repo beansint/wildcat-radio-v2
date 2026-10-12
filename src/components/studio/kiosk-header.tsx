@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { BroadcastBadge, type KioskBroadcastStatus } from "@/components/studio/broadcast-badge";
 import type { StudioTodayDto } from "@/lib/api/model";
 import { stationLongDate } from "@/lib/time/station";
-import { elapsedHhmm } from "@/lib/time/elapsed";
+import { formatOnFor } from "@/lib/studio/show-transition";
 
 export type StudioMode = "attendance" | "console";
 
@@ -127,9 +127,10 @@ export function KioskHeader({ mode, onModeChange, today, broadcast, onAddDj }: K
           )}
           {today?.attendees.map((attendee) => (
             <span key={attendee.rosterId} className="wc-chip-ghost text-xs" data-testid="studio-kiosk-dj-chip">
-              ✓ {attendee.displayName}{" "}
+              ✓ {attendee.displayName}
+              {/* FE#132 F7: a labeled elapsed time — a bare "0:02" read as a countdown. */}
               {attendee.timeIn && now !== null && (
-                <span className="tnum">{elapsedHhmm(attendee.timeIn, now)}</span>
+                <span className="tnum wc-muted"> · {formatOnFor(attendee.timeIn, now)}</span>
               )}
             </span>
           ))}

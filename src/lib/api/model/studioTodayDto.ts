@@ -7,6 +7,7 @@
  */
 import type { StudioAttendeeDto } from './studioAttendeeDto.ts';
 import type { StudioEpisodeDto } from './studioEpisodeDto.ts';
+import type { StudioNextUpDto } from './studioNextUpDto.ts';
 import type { StudioPendingHandoverDto } from './studioPendingHandoverDto.ts';
 import type { StudioSlotRosterEntryDto } from './studioSlotRosterEntryDto.ts';
 import type { StudioTodayShowDto } from './studioTodayShowDto.ts';
@@ -19,4 +20,6 @@ export interface StudioTodayDto {
   todayShows: StudioTodayShowDto[];
   /** @nullable */
   pendingHandover: StudioPendingHandoverDto | null;
+  /** @nullable */
+  nextUp: StudioNextUpDto | null;
 }

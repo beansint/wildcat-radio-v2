@@ -16,4 +16,9 @@ export interface StudioEpisodeDto {
   /** @nullable */
   showId: string | null;
   unscheduled: boolean;
+  /**
+     * BE#195: slot end (null for an ad-hoc episode)
+     * @nullable
+     */
+  effectiveEndAt: string | null;
 }

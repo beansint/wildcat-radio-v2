@@ -1273,7 +1273,8 @@
                     "stationId",
                     "generation",
                     "prefix",
-                    "expiresAt"
+                    "expiresAt",
+                    "ttlMs"
                   ],
                   "properties": {
                     "stationId": {
@@ -1289,6 +1290,11 @@
                     "expiresAt": {
                       "type": "string",
                       "format": "date-time"
+                    },
+                    "ttlMs": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Lease remaining on the API clock; booths use this instead of their own clock"
                     }
                   }
                 }
@@ -1321,7 +1327,8 @@
                     "dj",
                     "episodeId",
                     "showId",
-                    "showName"
+                    "showName",
+                    "autoEndsAt"
                   ],
                   "properties": {
                     "status": {
@@ -1373,9 +1380,8 @@
                     },
                     "autoEndsAt": {
                       "type": "string",
-                      "nullable": true,
                       "format": "date-time",
-                      "description": "Set when the open episode went LIVE and its encoder source is stale: the server auto-ends the show at this instant."
+                      "nullable": true
                     }
                   }
                 }
@@ -1441,7 +1447,8 @@
                         "stationId",
                         "generation",
                         "prefix",
-                        "expiresAt"
+                        "expiresAt",
+                        "ttlMs"
                       ],
                       "properties": {
                         "stationId": {
@@ -1457,6 +1464,11 @@
                         "expiresAt": {
                           "type": "string",
                           "format": "date-time"
+                        },
+                        "ttlMs": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Lease remaining on the API clock; booths use this instead of their own clock"
                         }
                       }
                     }
@@ -1466,7 +1478,7 @@
             }
           },
           "400": {
-            "description": "Invalid, stale, or future-dated publication evidence"
+            "description": "Malformed heartbeat. Out-of-range evidence (stale/future/regressive) is dropped field-by-field, not rejected."
           }
         },
         "summary": "Studio source heartbeat",
@@ -2736,6 +2748,30 @@
           }
         },
         "summary": "Delete a show",
+        "tags": [
+          "shows"
+        ]
+      }
+    },
+    "/api/shows/{id}/archive": {
+      "post": {
+        "operationId": "ShowsController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Archive a show (keeps history, frees its slot); 409 while on air or awaiting handover",
         "tags": [
           "shows"
         ]
@@ -5145,6 +5181,21 @@
           "lastPublishedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "segmentAgeMs": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Age of the newest local HLS segment. Booth-measured milliseconds; the API derives the instant from its own receive time, so booth clock skew cancels out (Studio ≥ 1.0.5). Preferred over the matching timestamp."
+          },
+          "publishedAgeMs": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Age of the last successful R2 playlist publication. Booth-measured milliseconds; the API derives the instant from its own receive time, so booth clock skew cancels out (Studio ≥ 1.0.5). Preferred over the matching timestamp."
+          },
+          "sourceDisconnectedForMs": {
+            "type": "number",
+            "minimum": 0,
+            "description": "How long the harbor source has been disconnected (0 while connected). A gap under the blip tolerance still counts as connected."
           }
         },
         "required": [
@@ -5336,8 +5387,8 @@
               "HIATUS",
               "PENDING_HANDOVER",
               "ON_AIR",
-              "DONE",
-              "ENDED_EARLY"
+              "ENDED_EARLY",
+              "DONE"
             ]
           },
           "showName": {

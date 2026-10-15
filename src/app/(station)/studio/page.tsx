@@ -226,9 +226,12 @@ export default function StudioPage() {
   // The queue belongs to the open episode; with nothing on air the API
   // answers 400, and polling it every 5s filled the booth console with
   // errors (found by #106 WEB-E-05). Poll only while an episode is open.
+  // FE#132: the socket says an episode ended before /studio/today catches up;
+  // stop polling its queue at once (the API answers 400 for a closed episode).
+  const [endedEpisodeId, setEndedEpisodeId] = useState<string | null>(null);
   const queueQuery = useQuery({
     queryKey: ["studio-queue", today?.episode?.id ?? null],
-    enabled: unlocked && !!today?.episode,
+    enabled: unlocked && !!today?.episode && today.episode.id !== endedEpisodeId,
     refetchInterval: 5_000,
     queryFn: () => getStudioQueue(),
   });
@@ -242,20 +245,29 @@ export default function StudioPage() {
     let cancelled = false;
     let lease: SocketLease<Socket> | null = null;
     const refresh = () => void queryClient.invalidateQueries({ queryKey: getGetStudioTodayQueryKey() });
+    // A resumed episode (re-tap inside its slot) keeps its id: poll it again.
+    const started = (event?: { episodeId?: string }) => {
+      if (event?.episodeId) setEndedEpisodeId((prev) => (prev === event.episodeId ? null : prev));
+      refresh();
+    };
+    const ended = (event?: { episodeId?: string }) => {
+      if (event?.episodeId) setEndedEpisodeId(event.episodeId);
+      refresh();
+    };
     acquireSocket()
       .then((next) => {
         if (cancelled) return next.release();
         lease = next;
-        next.socket.on("episode:started", refresh);
-        next.socket.on("episode:ended", refresh);
+        next.socket.on("episode:started", started);
+        next.socket.on("episode:ended", ended);
       })
       .catch(() => {
         // Polling still refreshes the kiosk.
       });
     return () => {
       cancelled = true;
-      lease?.socket.off("episode:started", refresh);
-      lease?.socket.off("episode:ended", refresh);
+      lease?.socket.off("episode:started", started);
+      lease?.socket.off("episode:ended", ended);
       lease?.release();
     };
   }, [unlocked, queryClient]);

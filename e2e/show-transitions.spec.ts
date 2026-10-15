@@ -238,6 +238,11 @@ test.describe('FE#132 show transitions', () => {
     await page.getByTestId('studio-end-show-confirm').click();
     await expect(page.getByTestId('studio-transition')).toContainText('Show Alpha ended · the station is playing rotation');
     await expect(page.getByTestId('studio-ended-early')).toBeVisible();
+    // The closed episode's queue is never polled again (socket episode:ended).
+    let queue400 = 0;
+    page.on('response', (r) => r.url().includes('/studio/queue') && r.status() === 400 && queue400++);
+    await page.waitForTimeout(6_000);
+    expect(queue400).toBe(0);
     expect(ours(errors)).toEqual([]);
   });
 

@@ -59,6 +59,21 @@ import { AttendancePanel } from "@/components/studio/attendance-panel";
 import { KioskHeader } from "@/components/studio/kiosk-header";
 import { SubTimeInDialog } from "@/components/studio/sub-timein-dialog";
 import { pushToast } from "@/components/listen/toast";
+import { TransitionAnnouncer, type TransitionAnnouncement } from "@/components/studio/transition-announcer";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { episodeTransition, openShowName } from "@/lib/studio/show-transition";
+
+/** How long the hand-over announcement stays up (FE#132 F4). */
+const TRANSITION_MS = 6_000;
 
 const pollSchema = z.object({
   question: z.string().trim().min(1, "Add a poll question.").max(200),
@@ -211,14 +226,52 @@ export default function StudioPage() {
   // The queue belongs to the open episode; with nothing on air the API
   // answers 400, and polling it every 5s filled the booth console with
   // errors (found by #106 WEB-E-05). Poll only while an episode is open.
+  // FE#132: the socket says an episode ended before /studio/today catches up;
+  // stop polling its queue at once (the API answers 400 for a closed episode).
+  const [endedEpisodeId, setEndedEpisodeId] = useState<string | null>(null);
   const queueQuery = useQuery({
     queryKey: ["studio-queue", today?.episode?.id ?? null],
-    enabled: unlocked && !!today?.episode,
+    enabled: unlocked && !!today?.episode && today.episode.id !== endedEpisodeId,
     refetchInterval: 5_000,
     queryFn: () => getStudioQueue(),
   });
 
   const episodeId = unlocked ? (today?.episode?.id ?? null) : null;
+
+  // FE#132 F3 — the API announces every show start/end; refresh at once
+  // instead of waiting up to 15 s for the next poll.
+  useEffect(() => {
+    if (!unlocked) return;
+    let cancelled = false;
+    let lease: SocketLease<Socket> | null = null;
+    const refresh = () => void queryClient.invalidateQueries({ queryKey: getGetStudioTodayQueryKey() });
+    // A resumed episode (re-tap inside its slot) keeps its id: poll it again.
+    const started = (event?: { episodeId?: string }) => {
+      if (event?.episodeId) setEndedEpisodeId((prev) => (prev === event.episodeId ? null : prev));
+      refresh();
+    };
+    const ended = (event?: { episodeId?: string }) => {
+      if (event?.episodeId) setEndedEpisodeId(event.episodeId);
+      refresh();
+    };
+    acquireSocket()
+      .then((next) => {
+        if (cancelled) return next.release();
+        lease = next;
+        next.socket.on("episode:started", started);
+        next.socket.on("episode:ended", ended);
+      })
+      .catch(() => {
+        // Polling still refreshes the kiosk.
+      });
+    return () => {
+      cancelled = true;
+      lease?.socket.off("episode:started", started);
+      lease?.socket.off("episode:ended", ended);
+      lease?.release();
+    };
+  }, [unlocked, queryClient]);
+
 
   // #127 — the kiosk shows what listeners hear: the manifest's status/reason
   // (polled by StreamProvider) overlaid with the newer `stream:status` socket
@@ -247,6 +300,34 @@ export default function StudioPage() {
   }, [manifestKey]);
   const queue = episodeId && queueQuery.data?.episodeId === episodeId ? queueQuery.data : undefined;
   const showName = queue?.showName ?? null;
+  // Today's board names the show; the queue does too once it loads (and is
+  // the only source for an episode the board doesn't list).
+  const boardName = openShowName(today);
+  const onAirName = boardName === "Current show" ? (showName ?? boardName) : boardName;
+
+  // FE#132 F4 — announce a hand-over when the open episode changes (adjusting
+  // state during render, not in an effect). `undefined` = not loaded yet, so
+  // the first load never announces.
+  const openEpisode = today ? (today.episode ? { id: today.episode.id, showName: onAirName } : null) : undefined;
+  const [seenEpisode, setSeenEpisode] = useState<{ id: string; showName: string | null } | null | undefined>(undefined);
+  const [announcement, setAnnouncement] = useState<TransitionAnnouncement | null>(null);
+  const [lastEnded, setLastEnded] = useState<string | null>(null);
+  if (openEpisode !== undefined && (openEpisode?.id !== seenEpisode?.id || openEpisode?.showName !== seenEpisode?.showName)) {
+    const change = seenEpisode === undefined ? null : episodeTransition(seenEpisode, openEpisode);
+    setSeenEpisode(openEpisode);
+    if (change) {
+      setAnnouncement({ ...change, welcome: today?.attendees.map((a) => a.displayName) ?? [] });
+      setLastEnded(change.live ? null : change.ended);
+    } else if (openEpisode) {
+      setLastEnded(null);
+    }
+  }
+  useEffect(() => {
+    if (!announcement) return;
+    const id = window.setTimeout(() => setAnnouncement(null), TRANSITION_MS);
+    return () => window.clearTimeout(id);
+  }, [announcement]);
+  const [lockOpen, setLockOpen] = useState(false);
 
   const addChatMessage = useCallback((message: ChatMessageResponseDto) => {
     setMessages((prev) => {
@@ -423,7 +504,7 @@ export default function StudioPage() {
   });
 
   function clearSession() {
-    clearSessionMutation.mutate();
+    clearSessionMutation.mutate(undefined, { onSettled: () => setLockOpen(false) });
   }
 
   const pollAlert = firstError(
@@ -516,6 +597,7 @@ export default function StudioPage() {
         broadcast={broadcast}
         onAddDj={() => setSubDialogOpen(true)}
       />
+      <TransitionAnnouncer announcement={announcement} />
 
       {mode === "attendance" ? (
         <div className="mx-auto w-full max-w-7xl px-4 py-4">
@@ -534,7 +616,9 @@ export default function StudioPage() {
             <div>
               <div className="text-xs font-bold uppercase wc-muted">Station session</div>
               <h1 className="text-xl font-extrabold">Studio console</h1>
-              <div className="text-sm wc-muted">Episode {episodeId ?? "not active"}</div>
+              <div className="text-sm wc-muted" data-testid="studio-console-show">
+                {episodeId ? onAirName : lastEnded ? `${lastEnded} ended` : "No show on air"}
+              </div>
             </div>
             <div className="flex gap-2">
               <Button
@@ -547,12 +631,24 @@ export default function StudioPage() {
                 <RefreshCw className="h-4 w-4" aria-hidden="true" />
                 Refresh
               </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={clearSession}>
+              <Button type="button" variant="ghost" size="sm" data-testid="studio-lock-kiosk" onClick={() => setLockOpen(true)}>
                 <LogOut className="h-4 w-4" aria-hidden="true" />
-                End session
+                Lock kiosk
               </Button>
             </div>
           </header>
+
+          {!episodeId && (
+            <div className="wc-card-pad border-b border-border flex flex-wrap items-center gap-3" data-testid="studio-console-idle">
+              <div className="flex-1 min-w-0 text-sm">
+                <div className="font-bold">{lastEnded ? `${lastEnded} ended` : "No show on air"}</div>
+                <div className="wc-muted">The console opens again when the next show goes live.</div>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => setMode("attendance")}>
+                Back to attendance
+              </Button>
+            </div>
+          )}
 
           <div className="wc-card-pad">
             <div className="mb-3 flex items-center gap-2">
@@ -848,6 +944,29 @@ export default function StudioPage() {
       {/* Owned by the page so both the attendance table and the kiosk bar's
           "add a DJ" button open the same dialog, and so a toast survives a
           switch between the Attendance and Console tabs. */}
+      <AlertDialog open={lockOpen} onOpenChange={setLockOpen}>
+        <AlertDialogContent data-testid="studio-lock-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Lock this kiosk?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The show keeps running. DJs will need the WildCat Studio app to open this screen again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="studio-lock-cancel">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="studio-lock-confirm"
+              disabled={clearSessionMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                clearSession();
+              }}
+            >
+              {clearSessionMutation.isPending ? "Locking…" : "Lock kiosk"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <SubTimeInDialog
         open={subDialogOpen}
         onOpenChange={setSubDialogOpen}

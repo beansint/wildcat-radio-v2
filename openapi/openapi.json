@@ -1273,7 +1273,8 @@
                     "stationId",
                     "generation",
                     "prefix",
-                    "expiresAt"
+                    "expiresAt",
+                    "ttlMs"
                   ],
                   "properties": {
                     "stationId": {
@@ -1289,6 +1290,11 @@
                     "expiresAt": {
                       "type": "string",
                       "format": "date-time"
+                    },
+                    "ttlMs": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Lease remaining on the API clock; booths use this instead of their own clock"
                     }
                   }
                 }
@@ -1321,7 +1327,8 @@
                     "dj",
                     "episodeId",
                     "showId",
-                    "showName"
+                    "showName",
+                    "autoEndsAt"
                   ],
                   "properties": {
                     "status": {
@@ -1373,9 +1380,8 @@
                     },
                     "autoEndsAt": {
                       "type": "string",
-                      "nullable": true,
                       "format": "date-time",
-                      "description": "Set when the open episode went LIVE and its encoder source is stale: the server auto-ends the show at this instant."
+                      "nullable": true
                     }
                   }
                 }
@@ -1441,7 +1447,8 @@
                         "stationId",
                         "generation",
                         "prefix",
-                        "expiresAt"
+                        "expiresAt",
+                        "ttlMs"
                       ],
                       "properties": {
                         "stationId": {
@@ -1457,6 +1464,11 @@
                         "expiresAt": {
                           "type": "string",
                           "format": "date-time"
+                        },
+                        "ttlMs": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Lease remaining on the API clock; booths use this instead of their own clock"
                         }
                       }
                     }
@@ -1466,7 +1478,7 @@
             }
           },
           "400": {
-            "description": "Invalid, stale, or future-dated publication evidence"
+            "description": "Malformed heartbeat. Out-of-range evidence (stale/future/regressive) is dropped field-by-field, not rejected."
           }
         },
         "summary": "Studio source heartbeat",
@@ -1684,7 +1696,14 @@
             }
           },
           "409": {
-            "description": "Pending check-in changed or was already started/withdrawn; no on-air timeout applied"
+            "description": "CHECK_IN_CHANGED (pending check-in changed or was already started/withdrawn) or CONFIRM_END_REQUIRED (last DJ: resend with confirmEnd; body carries a ConfirmEndPreview). Nothing is written.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmEndConflictDto"
+                }
+              }
+            }
           }
         },
         "summary": "DJ time-out (tap out)",
@@ -2736,6 +2755,30 @@
           }
         },
         "summary": "Delete a show",
+        "tags": [
+          "shows"
+        ]
+      }
+    },
+    "/api/shows/{id}/archive": {
+      "post": {
+        "operationId": "ShowsController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Archive a show (keeps history, frees its slot); 409 while on air or awaiting handover",
         "tags": [
           "shows"
         ]
@@ -5145,6 +5188,21 @@
           "lastPublishedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "segmentAgeMs": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Age of the newest local HLS segment. Booth-measured milliseconds; the API derives the instant from its own receive time, so booth clock skew cancels out (Studio ≥ 1.0.5). Preferred over the matching timestamp."
+          },
+          "publishedAgeMs": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Age of the last successful R2 playlist publication. Booth-measured milliseconds; the API derives the instant from its own receive time, so booth clock skew cancels out (Studio ≥ 1.0.5). Preferred over the matching timestamp."
+          },
+          "sourceDisconnectedForMs": {
+            "type": "number",
+            "minimum": 0,
+            "description": "How long the harbor source has been disconnected (0 while connected). A gap under the blip tolerance still counts as connected."
           }
         },
         "required": [
@@ -5238,6 +5296,12 @@
           },
           "unscheduled": {
             "type": "boolean"
+          },
+          "effectiveEndAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "BE#195: slot end (null for an ad-hoc episode)"
           }
         },
         "required": [
@@ -5246,7 +5310,8 @@
           "startedAt",
           "endedAt",
           "showId",
-          "unscheduled"
+          "unscheduled",
+          "effectiveEndAt"
         ]
       },
       "StudioAttendeeDto": {
@@ -5336,8 +5401,8 @@
               "HIATUS",
               "PENDING_HANDOVER",
               "ON_AIR",
-              "DONE",
-              "ENDED_EARLY"
+              "ENDED_EARLY",
+              "DONE"
             ]
           },
           "showName": {
@@ -5417,6 +5482,69 @@
           "attendees"
         ]
       },
+      "StudioNextUpDjDto": {
+        "type": "object",
+        "properties": {
+          "rosterId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "checkedIn": {
+            "type": "boolean",
+            "description": "Checked in and waiting to go live"
+          }
+        },
+        "required": [
+          "rosterId",
+          "displayName",
+          "checkedIn"
+        ]
+      },
+      "StudioNextUpDto": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null until anyone checks in for it"
+          },
+          "showId": {
+            "type": "string"
+          },
+          "showName": {
+            "type": "string"
+          },
+          "effectiveStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "waiting": {
+            "type": "boolean",
+            "description": "At least one DJ is checked in for it"
+          },
+          "djs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudioNextUpDjDto"
+            }
+          }
+        },
+        "required": [
+          "episodeId",
+          "showId",
+          "showName",
+          "effectiveStart",
+          "effectiveEnd",
+          "waiting",
+          "djs"
+        ]
+      },
       "StudioTodayDto": {
         "type": "object",
         "properties": {
@@ -5455,6 +5583,15 @@
                 "$ref": "#/components/schemas/StudioPendingHandoverDto"
               }
             ]
+          },
+          "nextUp": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StudioNextUpDto"
+              }
+            ]
           }
         },
         "required": [
@@ -5462,7 +5599,8 @@
           "attendees",
           "slotRoster",
           "todayShows",
-          "pendingHandover"
+          "pendingHandover",
+          "nextUp"
         ]
       },
       "StudioRosterEntryDto": {
@@ -5519,10 +5657,78 @@
             "minLength": 1,
             "maxLength": 128,
             "description": "Withdraw only a still-pending check-in for this episode. Reject if handover already started it."
+          },
+          "confirmEnd": {
+            "type": "boolean",
+            "description": "BE#195: required when this tap-out would end the show (last DJ on air). Without it the API answers 409 CONFIRM_END_REQUIRED with a preview."
           }
         },
         "required": [
           "rosterId"
+        ]
+      },
+      "ConfirmEndPreviewDto": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string"
+          },
+          "showName": {
+            "type": "string",
+            "nullable": true
+          },
+          "unscheduled": {
+            "type": "boolean"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "nextUp": {
+            "nullable": true,
+            "description": "Starts when the end is confirmed; null when nobody is waiting",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StudioNextUpDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "episodeId",
+          "showName",
+          "unscheduled",
+          "startedAt",
+          "nextUp"
+        ]
+      },
+      "ConfirmEndConflictDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 409
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "CONFIRM_END_REQUIRED"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "preview": {
+            "$ref": "#/components/schemas/ConfirmEndPreviewDto"
+          }
+        },
+        "required": [
+          "statusCode",
+          "code",
+          "message",
+          "preview"
         ]
       },
       "StudioHandoverResultDto": {

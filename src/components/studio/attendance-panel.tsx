@@ -21,6 +21,11 @@
  * explicit "Start my show" — the outgoing show otherwise ends on its last
  * tap-out.
  *
+ * FE#132 show transitions: the last on-air DJ's time-out asks first (the API
+ * answers 409 CONFIRM_END_REQUIRED with what ends and who is waiting), every
+ * go-live names what it ends, an "Up next" card previews the next show, and the
+ * card counts down to the slot end / overtime.
+ *
  * FE#46: the sub/guest time-in dialog + toast host moved up to `StudioPage`
  * so the kiosk header's persistent "add a DJ" button (visible in both
  * Attendance and Console mode) can open the *same* dialog this panel's own
@@ -29,6 +34,7 @@
  * rather than owning `useToast()`/`useState` for the dialog itself.
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   ArrowRight,
   CalendarDays,
@@ -51,7 +57,12 @@ import { pickActiveSlot } from "@/lib/studio/active-slot";
 import { useNow } from "@/lib/time/use-now";
 import { BroadcastBadge, type KioskBroadcastStatus } from "@/components/studio/broadcast-badge";
 import { getApiErrorMessage } from "@/lib/api/error-message";
-import type { StudioTodayDto, StudioTodayShowDto } from "@/lib/api/model";
+import type { ConfirmEndPreviewDto, StudioTodayDto, StudioTodayShowDto } from "@/lib/api/model";
+import { openShowName, parseConfirmEnd, stationClock } from "@/lib/studio/show-transition";
+import { EndShowDialog } from "@/components/studio/end-show-dialog";
+import { GoLiveDialog, type GoLiveRequest } from "@/components/studio/go-live-dialog";
+import { SlotTimingCue } from "@/components/studio/slot-timing-cue";
+import { UpNextCard } from "@/components/studio/up-next-card";
 import { stationHhmm } from "@/lib/time/station";
 import { Button } from "@/components/ui/button";
 
@@ -116,9 +127,14 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog, bro
   });
 
   const timeOutMutation = useMutation({
-    mutationFn: (rosterId: string) => timeOutStudio({ rosterId }),
+    mutationFn: ({ rosterId, confirmEnd }: { rosterId: string; confirmEnd?: boolean }) =>
+      timeOutStudio({ rosterId, ...(confirmEnd ? { confirmEnd: true } : {}) }),
     onSettled: () => invalidateToday(),
   });
+  const [endRequest, setEndRequest] = useState<
+    { preview: ConfirmEndPreviewDto; rosterId: string; displayName: string } | null
+  >(null);
+  const [goLive, setGoLive] = useState<GoLiveRequest | null>(null);
 
   const handoverMutation = useMutation({
     mutationFn: (rosterId: string) => handoverStudio({ body: JSON.stringify({ rosterId }) }),
@@ -140,21 +156,83 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog, bro
     });
   }
 
-  function handleHandover() {
-    const first = pending?.attendees[0];
-    if (!first) return;
-    handoverMutation.mutate(first.rosterId, {
-      onSuccess: () => pushToast(`▶ ${pending?.showName ?? "Next show"} is on air`),
+  const onAirName = openShowName(today) ?? "The current show";
+  const nextUp = today?.nextUp ?? null;
+
+  /** F2: confirm before a go-live ends whatever is on air. */
+  function requestHandover() {
+    if (!pending) return;
+    setGoLive({
+      incoming: pending.showName ?? "the next show",
+      continuingCrew: pending.continuingCrew,
+      outgoing: today?.episode
+        ? { showName: onAirName, djs: today.attendees.map((a) => ({ displayName: a.displayName, timeIn: a.timeIn })) }
+        : null,
     });
   }
 
+  function confirmHandover() {
+    const first = pending?.attendees[0];
+    if (!first) return setGoLive(null);
+    handoverMutation.mutate(first.rosterId, {
+      onSuccess: () => pushToast(`▶ ${pending?.showName ?? "Next show"} is on air`),
+      onSettled: () => setGoLive(null),
+    });
+  }
+
+  function timedOutToast(displayName: string) {
+    pushToast(`↩ ${displayName} timed out ${new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`);
+  }
+
+  /**
+   * F1: the last DJ on air confirms first. When the kiosk already sees one DJ
+   * on air it asks up front; otherwise the API is the referee — a 409
+   * CONFIRM_END_REQUIRED (someone else timed out meanwhile) opens the same
+   * dialog from the server's preview.
+   */
   function handleTimeOut(rosterId: string, displayName: string) {
-    timeOutMutation.mutate(rosterId, {
-      onSuccess: () => {
-        pushToast(`↩ ${displayName} timed out ${new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`);
+    const episode = today?.episode;
+    const onAir = today?.attendees ?? [];
+    if (episode && onAir.length === 1 && onAir[0].rosterId === rosterId) {
+      setEndRequest({
+        rosterId,
+        displayName,
+        preview: {
+          episodeId: episode.id,
+          showName: episode.unscheduled ? null : onAirName,
+          unscheduled: episode.unscheduled,
+          startedAt: episode.startedAt,
+          nextUp: nextUp?.waiting ? nextUp : null,
+        },
+      });
+      return;
+    }
+    timeOutMutation.mutate({ rosterId }, {
+      onSuccess: () => timedOutToast(displayName),
+      onError: (error) => {
+        const preview = parseConfirmEnd(error);
+        if (!preview) return;
+        timeOutMutation.reset(); // not an error: a question for the DJ
+        setEndRequest({ preview, rosterId, displayName });
       },
     });
   }
+
+  function confirmEndShow() {
+    if (!endRequest) return;
+    const { rosterId, displayName, preview } = endRequest;
+    timeOutMutation.mutate({ rosterId, confirmEnd: true }, {
+      onSuccess: () => {
+        pushToast(preview.nextUp ? `↩ ${displayName} timed out · ${preview.nextUp.showName} is going live` : `↩ ${displayName} timed out · show ended`);
+      },
+      onSettled: () => setEndRequest(null),
+    });
+  }
+
+  // The banner for a check-in whose show hasn't started yet (BE#195 R3), or
+  // is due with nothing on air (nothing auto-starts: the DJ goes live).
+  const pendingStart = pending && nextUp?.episodeId === pending.episodeId ? nextUp.effectiveStart : null;
+  const pendingEarly = !!pendingStart && new Date(pendingStart).getTime() > now;
 
   // `attendees` is the open episode's full attendance-record set (every
   // timed-in roster member, including subs merged into `slotRoster` and
@@ -201,12 +279,17 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog, bro
             ) : (
               <span className="wc-pill wc-pill-neutral">No open episode</span>
             )}
-            <div className="font-extrabold text-lg flex-1">
+            <div className="font-extrabold text-lg flex-1 min-w-[10rem]">
               {activeShow?.showName ?? (today?.episode?.unscheduled ? "Ad-hoc episode" : "No show scheduled")}
             </div>
-            {activeShow && (
+            {today?.episode ? (
+              <SlotTimingCue
+                endIso={today.episode.effectiveEndAt}
+                waitingShow={nextUp?.waiting ? nextUp.showName : null}
+              />
+            ) : activeShow ? (
               <span className="wc-chip-ghost tnum">Scheduled {startLabel(activeShow)}</span>
-            )}
+            ) : null}
           </div>
 
           {pending && (
@@ -218,22 +301,32 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog, bro
             >
               <Hourglass className="h-5 w-5 text-gold flex-none" aria-hidden="true" />
               <div className="flex-1 min-w-0">
-                <div className="font-bold">
-                  {pending.showName ?? "Next show"} {pending.continuingCrew ? "is ready to start" : "is waiting to go on air"}
+                <div className="font-bold" data-testid="studio-handover-title">
+                  {pendingEarly && pendingStart
+                    ? `Checked in for ${pending.showName ?? "the next show"} · starts ${stationClock(pendingStart)}`
+                    : !today?.episode && !pending.continuingCrew
+                      ? `${pending.showName ?? "Next show"} is due — tap Go live`
+                      : `${pending.showName ?? "Next show"} ${pending.continuingCrew ? "is ready to start" : "is waiting to go on air"}`}
                 </div>
                 <div className="text-sm wc-muted">
                   {pending.attendees.map((a) => `${a.displayName} (in ${formatClock(a.timeIn)})`).join(", ")}
-                  {today?.episode ? " · the current show is still running" : ""}
+                  {today?.episode ? ` · ${onAirName} is still on air` : ""}
                 </div>
               </div>
               <Button
                 type="button"
                 data-testid="studio-handover"
                 disabled={handoverMutation.isPending}
-                onClick={handleHandover}
+                onClick={requestHandover}
               >
                 <Play className="h-4 w-4" aria-hidden="true" />
-                {handoverMutation.isPending ? "Starting…" : pending.continuingCrew ? "Start next show" : "Start my show"}
+                {handoverMutation.isPending
+                  ? "Starting…"
+                  : pending.continuingCrew
+                    ? "Start next show"
+                    : today?.episode
+                      ? "Start my show"
+                      : pendingEarly ? "Go live now" : "Go live"}
               </Button>
             </div>
           )}
@@ -366,6 +459,8 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog, bro
           </div>
         </section>
 
+        {nextUp && <UpNextCard nextUp={nextUp} now={now} />}
+
         {consoleLive && (
           <button
             type="button"
@@ -459,6 +554,22 @@ export function AttendancePanel({ onOpenConsole, pushToast, onOpenSubDialog, bro
           </div>
         )}
       </section>
+
+      <EndShowDialog
+        request={endRequest}
+        upcoming={nextUp && !nextUp.waiting ? nextUp : null}
+        now={now}
+        pending={timeOutMutation.isPending}
+        onConfirm={confirmEndShow}
+        onCancel={() => setEndRequest(null)}
+      />
+      <GoLiveDialog
+        request={goLive}
+        now={now}
+        pending={handoverMutation.isPending}
+        onConfirm={confirmHandover}
+        onCancel={() => setGoLive(null)}
+      />
     </div>
   );
 }

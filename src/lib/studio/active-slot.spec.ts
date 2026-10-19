@@ -26,6 +26,7 @@ function today(todayShows: StudioTodayShowDto[], episodeId: string | null = null
     slotRoster: [],
     todayShows,
     pendingHandover: null,
+    nextUp: null,
   };
 }
 

@@ -91,6 +91,11 @@ function seed() {
       create: { id: 'seed-studio-pc-0001', label: 'E2E106 Studio', tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true, deviceId: ${JSON.stringify(STATION_DEVICE_ID)} },
     });
     await prisma.episode.updateMany({ where: { startedAt: { not: null }, endedAt: null }, data: { endedAt: new Date(), status: 'OFF_AIR' } });
+    // #183's abandoned sweep closes a show whose booth stopped publishing 20 min
+    // ago; the seeded overrun has no booth, so hold publication "recent" (no
+    // trusted publisher → never LIVE by itself; WEB-E-06's heartbeat replaces it).
+    await prisma.streamHealth.deleteMany({});
+    await prisma.streamHealth.create({ data: { id: 'primary', sourceConnected: false, lastPublishedAt: new Date('2099-01-01T00:00:00Z') } });
     await prisma.rosterEntry.create({ data: { id: ${JSON.stringify(ids.djA)}, displayName: ${JSON.stringify(names.djA)} } });
     await prisma.rosterEntry.create({ data: { id: ${JSON.stringify(ids.djB)}, displayName: ${JSON.stringify(names.djB)} } });
     for (const [id, name, cadence, dj] of [
@@ -210,6 +215,9 @@ test.describe('#106 live schedule, handover, approved overtime', () => {
     await expect(studioRow(page, names.B)).toHaveAttribute('data-status', 'PENDING_HANDOVER');
 
     await page.getByTestId('studio-handover').click();
+    // FE#132 F2: "Start my show" names the show it ends before handing over.
+    await expect(page.getByTestId('studio-go-live-summary')).toContainText(`This ends ${names.A}`);
+    await page.getByTestId('studio-go-live-confirm').click();
     await expect(banner).toBeHidden();
     await expect(studioRow(page, names.B)).toHaveAttribute('data-status', 'ON_AIR');
     await expect(studioRow(page, names.A)).toHaveAttribute('data-status', 'DONE');

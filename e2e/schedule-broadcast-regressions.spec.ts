@@ -61,11 +61,13 @@ test('Studio drops its cached episode and queue when the broadcast closes', asyn
   });
   await page.goto('/studio');
   await page.getByRole('tab', { name: 'Console', exact: true }).click();
-  await expect(page.getByText('Previous Show', { exact: false })).toBeVisible();
+  await expect(page.getByTestId('studio-console-show')).toHaveText('Previous Show');
   closed = true;
   await page.clock.runFor(16_000);
-  await expect(page.getByText('Previous Show', { exact: false })).toHaveCount(0);
-  await expect(page.getByText('Episode not active', { exact: true })).toBeVisible();
+  // FE#132 F4: the closed episode's console state is gone, and the console
+  // says what ended instead of going blank.
+  await expect(page.getByTestId('studio-console-show')).toHaveText('Previous Show ended');
+  await expect(page.getByTestId('studio-console-idle')).toBeVisible();
 });
 
 test('staff sees legacy overlaps and a rejected edit stays reviewable', async ({ page }, info) => {
@@ -115,6 +117,11 @@ test('continuing crew explicitly starts the next show while the outgoing show st
   await expect(page.getByRole('button', { name: 'Start next show', exact: true })).toBeVisible();
   expect(handovers).toBe(0);
   await page.getByRole('button', { name: 'Start next show', exact: true }).click();
+  // FE#132 F2: it names what it ends before handing over.
+  await expect(page.getByTestId('studio-go-live-summary')).toContainText('This ends Outgoing Show (DJ Vince');
+  await expect(page.getByTestId('studio-go-live-summary')).toContainText('Everyone on air stays on for the next show.');
+  expect(handovers).toBe(0);
+  await page.getByTestId('studio-go-live-confirm').click();
   await expect(page.getByTestId('studio-handover-banner')).toHaveCount(0);
   await expect(page.getByText('Next Show', { exact: true }).first()).toBeVisible();
   expect(handovers).toBe(1);

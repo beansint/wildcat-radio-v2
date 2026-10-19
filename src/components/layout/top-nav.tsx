@@ -53,8 +53,8 @@ export function TopNav({ onMenu }: TopNavProps) {
         </button>
 
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 mr-2">
-          {/* alt="" — adjacent wordmark text already labels this link */}
+        <Link href="/" className="flex flex-none items-center gap-2 mr-2" aria-label="Wildcat Radio home">
+          {/* alt="" — the link's aria-label names it (the wordmark hides on the narrowest phones) */}
           <Image
             src="/brand/logo-mascot-mark.png"
             alt=""
@@ -63,7 +63,7 @@ export function TopNav({ onMenu }: TopNavProps) {
             className="h-9 w-9"
             priority
           />
-          <span className="font-extrabold tracking-tight">
+          <span className="hidden min-[360px]:inline whitespace-nowrap font-extrabold tracking-tight">
             Wildcat <span className="text-maroon">Radio</span>
           </span>
         </Link>
@@ -117,12 +117,16 @@ export function TopNav({ onMenu }: TopNavProps) {
                 >
                   Sign in
                 </Link>
-                <Link
-                  href="/listen"
-                  className="wc-btn wc-btn-primary wc-btn-sm"
-                >
-                  Listen live
-                </Link>
+                {/* Phones: no room beside the wordmark and Sign in (they
+                    overlapped at 360px); the drawer and the player cover it. */}
+                <span className="hidden sm:inline-flex">
+                  <Link
+                    href="/listen"
+                    className="wc-btn wc-btn-primary wc-btn-sm"
+                  >
+                    Listen live
+                  </Link>
+                </span>
               </>
             )
           )}

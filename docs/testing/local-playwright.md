@@ -44,6 +44,7 @@ Create the named empty database using your local PostgreSQL administration tools
 
 ```powershell
 $env:NODE_ENV='test'
+$env:LOCAL_REALSTACK_SCHEDULES='1'
 pnpm --filter @wildcat/db exec prisma migrate deploy
 pnpm --filter @wildcat/db seed
 pnpm --filter @wildcat/api build
@@ -52,6 +53,15 @@ pnpm --filter @wildcat/api exec node dist/main.js
 ```
 
 `NODE_ENV=test` relaxes test rate budgets. The synthetic seed accounts use a published password and must stay local. Email settings above disable delivery. Start the [local storage and real HLS service](local-storage-and-hls.md) with the same explicit settings before Playwright: the storage/upload and live-playback cases now require it and fail when absent. The service uses synthetic local credentials and never an AWS profile. Its local S3 protocol coverage does not certify the production Cloudflare R2 deployment.
+
+`LOCAL_REALSTACK_SCHEDULES=1` is required in the **API server** terminal for full
+broadcast acceptance. It runs the real hype clock, minute sampler, process
+observation, summary recovery and retention scheduler. Ordinary Jest/integration
+tests leave it unset and invoke job cores directly. The opt-in refuses non-loopback
+or non-test database names in test mode; it does not change production scheduling.
+Test authentication rate budgets remain inflated, so these browser runs are not
+evidence of production throttling thresholds. The dedicated boundary tests own that
+evidence. Do not add synthetic socket ticks to make a quiet-decay scenario pass.
 
 The public-read rate-boundary case launches a separate loopback test process using the compiled backend public controller and production throttle policy. Keep the backend build step above: removing the route's throttle or guard must make that case fail. Its read payload is stubbed; other public-content cases retain the database-backed API checks.
 
@@ -75,5 +85,12 @@ pnpm test
 pnpm test:coverage
 pnpm test:e2e
 ```
+
+Run unit/coverage commands with the production-default media/upload-host variables
+unset; the CSP unit case asserts the default production host. Restore the common
+local-media variables before the frontend build and Playwright. For a release
+candidate, freeze product/test source, run the complete Playwright suite twice
+consecutively with retries off, and record each JSON result plus owned-fixture
+cleanup. A focused rerun does not substitute for a second complete pass.
 
 Playwright validates the explicit local origins and isolated database name before collecting any specs. All 49 spec files run serially. Reports must distinguish failures, explicit skips, and tests blocked by serial setup failures. The local encoder cases decode real AAC/HLS media and check advancing playback time; they do not prove a production booth/network broadcast. Stop only API, frontend and local-service processes you started when validation ends, using the local-service shutdown endpoint so its encoder also stops.

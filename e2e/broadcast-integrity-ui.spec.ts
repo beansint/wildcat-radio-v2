@@ -1,6 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type BrowserContext, type APIRequestContext } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
+import { apiLoginAs } from './_fixtures';
+
+import { assertIntegrityCleanup, startIntegrityBroadcast as startLocalBroadcast, api, endBroadcast, episodeRows, localDb, loginIntegrityAs as loginAs, play, seedStaffEpisodes, unlockLiveStudio } from './_broadcast-integrity';
 
 const identityModule = ts.transpileModule(
   readFileSync("src/lib/realtime/episode-browser-id.ts", "utf8"),
@@ -50,7 +53,7 @@ const id = (page: Page, episode: string) =>
     episode,
   );
 for (const noLocks of [false, true])
-  test(`browser IDs share simultaneous first play across tabs (${noLocks ? "IndexedDB" : "Web Locks"})`, async ({
+  test(`isolated browser storage: IDs share simultaneous first play across tabs (${noLocks ? "IndexedDB" : "Web Locks"})`, async ({
     context,
   }) => {
     await context.route("**/__identity", (route) =>
@@ -76,7 +79,7 @@ for (const noLocks of [false, true])
     expect(await id(first, "episode-one")).toBe(a);
     expect(await id(first, "episode-two")).not.toBe(a);
   });
-test("storage denial keeps only a page-session identity", async ({
+test("isolated browser storage: denial keeps only a page-session identity", async ({
   context,
 }) => {
   await context.route("**/__identity", (route) =>
@@ -118,443 +121,314 @@ test("storage denial keeps only a page-session identity", async ({
   ).toEqual({ persistent: false, payload: { episodeId: "episode" } });
 });
 
-test("staff discovers unscheduled and archived episodes, filters and drills into unavailable measurements", async ({
-  page,
-}) => {
-  const quality = {
-    measurementVersion: "episode-browser-v1",
-    sampleCount: null,
-    expectedSamples: null,
-    samplingCoverage: null,
-    interruptedSessions: null,
-    fallbackSessions: null,
-    rawPrunedAt: null,
-    unobservedIntervalSeconds: 15,
-  };
-  const episode = {
-    episodeId: "old-archived",
-    showId: "archived-show",
-    showName: "Archived evening show",
-    title: "Historical special",
-    startedAt: "2026-10-01T01:00:00Z",
-    endedAt: "2026-10-01T02:00:00Z",
-    scheduledFor: null,
-    scheduledEndAt: null,
-    measurementStatus: "unavailable",
-    durationMinutes: 60,
-    peak: null,
-    average: null,
-    reach: null,
-    tlh: null,
-    tsl: null,
-    quality,
-  };
-  const unsampled = {
-    ...episode,
-    episodeId: "complete-unsampled",
-    showId: "show-without-samples",
-    showName: "Unsampled completed show",
-    title: "Unsampled morning",
-    measurementStatus: "complete",
-    reach: 3,
-    tlh: 1,
-    tsl: 20,
-    quality: {
-      ...quality,
-      sampleCount: 0,
-      expectedSamples: 60,
-      samplingCoverage: 0,
-    },
-  };
-  const listQueries: URL[] = [];
-  await page.route("**/api/**", async (route) => {
-    const url = new URL(route.request().url());
-    let body: unknown = {};
-    if (url.pathname.endsWith("/get-session"))
-      body = {
-        session: {
-          id: "fixture",
-          expiresAt: "2030-01-01T00:00:00Z",
-          token: "fixture",
-          userId: "mod",
-        },
-        user: {
-          id: "mod",
-          email: "mod@fixture.test",
-          name: "Moderator",
-          role: "MODERATOR",
-          emailVerified: true,
-        },
-      };
-    else if (url.pathname === "/api/analytics/overview")
-      body = {
-        peakConcurrent: null,
-        cumulativeEpisodeReach: 3,
-        totalListeningHours: 1,
-        averageEngagementPerEpisode: 2,
-        episodeCount: 1,
-        coverage: {
-          totalEpisodes: 3,
-          completedEpisodes: 1,
-          pendingEpisodes: 1,
-          unavailableEpisodes: 1,
-          samplingUnavailableEpisodes: 1,
-        },
-      };
-    else if (url.pathname === "/api/analytics/dayparts") body = [];
-    else if (url.pathname === "/api/analytics/shows")
-      body = [
-        {
-          showId: "show-without-samples",
-          name: "Unsampled completed show",
-          theme: null,
-          episodeCount: 1,
-          avgConcurrent: null,
-          avgTlh: 1,
-          avgEngagement: 2,
-          trend: null,
-        },
-      ];
-    else if (url.pathname === "/api/analytics/episodes") {
-      listQueries.push(url);
-      body =
-        url.searchParams.get("measurementStatus") === "complete"
-          ? { items: [unsampled], total: 1, page: 1, pageSize: 50 }
-          : {
-              items: [
-                episode,
-                {
-                  ...episode,
-                  episodeId: "unscheduled",
-                  showId: null,
-                  showName: null,
-                  title: null,
-                  measurementStatus: "pending",
-                },
-                unsampled,
-              ],
-              total: 3,
-              page: 1,
-              pageSize: 20,
-            };
-    } else if (url.pathname === "/api/analytics/episodes/old-archived")
-      body = { ...episode, retention: [], engagement: null };
-    else if (url.pathname.includes("manifest"))
-      body = {
-        status: "OFF_AIR",
-        reason: null,
-        type: "HLS",
-        url: null,
-        dj: [],
-        episodeId: null,
-        showId: null,
-        showName: null,
-        autoEndsAt: null,
-      };
-    await route.fulfill({ json: body });
-  });
-  await page.goto("/mod/analytics");
-  await expect(page.getByTestId("mod-analytics-coverage")).toContainText(
-    "1 unavailable",
-  );
-  await expect(page.getByTestId("mod-analytics-coverage")).toContainText(
-    "1 complete without audience samples",
-  );
-  await expect(page.getByTestId("mod-analytics-stat-peak")).toHaveText(
-    "Unavailable",
-  );
-  await expect(
-    page
-      .getByTestId("mod-analytics-show-row")
-      .getByText("Unavailable", { exact: true }),
-  ).toHaveCount(2);
-  await expect(page.getByTestId("mod-analytics-episodes")).toContainText(
-    "Archived evening show",
-  );
-  await expect(page.getByTestId("mod-analytics-episodes")).toContainText(
-    "Unscheduled",
-  );
-  await page.getByRole("button", { name: "View episode" }).first().click();
-  const dialog = page.getByTestId("mod-analytics-episode-detail");
-  await expect(dialog).toContainText("Historical special");
-  await expect(dialog).toContainText("Unavailable");
-  await expect(dialog).toContainText("not people");
-  await expect(dialog).toContainText("Breakdown unavailable");
-  await page.getByRole("button", { name: "Close", exact: true }).click();
-  await page.getByLabel("Measurement", { exact: true }).click();
-  await page.getByRole("option", { name: "pending", exact: true }).click();
-  await expect
-    .poll(() =>
-      listQueries.some(
-        (url) => url.searchParams.get("measurementStatus") === "pending",
-      ),
-    )
-    .toBe(true);
-  expect(
-    listQueries.every((url) => url.searchParams.get("to")?.includes("T")),
-  ).toBe(true);
+
+test.afterAll(() => assertIntegrityCleanup());
+
+// Integration scenarios below use real API + WS + PostgreSQL. No route interception.
+test('AC-2/AC-3 (integrity AC-3): FE-BI-1: real browser reactions persist, hydrate studio bins and decay during quiet ticks', async ({ browser, request, page }) => {
+  test.setTimeout(140_000);
+  const broadcast = await startLocalBroadcast(request);
+  let studioContext: BrowserContext | undefined;
+  try {
+    studioContext = await browser.newContext();
+    const studio = await studioContext.newPage();
+    await page.goto('/listen');
+    const meter = page.getByTestId('engagement-hype-meter');
+    await expect(meter).toHaveAttribute('aria-label', /^0 reactions/);
+    const reaction = page.waitForResponse(r => r.url() === api(`episodes/${broadcast.episodeId}/reactions`) && r.request().method() === 'POST');
+    await page.getByTestId('engagement-reaction-fire').click();
+    expect((await reaction).ok()).toBe(true);
+    await expect.poll(() => episodeRows(broadcast.episodeId).reactions).toBe(1);
+    await expect(meter).toHaveAttribute('aria-label', /^1 reactions/);
+    // A late console must hydrate nonzero history from the real snapshot.
+    await unlockLiveStudio(studio, broadcast);
+    await expect(studio.getByTestId('studio-hype-count')).toHaveText('1');
+    await expect(studio.getByTestId('studio-hype-bars').locator('span')).toHaveCount(12);
+    expect(await studio.getByTestId('studio-hype-bars').locator('span').evaluateAll(bars => bars.some(bar => parseFloat((bar as HTMLElement).style.height) > 0))).toBe(true);
+    await expect(meter).toHaveAttribute('aria-label', /^0 reactions/, { timeout: 75_000 });
+    await expect(studio.getByTestId('studio-hype-count')).toHaveText('0');
+    expect(await studio.getByTestId('studio-hype-bars').locator('span').evaluateAll(bars => bars.every(bar => (bar as HTMLElement).style.height === '0%'))).toBe(true);
+    expect(episodeRows(broadcast.episodeId).reactions).toBe(1);
+  } finally {
+    await page.goto('about:blank');
+    await studioContext?.close();
+    await broadcast.cleanup();
+  }
 });
 
-test("studio hydrates measured zero bins, hides moderated chat, expires pins and recovers authoritatively", async ({
-  page,
-}) => {
-  const peers: import("@playwright/test").WebSocketRoute[] = [];
-  await page.routeWebSocket("**/socket.io/**", (peer) => {
-    peers.push(peer);
-    peer.send(
-      "0" +
-        JSON.stringify({
-          sid: `transport-${peers.length}`,
-          upgrades: [],
-          pingInterval: 25000,
-          pingTimeout: 20000,
-          maxPayload: 1000000,
-        }),
-    );
-    peer.onMessage((message) => {
-      if (String(message) === "40")
-        peer.send("40" + JSON.stringify({ sid: `socket-${peers.length}` }));
-    });
-  });
-  let snapshotRequests = 0;
-  const hype = () => ({
-    episodeId: "episode",
-    capturedAt: new Date().toISOString(),
-    windowSeconds: 60,
-    count: 0,
-    trend: "flat",
-    buckets: Array.from({ length: 12 }, (_, i) => ({
-      startedAt: new Date(Date.now() - 60000 + i * 5000).toISOString(),
-      count: 0,
-    })),
-  });
-  await page.route("**/api/**", async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    let body: unknown = {};
-    if (path === "/api/studio/session") body = { active: true };
-    else if (path === "/api/studio/today")
-      body = {
-        episode: {
-          id: "episode",
-          status: "LIVE",
-          startedAt: new Date().toISOString(),
-          endedAt: null,
-          showId: null,
-          unscheduled: true,
-          effectiveEndAt: null,
-        },
-        attendees: [],
-        slotRoster: [],
-        todayShows: [],
-        pendingHandover: null,
-        nextUp: null,
-      };
-    else if (path === "/api/studio/queue")
-      body = { episodeId: "episode", showName: "Fixture broadcast", items: [] };
-    else if (path === "/api/studio/roster") body = [];
-    else if (path.endsWith("/engagement-snapshot")) {
-      snapshotRequests++;
-      body = {
-        episodeId: "episode",
-        capturedAt: new Date().toISOString(),
-        recentChat: [],
-        polls: [],
-        pinnedTopic: null,
-        reactions: [],
-        upNext: [],
-        hype: hype(),
-      };
-    } else if (path.endsWith("/get-session")) body = null;
-    else if (path.includes("manifest"))
-      body = {
-        status: "OFF_AIR",
-        reason: null,
-        type: "HLS",
-        url: null,
-        dj: [],
-        episodeId: null,
-        showId: null,
-        showName: null,
-        autoEndsAt: null,
-      };
-    await route.fulfill({ json: body });
-  });
-  await page.goto("/studio");
-  await page.getByTestId("studio-seg-console").click();
-  await expect.poll(() => snapshotRequests).toBeGreaterThan(0);
-  await expect(
-    page.getByTestId("studio-hype-bars").locator("span"),
-  ).toHaveCount(12);
-  expect(
-    await page
-      .getByTestId("studio-hype-bars")
-      .locator("span")
-      .evaluateAll((bars) =>
-        bars.every((bar) => (bar as HTMLElement).style.height === "0%"),
-      ),
-  ).toBe(true);
-  const emit = (name: string, payload: unknown) =>
-    peers[peers.length - 1].send("42" + JSON.stringify([name, payload]));
-  emit("chat:new", {
-    id: "hide-chat",
-    episodeId: "episode",
-    content: "Moderated connected chat",
-    asBooth: false,
-    createdAt: new Date().toISOString(),
-    author: { id: "u", handle: "listener", name: "Listener" },
-  });
-  await expect(page.getByText("Moderated connected chat")).toBeVisible();
-  emit("chat:hidden", { id: "hide-chat" });
-  await expect(page.getByText("Moderated connected chat")).toHaveCount(0);
-  emit("topic:pinned", {
-    text: "Brief timed pin",
-    expiresAt: new Date(Date.now() + 1000).toISOString(),
-  });
-  await expect(
-    page.getByText("Brief timed pin", { exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText("Brief timed pin", { exact: true })).toHaveCount(
-    0,
-    { timeout: 4000 },
-  );
-  emit("chat:new", {
-    id: "stale-chat",
-    episodeId: "episode",
-    content: "Hidden while disconnected",
-    asBooth: false,
-    createdAt: new Date().toISOString(),
-    author: { id: "u", handle: "listener", name: "Listener" },
-  });
-  await expect(page.getByText("Hidden while disconnected")).toBeVisible();
-  const previousRequests = snapshotRequests;
-  peers[peers.length - 1].close();
-  await expect.poll(() => snapshotRequests).toBeGreaterThan(previousRequests);
-  await expect(page.getByText("Hidden while disconnected")).toHaveCount(0);
+test('AC-2/AC-3 (integrity AC-4/AC-5): FE-BI-2/3: real reconnect removes moderated chat and expired pins, ended episode gates writes', async ({ browser, request, page, context }) => {
+  test.setTimeout(150_000);
+  const broadcast = await startLocalBroadcast(request);
+  let studioContext: BrowserContext | undefined;
+  let moderator: APIRequestContext | undefined;
+  let voterContext: BrowserContext | undefined;
+  try {
+    studioContext = await browser.newContext();
+    const studio = await studioContext.newPage();
+    moderator = await apiLoginAs('moderator');
+    await unlockLiveStudio(studio, broadcast);
+    await page.goto('/listen');
+    await expect(page.getByTestId('engagement-hype-meter')).toHaveAttribute('aria-label', /^0 reactions/);
+    const message = `Persisted recovery ${broadcast.episodeId}`;
+    await studio.getByTestId('studio-chat-input').fill(message);
+    await studio.getByTestId('studio-chat-submit').click();
+    await expect(page.getByTestId('engagement-chat-feed')).toContainText(message);
+    const chat = episodeRows(broadcast.episodeId).chats.find(row => row.content === message)!;
+    expect(chat.isHidden).toBe(false);
+    const pin = `Timed recovery ${broadcast.episodeId}`;
+    const pinned = await broadcast.stationPost('studio/pin', { text: pin, expiresAt: new Date(Date.now()+4000).toISOString(), expiresAtEpisodeEnd: true });
+    expect(pinned.ok(), await pinned.text()).toBe(true);
+    await expect(page.getByTestId('engagement-pinned-topic')).toContainText(pin);
+    const created = await broadcast.stationPost('studio/polls', { question: `Recovery poll ${broadcast.episodeId}`, options: ['First', 'Second'], visibility: 'ANONYMOUS' });
+    expect(created.ok(), await created.text()).toBe(true);
+    const poll = await created.json();
+    await expect(page.getByTestId('engagement-poll')).toContainText('0 votes');
+    await expect(studio.getByTestId(`studio-poll-${poll.id}`)).toContainText('0 votes');
+    await context.setOffline(true);
+    await studioContext.setOffline(true);
+    await expect(page.getByTestId('engagement-hype-meter')).toHaveAttribute('aria-label', /unavailable/i, { timeout: 20_000 });
+    const hide = await moderator.patch(api(`chat/${chat.id}/hide`));
+    expect(hide.ok(), await hide.text()).toBe(true);
+    await expect.poll(() => episodeRows(broadcast.episodeId).chats.find(row => row.id === chat.id)?.isHidden).toBe(true);
+    voterContext = await browser.newContext();
+    const voter = await voterContext.newPage();
+    await loginAs(voter, 'listener');
+    await voter.goto('/listen');
+    await expect(voter.getByTestId('engagement-poll')).toContainText(poll.question);
+    await voter.getByTestId('engagement-poll-option').first().click();
+    await expect(voter.getByTestId('engagement-poll')).toContainText('1 votes');
+    const closed = await broadcast.stationPost(`studio/polls/${poll.id}/close`);
+    expect(closed.ok(), await closed.text()).toBe(true);
+    expect(localDb<number>(`return p.pollVote.count({where:{pollId:${JSON.stringify(poll.id)}}});`)).toBe(1);
+    // The elapsed expiration is authoritative real time, not a fake timer.
+    await expect.poll(() => Date.now(), { timeout: 6000 }).toBeGreaterThan(new Date((await pinned.json()).expiresAt).getTime());
+    await context.setOffline(false);
+    await studioContext.setOffline(false);
+    // Focus is the documented background/reconnect recovery trigger.
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await studio.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(page.getByTestId('engagement-chat-feed')).not.toContainText(message);
+    await expect(studio.getByText(message, { exact: true })).toHaveCount(0);
+    await expect(page.getByTestId('engagement-pinned-topic')).not.toContainText(pin);
+    await expect(page.getByTestId('engagement-poll')).toContainText('Poll closed · 1 votes');
+    await expect(page.getByTestId('engagement-poll-option').first()).toBeDisabled();
+    await expect(studio.getByTestId(`studio-poll-${poll.id}`)).toContainText('1 votes');
+    await expect(studio.getByTestId(`studio-poll-${poll.id}`).getByTestId('studio-poll-close')).toHaveCount(0);
+    const firstPin = `Original ${broadcast.episodeId}`;
+    await broadcast.stationPost('studio/pin', { text: firstPin, expiresAtEpisodeEnd: true });
+    await expect(studio.getByTestId('studio-pinned-topic')).toHaveText(firstPin);
+    await context.setOffline(true);
+    await studioContext.setOffline(true);
+    await broadcast.stationPost('studio/pin', { text: 'Replacement recovery pin', expiresAtEpisodeEnd: true });
+    await context.setOffline(false);
+    await studioContext.setOffline(false);
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await studio.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(page.getByTestId('engagement-pinned-topic')).toContainText('Replacement recovery pin');
+    await expect(studio.getByTestId('studio-pinned-topic')).toHaveText('Replacement recovery pin');
+    await context.setOffline(true);
+    await studioContext.setOffline(true);
+    await broadcast.stationPost('studio/pin', { text: '', expiresAtEpisodeEnd: true });
+    await context.setOffline(false);
+    await studioContext.setOffline(false);
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await studio.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(page.getByTestId('engagement-pinned-topic')).not.toContainText('Replacement recovery pin');
+    await expect(studio.getByTestId('studio-pinned-topic')).toHaveCount(0);
+    await endBroadcast(broadcast);
+    await expect.poll(() => episodeRows(broadcast.episodeId).endedAt).not.toBeNull();
+    await expect(page.getByTestId('engagement-reaction-fire')).toHaveCount(0, { timeout: 20_000 });
+    const late = await request.post(api(`episodes/${broadcast.episodeId}/reactions`), { data: { emoji: '🔥' } });
+    expect(late.status()).toBeGreaterThanOrEqual(400);
+    expect(episodeRows(broadcast.episodeId).reactions).toBe(0);
+  } finally {
+    await context.setOffline(false);
+    await page.goto('about:blank');
+    await studioContext?.close();
+    await voterContext?.close();
+    await moderator?.dispose();
+    await broadcast.cleanup();
+  }
 });
 
-test("listener snapshot preserves only events during the current recovery request", async ({
-  page,
-}) => {
-  const peers: import("@playwright/test").WebSocketRoute[] = [];
-  await page.routeWebSocket("**/socket.io/**", (peer) => {
-    peers.push(peer);
-    peer.send(
-      "0" +
-        JSON.stringify({
-          sid: `transport-${peers.length}`,
-          upgrades: [],
-          pingInterval: 25000,
-          pingTimeout: 20000,
-          maxPayload: 1000000,
-        }),
-    );
-    peer.onMessage((message) => {
-      if (String(message) === "40")
-        peer.send("40" + JSON.stringify({ sid: `socket-${peers.length}` }));
+test('AC-2 (integrity AC-6): FE-BI-4: real playing tabs and reload share only their current episode browser identity', async ({ context, request, page }) => {
+  test.setTimeout(120_000);
+  let broadcast = await startLocalBroadcast(request);
+  let second: Page | undefined;
+  let firstIdentity = '';
+  try {
+    await page.goto('/listen');
+    await play(page);
+    second = await context.newPage();
+    await second.goto('/listen');
+    await play(second);
+    await expect.poll(() => episodeRows(broadcast.episodeId).sessions.filter(s => s.endedAt === null).length).toBe(2);
+    let rows = episodeRows(broadcast.episodeId).sessions;
+    expect(new Set(rows.map(s => s.anonId)).size).toBe(1);
+    expect(rows.every(s => s.identityQuality === 'episode-browser-v1')).toBe(true);
+    firstIdentity = rows[0].anonId;
+    expect(firstIdentity).toMatch(/^[0-9a-f-]{36}$/);
+    await page.reload();
+    await play(page);
+    await expect.poll(() => episodeRows(broadcast.episodeId).sessions.length).toBeGreaterThanOrEqual(3);
+    rows = episodeRows(broadcast.episodeId).sessions;
+    expect(new Set(rows.map(s => s.anonId))).toEqual(new Set([firstIdentity]));
+    await page.goto('about:blank');
+    await second.close();
+    second = undefined;
+    await endBroadcast(broadcast);
+    await broadcast.cleanup();
+    broadcast = await startLocalBroadcast(request);
+    await page.goto('/listen');
+    await play(page);
+    await expect.poll(() => episodeRows(broadcast.episodeId).sessions.length).toBeGreaterThan(0);
+    expect(episodeRows(broadcast.episodeId).sessions[0].anonId).not.toBe(firstIdentity);
+  } finally {
+    await page.goto('about:blank');
+    await second?.close();
+    await broadcast.cleanup();
+  }
+});
+
+test('AC-2/AC-3 (integrity AC-9/AC-10): FE-BI-5/7: real staff listing filters historical quality and respects Manila date boundaries', async ({ page }) => {
+  const fixture = seedStaffEpisodes();
+  try {
+    await loginAs(page, 'moderator');
+    await page.goto('/mod/analytics');
+    await page.getByTestId('mod-analytics-period-pcustom').click();
+    await page.getByTestId('mod-analytics-from').fill(fixture.date);
+    const listed = page.waitForResponse(r => {
+      const u = new URL(r.url());
+      return u.pathname === '/api/analytics/episodes' && u.searchParams.get('from') === new Date(fixture.start).toISOString() && u.searchParams.get('to') === new Date(fixture.end).toISOString() && !u.searchParams.has('measurementStatus');
     });
-  });
-  let block = false;
-  let waiting: import("@playwright/test").Route | null = null;
-  let clean = false;
-  let requests = 0;
-  const snapshot = () => ({
-    episodeId: "episode",
-    capturedAt: new Date().toISOString(),
-    recentChat: clean
-      ? []
-      : [
-          {
-            id: "old-chat",
-            content: "Old public snapshot chat",
-            asBooth: false,
-            createdAt: new Date().toISOString(),
-            author: { handle: "listener", name: "Listener" },
-          },
-        ],
-    polls: [],
-    pinnedTopic: clean
-      ? null
-      : {
-          episodeId: "episode",
-          text: "Old snapshot pin",
-          expiresAt: null,
-          expiresAtEpisodeEnd: true,
-        },
-    reactions: [{ emoji: "🔥", count: 100 }],
-    upNext: [],
-    hype: {
-      episodeId: "episode",
-      capturedAt: new Date().toISOString(),
-      windowSeconds: 60,
-      count: 0,
-      trend: "flat",
-      buckets: Array.from({ length: 12 }, (_, i) => ({
-        startedAt: new Date(Date.now() - 60000 + i * 5000).toISOString(),
-        count: 0,
-      })),
-    },
-  });
-  await page.route("**/api/**", async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    let body: unknown = {};
-    if (path.endsWith("/get-session")) body = null;
-    else if (path.includes("manifest"))
-      body = {
-        status: "LIVE",
-        reason: null,
-        type: "HLS",
-        url: "http://localhost:3010/fixture-stream.m3u8",
-        dj: [],
-        episodeId: "episode",
-        showId: null,
-        showName: "Fixture broadcast",
-        autoEndsAt: null,
-      };
-    else if (path.endsWith("/engagement-snapshot")) {
-      requests++;
-      if (block) {
-        block = false;
-        waiting = route;
-        return;
-      }
-      body = snapshot();
-    } else if (path.endsWith("/polls") || path.includes("announcements"))
-      body = [];
-    await route.fulfill({ json: body });
-  });
-  await page.goto("/listen");
-  await expect(page.getByText("Old public snapshot chat")).toBeVisible();
-  await expect.poll(() => requests).toBeGreaterThanOrEqual(2);
-  await expect(page.getByTestId("engagement-hype-meter")).toHaveAttribute(
-    "aria-label",
-    /0 reactions/,
-  );
-  block = true;
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect.poll(() => waiting !== null).toBe(true);
-  const emit = (name: string, payload: unknown) =>
-    peers[peers.length - 1].send("42" + JSON.stringify([name, payload]));
-  emit("chat:hidden", { id: "old-chat" });
-  emit("chat:new", {
-    id: "new-chat",
-    content: "Chat during snapshot",
-    asBooth: false,
-    createdAt: new Date().toISOString(),
-    author: { handle: "listener", name: "Listener" },
-  });
-  emit("topic:pinned", { text: "Pin during snapshot", expiresAt: null });
-  await expect(page.getByText("Chat during snapshot")).toBeVisible();
-  await waiting!.fulfill({ json: snapshot() });
-  await expect(page.getByText("Old public snapshot chat")).toHaveCount(0);
-  await expect(page.getByTestId("engagement-pinned-topic")).toContainText(
-    "Pin during snapshot",
-  );
-  clean = true;
-  const previous = requests;
-  peers[peers.length - 1].close();
-  await expect.poll(() => requests).toBeGreaterThan(previous);
-  await expect(page.getByText("Chat during snapshot")).toHaveCount(0);
-  await expect(page.getByTestId("engagement-pinned-topic")).toContainText(
-    "No pinned topic yet.",
-  );
+    await page.getByTestId('mod-analytics-to').fill(fixture.date);
+    const response = await listed;
+    expect(response.ok()).toBe(true);
+    const data = await response.json();
+    for (const privateField of ['anonId', 'userId', 'demographicSnapshot', 'sessions', 'voters']) {
+      expect(JSON.stringify(data)).not.toContain(`"${privateField}":`);
+    }
+    expect(data.items.map((e: {episodeId: string}) => e.episodeId)).toEqual(expect.arrayContaining([fixture.ids.archived, fixture.ids.complete, fixture.ids.pending]));
+    expect(data.items.map((e: {episodeId: string}) => e.episodeId)).not.toEqual(expect.arrayContaining([fixture.ids.before]));
+    expect(data.items.map((e: {episodeId: string}) => e.episodeId)).not.toEqual(expect.arrayContaining([fixture.ids.after]));
+    await expect(page.getByTestId(`mod-analytics-episode-row-${fixture.ids.archived}`)).toContainText('Archived integrity fixture');
+    await expect(page.getByTestId(`mod-analytics-episode-row-${fixture.ids.pending}`)).toContainText('pending');
+    await page.getByTestId(`mod-analytics-episode-row-${fixture.ids.complete}`).getByTestId('mod-analytics-episode-open').click();
+    const detail = page.getByTestId('mod-analytics-episode-detail');
+    await expect(detail).toContainText('0 / 1');
+    await expect(detail).toContainText('not people');
+    await expect(detail).toContainText('SONG_REQUEST: 1');
+    await page.keyboard.press('Escape');
+    await page.getByTestId('mod-analytics-episode-measurement').click();
+    await page.getByTestId('mod-analytics-episode-measurement-unavailable').click();
+    await expect(page.getByTestId(`mod-analytics-episode-row-${fixture.ids.complete}`)).toHaveCount(0);
+    await page.getByTestId(`mod-analytics-episode-row-${fixture.ids.archived}`).getByTestId('mod-analytics-episode-open').click();
+    await expect(detail).toContainText('Unavailable');
+    await expect(detail).toContainText('Breakdown unavailable');
+    await page.keyboard.press('Escape');
+    await page.getByTestId('mod-analytics-episode-measurement').click();
+    await page.getByTestId('mod-analytics-episode-measurement-all').click();
+    await page.getByTestId('mod-analytics-episode-show').click();
+    await page.getByTestId('mod-analytics-episode-show-unscheduled').click();
+    await expect(page.getByTestId(`mod-analytics-episode-row-${fixture.ids.archived}`)).toHaveCount(0);
+    await expect(page.getByTestId(`mod-analytics-episode-row-${fixture.ids.complete}`)).toBeVisible();
+  } finally {
+    await page.goto('about:blank');
+    fixture.cleanup();
+  }
+});
+
+test('AC-2 (integrity AC-9): FE-BI-6: real guest and listener cannot read staff episode measurements', async ({ page, request }) => {
+  const fixture = seedStaffEpisodes();
+  let listener: APIRequestContext | undefined;
+  try {
+    listener = await apiLoginAs('listener');
+    for (const endpoint of ['analytics/episodes', `analytics/episodes/${fixture.ids.complete}`]) {
+      expect((await request.get(api(endpoint))).status()).toBe(401);
+      expect((await listener.get(api(endpoint))).status()).toBe(403);
+    }
+    await page.goto('/mod/analytics');
+    await expect(page).toHaveURL(/\/login/);
+    await loginAs(page, 'listener');
+    await page.goto('/mod/analytics');
+    await expect(page.getByTestId('mod-analytics-episodes')).toHaveCount(0);
+    await expect(page).not.toHaveURL(/\/mod\/analytics$/);
+  } finally {
+    await page.goto('about:blank');
+    await listener?.dispose();
+    fixture.cleanup();
+  }
+});
+
+
+
+
+
+test('AC-2/AC-3 (integrity AC-9): FE-BI-10: staff paginates all real archived episode rows next and back', async ({ page }) => {
+  const fixture = seedStaffEpisodes(23);
+  try {
+    await loginAs(page, 'moderator');
+    await page.goto('/mod/analytics');
+    await expect(page.getByTestId('mod-analytics-episodes')).toBeVisible();
+    await page.getByTestId('mod-analytics-episode-show').click();
+    await page.getByTestId(`mod-analytics-episode-show-${fixture.showId}`).click();
+    await expect(page.getByTestId(`mod-analytics-episode-row-${fixture.extraIds[22]}`)).toBeVisible();
+    await expect(page.getByTestId(`mod-analytics-episode-row-${fixture.ids.archived}`)).toHaveCount(0);
+    await page.getByTestId('mod-analytics-episodes-next').click();
+    await expect(page.getByTestId(`mod-analytics-episode-row-${fixture.ids.archived}`)).toBeVisible();
+    await expect(page.getByTestId(`mod-analytics-episode-row-${fixture.extraIds[22]}`)).toHaveCount(0);
+    await expect(page.getByTestId('mod-analytics-episodes-next')).toBeDisabled();
+    await page.getByTestId('mod-analytics-episodes-prev').click();
+    await expect(page.getByTestId(`mod-analytics-episode-row-${fixture.extraIds[22]}`)).toBeVisible();
+    await expect(page.getByTestId('mod-analytics-episodes-prev')).toBeDisabled();
+  } finally {
+    await page.goto('about:blank');
+    fixture.cleanup();
+  }
+});
+
+test('AC-2 (integrity AC-5/AC-6/AC-7): FE-BI-11: same occurrence resumes and finalizes actual measured browser reach', async ({ page, request, browser }) => {
+  test.setTimeout(120_000);
+  const broadcast = await startLocalBroadcast(request, { scheduled: true });
+  let staffContext: BrowserContext | undefined;
+  try {
+    await page.goto('/listen');
+    await play(page);
+    await expect.poll(() => episodeRows(broadcast.episodeId).sessions.length).toBe(1);
+    const identity = episodeRows(broadcast.episodeId).sessions[0].anonId;
+    await page.getByTestId('engagement-reaction-fire').click();
+    await expect(page.getByTestId('engagement-hype-meter')).toHaveAttribute('aria-label', /^1 reactions/);
+    await endBroadcast(broadcast);
+    await expect(page.getByTestId('engagement-reaction-fire')).toHaveCount(0);
+    await expect(page.getByTestId('engagement-hype-meter')).toHaveCount(0);
+    await expect.poll(() => localDb<{reach:number}|null>(`return p.episodeAnalyticsSnapshot.findUnique({where:{episodeId:${JSON.stringify(broadcast.episodeId)}},select:{reach:true}});`)).toEqual({ reach: 1 });
+    const firstRevision = localDb<number>(`return (await p.episodeAnalyticsSnapshot.findUniqueOrThrow({where:{episodeId:${JSON.stringify(broadcast.episodeId)}}})).lifecycleRevision;`);
+    await broadcast.resume();
+    await expect(page.getByTestId('engagement-reaction-fire')).toBeEnabled({ timeout: 20_000 });
+    await expect(page.getByTestId('engagement-hype-meter')).toHaveAttribute('aria-label', /^1 reactions/);
+    // Reconnect a real playing tab after resumption; this is the same occurrence.
+    await page.reload();
+    await play(page);
+    await expect.poll(() => episodeRows(broadcast.episodeId).sessions.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(episodeRows(broadcast.episodeId).sessions.map(row => row.anonId))).toEqual(new Set([identity]));
+    await endBroadcast(broadcast);
+    await expect.poll(() => localDb<boolean>(`const e=await p.episode.findUniqueOrThrow({where:{id:${JSON.stringify(broadcast.episodeId)}}});const s=await p.episodeAnalyticsSnapshot.findUnique({where:{episodeId:e.id}});return e.analyticsStatus==='complete'&&!!s&&s.lifecycleRevision===e.lifecycleRevision&&s.lifecycleRevision>${firstRevision};`)).toBe(true);
+    await expect.poll(() => localDb<{reach:number;tlh:number;reactions:number}|null>(`const s=await p.episodeAnalyticsSnapshot.findUnique({where:{episodeId:${JSON.stringify(broadcast.episodeId)}}});return s?{reach:s.reach,tlh:s.tlh,reactions:(s.engagement as any).reactions}:null;`)).toEqual({ reach: 1, tlh: expect.any(Number), reactions: 1 });
+    const snapshot = localDb<{tlh:number}>(`return p.episodeAnalyticsSnapshot.findUniqueOrThrow({where:{episodeId:${JSON.stringify(broadcast.episodeId)}},select:{tlh:true}});`);
+    expect(snapshot.tlh).toBeGreaterThan(0);
+    expect(episodeRows(broadcast.episodeId).sessions.every(row => row.endedAt !== null)).toBe(true);
+    staffContext = await browser.newContext();
+    const staff = await staffContext.newPage();
+    await loginAs(staff, 'moderator');
+    await staff.goto('/mod/analytics');
+    const row = staff.getByTestId(`mod-analytics-episode-row-${broadcast.episodeId}`);
+    await expect(row).toContainText('complete');
+    await row.getByTestId('mod-analytics-episode-open').click();
+    await expect(staff.getByTestId('mod-analytics-episode-detail')).toContainText('Measured resume fixture');
+    await expect(staff.getByTestId('mod-analytics-episode-detail')).toContainText('Measured distinct browser IDs');
+  } finally {
+    await page.goto('about:blank');
+    await staffContext?.close();
+    await broadcast.cleanup();
+  }
 });

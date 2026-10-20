@@ -7,7 +7,14 @@ import { API_BASE, execBackendTsx } from './_fixtures';
 import { requireLocalServices } from './_local-services';
 
 /** Real station auth, lease, time-in, heartbeat and manifest; no browser interception. */
-export async function startLocalBroadcast(request: APIRequestContext) {
+export async function startLocalBroadcast(request: APIRequestContext, options: { scheduled?: boolean } = {}) {
+  const stationOffset = Number(process.env.STATION_UTC_OFFSET_MINUTES ?? 480);
+  const stationNow = new Date(Date.now() + stationOffset * 60_000);
+  // The schedule contract permits same-day windows only. Fail explicitly before
+  // allocating fixtures if this acceptance run cannot finish before midnight.
+  if (options.scheduled && (stationNow.getUTCHours() * 60 + stationNow.getUTCMinutes()) >= 23 * 60 + 56) {
+    throw new Error('Scheduled resume acceptance requires four minutes before station midnight; select the supported test station offset before booting the stack');
+  }
   const services = await requireLocalServices(request);
   const id = `e2e-hls-${randomBytes(8).toString('hex')}`;
   const token = randomBytes(32).toString('hex');
@@ -20,6 +27,12 @@ export async function startLocalBroadcast(request: APIRequestContext) {
   let pendingBeat = Promise.resolve();
   let heartbeatError: Error | undefined;
   let episodeId: string | undefined;
+  const stopHeartbeat = async () => {
+    if (timer) clearInterval(timer);
+    timer = undefined;
+    await pendingBeat;
+    if (heartbeatError) throw heartbeatError;
+  };
   const cleanup = async () => {
     if (timer) clearInterval(timer);
     await pendingBeat;
@@ -35,12 +48,23 @@ export async function startLocalBroadcast(request: APIRequestContext) {
             // Creation of this random station is the transaction's commit marker.
             // An absent row means initial setup rolled back: restore nothing.
             if(!await tx.stationSession.findUnique({where:{id:${JSON.stringify(id)}}}))return;
+            const unexpectedStation = await tx.stationSession.findFirst({where:{isActive:true,id:{notIn:[${JSON.stringify(id)},...${JSON.stringify(snapshot.stations.map((s: {id:string})=>s.id))}]}}});
+            if(unexpectedStation)throw Error('Another station became active; refusing global snapshot restoration');
             const ids=(await tx.episode.findMany({where:{attendance:{some:{rosterId:${JSON.stringify(id)}}}},select:{id:true}})).map(e=>e.id);
+            await tx.pinnedTopic.deleteMany({where:{episodeId:{in:ids}}});
+            await tx.reaction.deleteMany({where:{episodeId:{in:ids}}});
+            await tx.chatMessage.deleteMany({where:{episodeId:{in:ids}}});
+            await tx.queueItem.deleteMany({where:{episodeId:{in:ids}}});
+            await tx.pollVote.deleteMany({where:{poll:{episodeId:{in:ids}}}});
+            await tx.pollOption.deleteMany({where:{poll:{episodeId:{in:ids}}}});
+            await tx.poll.deleteMany({where:{episodeId:{in:ids}}});
             await tx.listenerSession.deleteMany({where:{episodeId:{in:ids}}});
             await tx.episodeMinuteSample.deleteMany({where:{episodeId:{in:ids}}});
             await tx.episodeAnalyticsSnapshot.deleteMany({where:{episodeId:{in:ids}}});
             await tx.attendanceRecord.deleteMany({where:{rosterId:${JSON.stringify(id)}}});
             await tx.episode.deleteMany({where:{id:{in:ids}}});
+            await tx.showRosterEntry.deleteMany({where:{showId:${JSON.stringify(id)}}});
+            await tx.show.deleteMany({where:{id:${JSON.stringify(id)}}});
             await tx.rosterEntry.deleteMany({where:{id:${JSON.stringify(id)}}});
             await tx.stationSession.deleteMany({where:{id:${JSON.stringify(id)}}});
             await tx.streamHealth.deleteMany({});
@@ -56,7 +80,7 @@ export async function startLocalBroadcast(request: APIRequestContext) {
     if (path.dirname(resolvedSnapshot) !== snapshotRoot || !path.basename(resolvedSnapshot).startsWith('wildcat-e2e-hls-')) {
       throw new Error('Refusing to remove a snapshot outside the owned temporary directory');
     }
-    rmSync(resolvedSnapshot, { recursive: true });
+    if (existsSync(resolvedSnapshot)) rmSync(resolvedSnapshot, { recursive: true });
     if (heartbeatError) throw heartbeatError;
   };
   try {
@@ -70,6 +94,11 @@ export async function startLocalBroadcast(request: APIRequestContext) {
         await tx.episode.updateMany({where:{id:{in:episodes.map(e=>e.id)}},data:{endedAt:new Date(),status:'OFF_AIR'}});
         await tx.streamHealth.deleteMany({});
         await tx.rosterEntry.create({data:{id:${JSON.stringify(id)},displayName:'Local HLS fixture',isActive:true}});
+        if(${Boolean(options.scheduled)}){
+          const days=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+          await tx.show.create({data:{id:${JSON.stringify(id)},name:'Measured resume fixture',slug:${JSON.stringify(id)},cadence:{kind:'WEEKLY',days:[days[${stationNow.getUTCDay()}]],start:'00:00',end:'23:59'}}});
+          await tx.showRosterEntry.create({data:{showId:${JSON.stringify(id)},rosterId:${JSON.stringify(id)}}});
+        }
         await tx.stationSession.updateMany({where:{id:{in:stations.map(s=>s.id)}},data:{isActive:false}});
         await tx.stationSession.create({data:{id:${JSON.stringify(id)},deviceId:${JSON.stringify(id)},label:'Local HLS fixture',tokenHash:createHash('sha256').update(${JSON.stringify(token)}).digest('hex'),generation:1}});
         }, {timeout:15000});
@@ -97,13 +126,22 @@ export async function startLocalBroadcast(request: APIRequestContext) {
     timer = setInterval(() => {
       pendingBeat = pendingBeat.then(beat).catch((error: Error) => { heartbeatError = error; });
     }, 4_000);
+    const resume = async () => {
+      const response = await stationPost('studio/time-in', { rosterId: id });
+      expect(response.ok(), await response.text()).toBe(true);
+      expect((await response.json()).episodeId).toBe(episodeId);
+      await beat();
+      timer = setInterval(() => {
+        pendingBeat = pendingBeat.then(beat).catch((error: Error) => { heartbeatError = error; });
+      }, 4_000);
+    };
     const manifestResponse = await request.get(`${API_BASE}/api/stream/manifest`);
     expect(manifestResponse.ok()).toBe(true);
     const manifest = await manifestResponse.json();
     expect(manifest.status).toBe('LIVE');
     expect(manifest.episodeId).toBe(episodeId);
     expect(manifest.url).toBe(`${services.delivery}/${lease.prefix}live.m3u8`);
-    return { episodeId: episodeId!, manifestUrl: manifest.url as string, services, cleanup };
+    return { episodeId: episodeId!, manifestUrl: manifest.url as string, services, cleanup, stationId: id, stationPost, stopHeartbeat, resume };
   } catch (error) {
     await cleanup();
     throw error;

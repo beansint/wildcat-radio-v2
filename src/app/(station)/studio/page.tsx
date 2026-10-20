@@ -794,7 +794,7 @@ export default function StudioPage() {
             {polls.length > 0 && (
               <div className="mt-4 wc-stack">
                 {polls.map((poll) => (
-                  <div key={poll.id} className="wc-card wc-card-pad" style={{ borderColor: "var(--maroon)" }}>
+                  <div key={poll.id} data-testid={`studio-poll-${poll.id}`} className="wc-card wc-card-pad" style={{ borderColor: "var(--maroon)" }}>
                     <div className="mb-2 flex items-center gap-2">
                       <span className="wc-badge-live text-[.6rem] py-0.5">
                         <span className="dot" />
@@ -833,7 +833,7 @@ export default function StudioPage() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="mt-3"
+                        className="mt-3" data-testid="studio-poll-close"
                         onClick={() => closePollMutation.mutate(poll.id)}
                         disabled={closePollMutation.isPending}
                       >
@@ -853,7 +853,7 @@ export default function StudioPage() {
             </h2>
             {pinnedTopic && (
               <div
-                className="mb-3 rounded-xl px-3 py-2 text-sm font-medium"
+                data-testid="studio-pinned-topic" className="mb-3 rounded-xl px-3 py-2 text-sm font-medium"
                 style={{ background: "var(--accent)", color: "var(--accent-foreground)" }}
               >
                 {pinnedTopic}
@@ -868,7 +868,7 @@ export default function StudioPage() {
                 Pinned topic text
               </Label>
               <Textarea
-                id="studio-pin-text"
+                id="studio-pin-text" data-testid="studio-pin-text"
                 rows={3}
                 placeholder="What should listeners talk about?"
                 aria-invalid={Boolean(pinAlert)}
@@ -893,7 +893,7 @@ export default function StudioPage() {
               </div>
               <FormAlert message={pinAlert} />
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={pinMutation.isPending}>
+                <Button type="submit" data-testid="studio-pin-submit" disabled={pinMutation.isPending}>
                   Set pinned topic
                 </Button>
                 {pinnedTopic && (
@@ -933,7 +933,7 @@ export default function StudioPage() {
               ))}
             </div>
             <div className="mt-2 flex items-center justify-between text-sm">
-              <span className="font-extrabold tnum" style={{ color: "var(--gold)" }}>
+              <span data-testid="studio-hype-count" className="font-extrabold tnum" style={{ color: "var(--gold)" }}>
                 {hype.stale ? "Unavailable" : hype.count}
               </span>
               <span className="wc-pill wc-pill-neutral">Trend: {hype.stale ? "unavailable" : hype.trend}</span>
@@ -1059,13 +1059,13 @@ function ChatCard({
             Booth message
           </Label>
           <Input
-            id="studio-chat-content"
+            id="studio-chat-content" data-testid="studio-chat-input"
             className="flex-1"
             placeholder="Say something to the booth…"
             aria-invalid={Boolean(chatAlert)}
             {...chatForm.register("content")}
           />
-          <Button type="submit" variant="maroon" size="icon" disabled={isPending} aria-label="Post as booth">
+          <Button type="submit" variant="maroon" size="icon" disabled={isPending} aria-label="Post as booth" data-testid="studio-chat-submit">
             <Send className="h-5 w-5" aria-hidden="true" />
           </Button>
         </div>

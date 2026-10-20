@@ -112,14 +112,14 @@ export function EpisodeAnalytics({
               setPage(1);
             }}
           >
-            <SelectTrigger id="analytics-show">
+            <SelectTrigger id="analytics-show" data-testid="mod-analytics-episode-show">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All shows</SelectItem>
-              <SelectItem value="unscheduled">Unscheduled</SelectItem>
+              <SelectItem value="all" data-testid="mod-analytics-episode-show-all">All shows</SelectItem>
+              <SelectItem value="unscheduled" data-testid="mod-analytics-episode-show-unscheduled">Unscheduled</SelectItem>
               {showOptions.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
+                <SelectItem key={s.id} value={s.id} data-testid={`mod-analytics-episode-show-${s.id}`}>
                   {s.name}
                 </SelectItem>
               ))}
@@ -135,13 +135,13 @@ export function EpisodeAnalytics({
               setPage(1);
             }}
           >
-            <SelectTrigger id="analytics-measurement">
+            <SelectTrigger id="analytics-measurement" data-testid="mod-analytics-episode-measurement">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="all" data-testid="mod-analytics-episode-measurement-all">All statuses</SelectItem>
               {["live", "pending", "complete", "unavailable"].map((status) => (
-                <SelectItem key={status} value={status}>
+                <SelectItem key={status} value={status} data-testid={`mod-analytics-episode-measurement-${status}`}>
                   {status}
                 </SelectItem>
               ))}
@@ -177,7 +177,7 @@ export function EpisodeAnalytics({
               </thead>
               <tbody>
                 {query.data?.items.map((episode) => (
-                  <tr key={episode.episodeId}>
+                  <tr key={episode.episodeId} data-testid={`mod-analytics-episode-row-${episode.episodeId}`}>
                     <td>
                       <strong>
                         {episode.title ?? episode.showName ?? "Unscheduled"}
@@ -193,7 +193,7 @@ export function EpisodeAnalytics({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setSelected(episode.episodeId)}
+                        data-testid="mod-analytics-episode-open" onClick={() => setSelected(episode.episodeId)}
                       >
                         View episode
                       </Button>

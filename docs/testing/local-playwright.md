@@ -63,6 +63,12 @@ Test authentication rate budgets remain inflated, so these browser runs are not
 evidence of production throttling thresholds. The dedicated boundary tests own that
 evidence. Do not add synthetic socket ticks to make a quiet-decay scenario pass.
 
+The FE-BI-11 same-occurrence resume case uses a transparent WebSocket proxy to
+discard one real `episode:started` notification. Every other frame is forwarded
+from the actual server, and API requests, playback and PostgreSQL measurements
+remain real. This deliberate transport fault proves that fresh manifest recovery
+repairs a missed lifecycle event; it does not fabricate a replacement payload.
+
 The public-read rate-boundary case launches a separate loopback test process using the compiled backend public controller and production throttle policy. Keep the backend build step above: removing the route's throttle or guard must make that case fail. Its read payload is stubbed; other public-content cases retain the database-backed API checks.
 
 From the frontend repository in another terminal with the same common variables:

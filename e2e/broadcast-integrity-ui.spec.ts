@@ -391,6 +391,17 @@ test('AC-2 (integrity AC-5/AC-6/AC-7): FE-BI-11: same occurrence resumes and fin
   test.setTimeout(120_000);
   const broadcast = await startLocalBroadcast(request, { scheduled: true });
   let staffContext: BrowserContext | undefined;
+  let dropStart = false;
+  let missedStart = false;
+  // Transport fault only: forward real server frames, except the one start
+  // notification that a disconnected/background listener can miss.
+  await page.routeWebSocket('**/socket.io/**', socket => {
+    const server = socket.connectToServer();
+    server.onMessage(message => {
+      if (dropStart && String(message).includes('"episode:started"')) missedStart = true;
+      else socket.send(message);
+    });
+  });
   try {
     await page.goto('/listen');
     await play(page);
@@ -403,7 +414,14 @@ test('AC-2 (integrity AC-5/AC-6/AC-7): FE-BI-11: same occurrence resumes and fin
     await expect(page.getByTestId('engagement-hype-meter')).toHaveCount(0);
     await expect.poll(() => localDb<{reach:number}|null>(`return p.episodeAnalyticsSnapshot.findUnique({where:{episodeId:${JSON.stringify(broadcast.episodeId)}},select:{reach:true}});`)).toEqual({ reach: 1 });
     const firstRevision = localDb<number>(`return (await p.episodeAnalyticsSnapshot.findUniqueOrThrow({where:{episodeId:${JSON.stringify(broadcast.episodeId)}}})).lifecycleRevision;`);
+    // Receive the end, then lose the matching real start notification.
+    // Fresh server state must recover the same episode without a page reload.
+    dropStart = true;
     await broadcast.resume();
+    await expect.poll(() => missedStart).toBe(true);
+    await expect.poll(async () => (await (await request.get(api('stream/manifest'))).json()).status).toBe('LIVE');
+    dropStart = false;
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await expect(page.getByTestId('engagement-reaction-fire')).toBeEnabled({ timeout: 20_000 });
     await expect(page.getByTestId('engagement-hype-meter')).toHaveAttribute('aria-label', /^1 reactions/);
     // Reconnect a real playing tab after resumption; this is the same occurrence.

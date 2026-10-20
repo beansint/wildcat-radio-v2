@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Request } from "@playwright/test";
 import { attachConsoleGuard } from "./_console";
 import { API_BASE, execBackendTsx } from './_fixtures';
 
@@ -335,6 +335,26 @@ test("#64 realtime: pause, resume, reconnect, and episode turnover stay coherent
   page,
   request,
 }) => {
+  let holdAdmission = true;
+  const deferredJoins: (() => void)[] = [];
+  const pendingSnapshots = new Set<Request>();
+  let completedSnapshots = 0;
+  page.on('request', req => {
+    if (req.url().includes('/engagement-snapshot')) pendingSnapshots.add(req);
+  });
+  page.on('requestfinished', req => {
+    if (req.url().includes('/engagement-snapshot')) {
+      pendingSnapshots.delete(req);
+      completedSnapshots += 1;
+    }
+  });
+  await page.routeWebSocket('**/socket.io/**', socket => {
+    const server = socket.connectToServer();
+    socket.onMessage(message => {
+      if (holdAdmission && String(message).includes('"episode:join"')) deferredJoins.push(() => server.send(message));
+      else server.send(message);
+    });
+  });
   const api = API_BASE;
   const token = process.env.STATION_DEVICE_TOKEN ?? "e2e-stream-integrity-token";
   const deviceId = process.env.WC_DEVICE_ID ?? 'e2e-browser-device-3011';
@@ -412,8 +432,15 @@ test("#64 realtime: pause, resume, reconnect, and episode turnover stay coherent
   await expect(page.getByRole("heading", { name: "Live on air" })).toBeVisible();
   await expect.poll(() => socketUrls.length).toBe(1);
 
+  // Commit the chat after initial reads but before real room admission. The
+  // post-admission snapshot must fill this gap without fabricating any data.
+  await expect.poll(() => deferredJoins.length).toBeGreaterThan(0);
+  await expect.poll(() => completedSnapshots > 0 && pendingSnapshots.size === 0).toBe(true);
+
   const beforePause = `Before pause ${Date.now()}`;
   expect((await stationPost("/api/studio/chat", { content: beforePause })).ok()).toBe(true);
+  holdAdmission = false;
+  for (const send of deferredJoins) send();
   await expect(page.getByText(beforePause)).toBeVisible();
 
   const play = page.getByTestId("player-play");
@@ -445,8 +472,8 @@ test("#64 realtime: pause, resume, reconnect, and episode turnover stay coherent
 
   expect((await stationPost("/api/studio/time-out", { rosterId: "listener64-a", confirmEnd: true })).ok()).toBe(true);
   expect((await (await request.get(`${api}/api/stream/manifest`)).json()).episodeId).toBeNull();
-  // #127 keeps ROTATION(null) chat through the bounded grace window. A new
-  // episode must replace that room immediately when its manifest is observed.
+  // An authoritative end closes engagement. A new episode must open its own
+  // room when its manifest is observed, without retaining the old messages.
 
   expect((await stationPost("/api/studio/time-in", { rosterId: "listener64-b" })).ok()).toBe(true);
   expect((await freshHeartbeat()).ok()).toBe(true);

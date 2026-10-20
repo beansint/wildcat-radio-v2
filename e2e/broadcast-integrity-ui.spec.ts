@@ -124,7 +124,8 @@ test("isolated browser storage: denial keeps only a page-session identity", asyn
 
 test.afterAll(() => assertIntegrityCleanup());
 
-// Integration scenarios below use real API + WS + PostgreSQL. No route interception.
+// Integration scenarios use real API + WS + PostgreSQL. FE-BI-11 drops one real
+// lifecycle frame through a transport proxy; no replacement data is fabricated.
 test('AC-2/AC-3 (integrity AC-3): FE-BI-1: real browser reactions persist, hydrate studio bins and decay during quiet ticks', async ({ browser, request, page }) => {
   test.setTimeout(140_000);
   const broadcast = await startLocalBroadcast(request);

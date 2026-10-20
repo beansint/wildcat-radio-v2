@@ -8,6 +8,7 @@ import type { NextConfig } from "next";
 import { MEDIA_HOST } from "./src/lib/content/media-host";
 // Presigned photo uploads go straight to the R2 S3 host (see upload-host.ts).
 import { UPLOAD_HOST } from "./src/lib/content/upload-host";
+import { resolveContentOrigin } from "./src/lib/content/content-origin";
 // Shared with the runtime resolver so the CSP `connect-src` can never disagree
 // with the origin the app actually dials. `isProduction: false` is passed
 // deliberately — this runs while the config is being evaluated, and the config
@@ -16,6 +17,8 @@ import { UPLOAD_HOST } from "./src/lib/content/upload-host";
 import { resolveApiOrigin } from "./src/lib/api-origin";
 
 const API_ORIGIN = resolveApiOrigin(process.env.NEXT_PUBLIC_API_URL, false);
+const MEDIA = resolveContentOrigin(MEDIA_HOST);
+const UPLOAD = resolveContentOrigin(UPLOAD_HOST);
 
 const nextConfig: NextConfig = {
   // Allow the dev server's /_next resources to load when the app is opened via
@@ -24,7 +27,10 @@ const nextConfig: NextConfig = {
   // no effect on production builds.
   allowedDevOrigins: ["127.0.0.1"],
   images: {
-    remotePatterns: [{ protocol: "https", hostname: MEDIA_HOST }],
+    remotePatterns: [{ protocol: MEDIA.protocol, hostname: MEDIA.hostname, port: MEDIA.port }],
+    // Loopback development fixtures read images directly in the browser. Keep
+    // Next's server-side local-IP fetch protection enabled.
+    unoptimized: MEDIA.protocol === "http",
   },
   // `/privacy` is the URL people guess for a privacy policy — and it used to
   // be the signed-in rights centre, so an anonymous visitor typing it got a
@@ -65,12 +71,12 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       scriptSrc,
       "style-src 'self' 'unsafe-inline'",
-      `img-src 'self' data: blob: https://${MEDIA_HOST}`,
+      `img-src 'self' data: blob: ${MEDIA.origin}`,
       "font-src 'self' data:",
       // The API origin is a different host in every environment, and the audio
       // stream + socket both dial it directly from the browser.
-      `connect-src 'self' ${API_ORIGIN} ${API_ORIGIN.replace(/^http/, "ws")} https://${MEDIA_HOST} https://${UPLOAD_HOST}`,
-      `media-src 'self' blob: ${API_ORIGIN} https://${MEDIA_HOST}`,
+      `connect-src 'self' ${API_ORIGIN} ${API_ORIGIN.replace(/^http/, "ws")} ${MEDIA.origin} ${UPLOAD.origin}`,
+      `media-src 'self' blob: ${API_ORIGIN} ${MEDIA.origin}`,
       "object-src 'none'",
       // hls.js builds its transmuxer worker from a blob URL; without an
       // explicit worker-src the browser falls back to script-src, which has no

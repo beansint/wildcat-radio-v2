@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { WEB_BASE } from './_fixtures';
+import { API_BASE, WEB_BASE } from './_fixtures';
 
 /**
  * Landing "Now & next" — regression guard for the launch fix that replaced a
@@ -21,7 +21,8 @@ test.describe('landing now & next', () => {
     await expect(main).not.toContainText('DJ Ben');
 
     // "On air" inside the Now & next section requires an actually-LIVE stream.
-    const manifest = await page.request.get('http://localhost:3010/api/stream/manifest');
+    const manifest = await page.request.get(`${API_BASE}/api/stream/manifest`);
+    expect(manifest.ok()).toBeTruthy();
     const { status } = (await manifest.json()) as { status: string };
     const nowNext = page.locator('section', { hasText: 'Now & next' }).first();
     if ((await nowNext.count()) > 0 && status !== 'LIVE') {

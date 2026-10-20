@@ -1,5 +1,6 @@
 import { expect, request as pwRequest, test, type APIRequestContext } from '@playwright/test';
 import { attachConsoleGuard, appAlerts } from './_console';
+import { requireLocalServices } from './_local-services';
 import {
   ACCOUNTS,
   API_BASE,
@@ -50,7 +51,16 @@ test.beforeAll(async () => {
 // The pin cap is a global invariant shared by every test in this file (and by
 // anything left pinned by a previous run). Release it before each test so a
 // pin-cap assertion measures the implementation, not leftover state.
-test.beforeEach(async () => {
+test.beforeEach(async ({ page }) => {
+  // Even a misconfigured running API cannot send this browser's uploads to a
+  // cloud bucket. Continue real local requests; abort any other PUT destination.
+  await page.route('**/*', async (route) => {
+    if (route.request().method() === 'PUT' && new URL(route.request().url()).origin !== process.env.R2_ENDPOINT && !route.request().url().startsWith(API_BASE + '/')) {
+      await route.abort('blockedbyclient');
+      return;
+    }
+    await route.continue();
+  });
   await resetPins(modApi);
 });
 
@@ -199,10 +209,7 @@ test.describe('@contract', () => {
   });
 
   test('ANN-C-05: photo presign/confirm guards reject bad mime, size, cap, and unconfirmed keys', async () => {
-    // The nonexistent-key confirm case depends on a real R2 HeadObject (the
-    // bucket's 404 is what the guard maps to 400) — without live R2
-    // credentials the API can only answer 500. Same gate as ANN-E-06b.
-    test.skip(process.env.SKIP_R2_E2E === '1', 'needs live R2 credentials — CI runs this off');
+    const services = await requireLocalServices(modApi);
     const target = await fixtureDraft({ title: `E2E FE9 Photo ${Date.now()}` });
 
     const badMime = await modApi.post(`/api/announcements/${target.id}/photo`, {
@@ -230,6 +237,22 @@ test.describe('@contract', () => {
       data: { key: `announcements/${otherAnnouncement.id}/some-key.jpg` },
     });
     expect(crossScopedConfirm.status()).toBe(400);
+
+    // Fill the cap with four real signed uploads, each verified by the API's
+    // HeadObject confirmation. A fifth presign must then be refused.
+    for (let index = 0; index < 4; index += 1) {
+      const presign = await modApi.post(`/api/announcements/${target.id}/photo`, { data: { contentType: 'image/jpeg', sizeBytes: TINY_JPEG_BUFFER.length } });
+      expect(presign.ok(), await presign.text()).toBe(true);
+      const signed = await presign.json();
+      expect(new URL(signed.uploadUrl).origin, 'never upload to a remote bucket').toBe(services.endpoint);
+      const put = await anonApi.put(signed.uploadUrl, { headers: { 'Content-Type': 'image/jpeg' }, data: TINY_JPEG_BUFFER });
+      expect(put.ok(), await put.text()).toBe(true);
+      const confirmed = await modApi.post(`/api/announcements/${target.id}/photo/confirm`, { data: { key: signed.key } });
+      expect(confirmed.ok(), await confirmed.text()).toBe(true);
+      expect((await confirmed.json()).photos).toHaveLength(index + 1);
+    }
+    const capped = await modApi.post(`/api/announcements/${target.id}/photo`, { data: { contentType: 'image/jpeg', sizeBytes: TINY_JPEG_BUFFER.length } });
+    expect(capped.status()).toBe(409);
   });
 
   test('ANN-C-06: RBAC — no session 401, LISTENER 403, CUSTODIAN succeeds', async () => {
@@ -496,37 +519,13 @@ test('ANN-E-06: photo upload — presign + confirm halves, exact contentType/siz
   expect(presignedBody.sizeBytes).toBeGreaterThan(0);
 });
 
-/**
- * BLOCKED — not merely "gated on credentials". The credentials ARE configured,
- * so this was un-skipped and run for real, and it failed at the browser->R2 hop
- * with:
- *
- *   Access to fetch at 'https://wildcat-radio.<account>.r2.cloudflarestorage.com/...'
- *   from origin 'http://localhost:3011' has been blocked by CORS policy:
- *   Response to preflight request doesn't pass access control check:
- *   No 'Access-Control-Allow-Origin' header is present on the requested resource.
- *
- * RESOLVED. The `wildcat-radio` bucket shipped with a GET/HEAD-only CORS rule,
- * so the presign -> browser-PUT -> confirm design could not complete from ANY
- * browser, in dev or in production. `infra/dev/r2-cors.mjs` now applies a
- * second rule allowing PUT from the app origins (explicitly listed, never `*`
- * for a write) with ETag exposed, and this test runs un-skipped.
- *
- * It is also the only test that catches the uploader sending a `{type, size}`
- * descriptor instead of the real File — R2 signs an exact Content-Length, so
- * the bucket, not our API, is what rejects that. That bug was real, and this
- * case is what keeps it fixed.
- */
+// Real S3 protocol round trip against the guarded loopback service. This does
+// not certify Cloudflare R2 credentials, deployed bucket CORS or SigV4 enforcement.
 test('ANN-E-06b: full R2 round trip — browser PUT to the presigned URL, photo persists and renders publicly', async ({
   page,
   browser,
 }) => {
-  // Real external-service round trip: it needs the API's live R2 credentials
-  // and network reachability to the bucket. CI's throwaway API has neither,
-  // so the presign step can only fail there — gated behind an explicit opt-out
-  // the CI e2e job sets rather than a blanket `CI` check, so local runs keep
-  // exercising it.
-  test.skip(process.env.SKIP_R2_E2E === '1', 'needs live R2 credentials — CI runs this off');
+  const services = await requireLocalServices(modApi);
   const created = await fixtureDraft({ title: `E2E FE9 PhotoR2 ${Date.now()}` });
 
   await loginAs(page, 'moderator');
@@ -536,7 +535,7 @@ test('ANN-E-06b: full R2 round trip — browser PUT to the presigned URL, photo 
 
   await expect(page.getByTestId('mod-ann-photo-count')).toContainText('0 of 4');
 
-  const putToR2 = page.waitForResponse((res) => res.request().method() === 'PUT' && !res.url().includes('/api/'));
+  const putToR2 = page.waitForResponse((res) => res.request().method() === 'PUT' && new URL(res.url()).origin === services.endpoint, { timeout: 15000 });
   const confirmed = page.waitForResponse(
     (res) => res.url().includes(`/announcements/${created.id}/photo/confirm`) && res.request().method() === 'POST',
   );
@@ -549,11 +548,22 @@ test('ANN-E-06b: full R2 round trip — browser PUT to the presigned URL, photo 
   expect(r2Response.status(), 'R2 must accept the signed PUT — a mismatched body/length is a 403 here').toBeLessThan(
     300,
   );
+  expect(r2Response.headers()['access-control-allow-origin']).toBe(WEB_BASE);
+  expect(r2Response.request().postDataBuffer()).toEqual(TINY_JPEG_BUFFER);
   const confirmResponse = await confirmed;
   expect(confirmResponse.status()).toBeLessThan(300);
 
   // Persisted, not just optimistic: the count comes from the staff DTO's photos.
   await expect(page.getByTestId('mod-ann-photo-count')).toContainText('1 of 4', { timeout: 10_000 });
+
+  const persisted = await (await modApi.get(`/api/announcements/admin/${created.id}`)).json();
+  expect(persisted.photos).toHaveLength(1);
+  const objectUrl = persisted.photos[0] as string;
+  expect(new URL(objectUrl).origin).toBe(services.delivery);
+  const object = await anonApi.get(objectUrl);
+  expect(object.status()).toBe(200);
+  expect(object.headers()['content-type']).toContain('image/jpeg');
+  expect(await object.body()).toEqual(TINY_JPEG_BUFFER);
 
   // ...and the same photo is served on the public detail page once published.
   await submitAnnouncement(modApi, created.id);
@@ -561,7 +571,9 @@ test('ANN-E-06b: full R2 round trip — browser PUT to the presigned URL, photo 
   const anonContext = await browser.newContext();
   const anonPage = await anonContext.newPage();
   await anonPage.goto(`${WEB_BASE}/announcements/${created.id}`);
-  await expect(anonPage.locator('img').first()).toBeVisible({ timeout: 10_000 });
+  const image = anonPage.locator(`img[src="${objectUrl}"]`);
+  await expect(image).toBeVisible({ timeout: 10_000 });
+  await expect.poll(() => image.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   await anonContext.close();
 });
 

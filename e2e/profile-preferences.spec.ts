@@ -1,15 +1,13 @@
 import { expect, test, request, type APIRequestContext } from '@playwright/test';
-import { API_BASE, WEB_BASE, execBackendTsx } from './_fixtures';
+import { API_BASE, WEB_BASE, assertLocalPlaywrightEnvironment, execBackendTsx } from './_fixtures';
 
 let api: APIRequestContext;
 let userId = '';
 const email = `profile_${Date.now()}@cit.edu`;
 const password = 'Password123!';
-const db = new URL(process.env.DATABASE_URL ?? '');
 
 test.beforeAll(async () => {
-  const url = new URL(API_BASE);
-  if (url.hostname !== 'localhost' || url.port !== '3314' || db.hostname !== '127.0.0.1' || db.port !== '55432' || db.pathname !== '/review_frontend') throw new Error('Use isolated consumer API3314 and review_frontend DB');
+  assertLocalPlaywrightEnvironment(process.env);
   api = await request.newContext({ baseURL: API_BASE, extraHTTPHeaders: { Origin: WEB_BASE } });
   const signup = await api.post('/api/auth/sign-up/email', { data: { email, password, name: 'Profile fixture', handle: `profile_${Date.now()}` } });
   expect(signup.ok()).toBeTruthy();

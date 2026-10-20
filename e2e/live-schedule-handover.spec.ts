@@ -228,7 +228,7 @@ test.describe('#106 live schedule, handover, approved overtime', () => {
     test.skip(['SAT', 'SUN'].includes(weekday()), 'public grid is Mon–Fri');
     const errors = trackConsole(page);
     const now = new Date().toISOString();
-    const hb = await stationPost(page, 'stream/heartbeat', { sourceConnected: true, lastSegmentAt: now, lastPublishedAt: now });
+    const hb = await stationPost(page, 'stream/heartbeat', { sourceConnected: true, lastSegmentAt: now, lastPublishedAt: now, publisherGeneration: 1 });
     expect(hb.ok()).toBeTruthy();
     const manifest = await (await page.request.get(`${API_BASE}/api/stream/manifest`)).json();
     expect(manifest).toMatchObject({ status: 'LIVE', showId: ids.showB });
@@ -389,7 +389,6 @@ test.describe('#106 live schedule, handover, approved overtime', () => {
 });
 
 test.describe('#114 explicit continuing-crew handover', () => {
-  test.skip(!process.env.CI || !process.env.DATABASE_URL?.includes('@localhost:'), 'global fixtures are allowed only on CI isolated Postgres');
   test.skip(NOW < 95 || NOW + 125 > 24 * 60, 'fixtures require a same-day station window');
   test.beforeEach(() => {
     cleanup();
@@ -407,6 +406,9 @@ test.describe('#114 explicit continuing-crew handover', () => {
     expect(before.episode.showId).toBe(ids.showA);
     expect(before.pendingHandover.continuingCrew).toBe(true);
     await page.getByRole('button', { name: 'Start next show', exact: true }).click();
+    await expect(page.getByTestId('studio-go-live-dialog')).toContainText(`This ends ${names.A}`);
+    await expect(page.getByTestId('studio-go-live-dialog')).toContainText('Everyone on air stays on for the next show.');
+    await page.getByTestId('studio-go-live-confirm').click();
     await expect(studioRow(page, names.B)).toHaveAttribute('data-status', 'ON_AIR');
     await expect(studioRow(page, names.A)).toHaveAttribute('data-status', 'DONE');
     await expect(page.getByTestId('studio-handover-banner')).toHaveCount(0);
@@ -428,6 +430,8 @@ test.describe('#114 explicit continuing-crew handover', () => {
     await page.reload();
     await expect(page.getByRole('button', { name: 'Start my show', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Start my show', exact: true }).click();
+    await expect(page.getByTestId('studio-go-live-dialog')).toContainText(`Start ${names.B} now?`);
+    await page.getByTestId('studio-go-live-confirm').click();
     await expect(studioRow(page, names.B)).toHaveAttribute('data-status', 'ON_AIR');
     prismaScript(`
       const incoming = await prisma.episode.findFirstOrThrow({ where: { showId: ${JSON.stringify(ids.showB)}, endedAt: null }, include: { attendance: true } });

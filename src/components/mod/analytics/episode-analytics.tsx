@@ -49,6 +49,7 @@ export function EpisodeAnalytics({
   const [selected, setSelected] = useState<string | null>(null);
   const query = useQuery({
     queryKey: ["staff-episodes", range, page, showId, measurementStatus],
+    enabled: Boolean(range.from && range.to) && range.from < range.to,
     queryFn: ({ signal }) =>
       listAnalyticsEpisodes(
         {

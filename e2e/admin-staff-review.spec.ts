@@ -2,6 +2,7 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { ACCOUNTS, PASSWORD, WEB_BASE, API_BASE, loginAs, apiLoginAs, execBackendTsx } from './_fixtures';
 import { attachConsoleGuard, appAlerts } from './_console';
+import { createStaffPaginationFixture } from './_owned-content-fixtures';
 
 /**
  * /admin/staff — "Staff review" (BEA-184).
@@ -60,7 +61,7 @@ function uniqueSuffix() {
 /** Registers a throwaway GUEST account through the real UI, then flips it to a verified CAMPUS listener via Prisma. */
 async function createThrowawayCampusUser(page: Page): Promise<{ email: string; handle: string; name: string }> {
   const id = uniqueSuffix();
-  const email = `sr${id}@example.com`;
+  const email = `sr${id}@cit.edu`;
   const handle = `sr_${id}`;
 
   // Register in an ISOLATED context. Registering signs the new user in, so
@@ -301,34 +302,37 @@ test.describe('admin staff review — golden path + edges', () => {
   test('SR-W-06 golden: pagination footer text, Prev disabled on page one, Next disabled on the last page', async ({
     page,
   }) => {
-    await loginCustodian(page);
-    await page.goto(`${WEB_BASE}/admin/staff`);
-    await expect(page.getByTestId('admin-staff-active-table')).toBeVisible({ timeout: 10_000 });
+    const prefix = `srpage${uniqueSuffix()}`;
+    const cleanup = createStaffPaginationFixture(prefix);
+    try {
+      await loginCustodian(page);
+      await page.goto(`${WEB_BASE}/admin/staff`);
+      await expect(page.getByTestId('admin-staff-active-table')).toBeVisible({ timeout: 10_000 });
 
-    await expect(page.getByText(/Showing \d+–\d+ of \d+/)).toBeVisible();
-    await expect(page.getByTestId('admin-staff-prev')).toBeDisabled();
+      await page.getByTestId('admin-staff-search').fill(prefix);
+      await expect(page.getByText('Showing 1–20 of 21', { exact: true })).toBeVisible();
+      await expect(page.getByTestId('admin-staff-prev')).toBeDisabled();
 
-    const nextBtn = page.getByTestId('admin-staff-next');
-    if (await nextBtn.isEnabled()) {
-      const firstRowEmailBefore = await page
-        .getByTestId('admin-staff-active-row')
-        .first()
-        .locator('td')
-        .nth(1)
-        .innerText();
+      const nextBtn = page.getByTestId('admin-staff-next');
+      const rows = page.getByTestId('admin-staff-active-row');
+      await expect(rows).toHaveCount(20);
+      const firstPageEmails = await rows.locator('td:nth-child(2)').allTextContents();
+      await expect(nextBtn).toBeEnabled();
       await nextBtn.click();
-      await expect(async () => {
-        const firstRowEmailAfter = await page
-          .getByTestId('admin-staff-active-row')
-          .first()
-          .locator('td')
-          .nth(1)
-          .innerText();
-        expect(firstRowEmailAfter).not.toBe(firstRowEmailBefore);
-      }).toPass({ timeout: 10_000 });
+      await expect(page.getByText('Showing 21–21 of 21', { exact: true })).toBeVisible();
+      await expect(rows).toHaveCount(1);
+      const lastPageEmail = await rows.locator('td').nth(1).innerText();
+      expect(firstPageEmails).not.toContain(lastPageEmail);
+      await expect(nextBtn).toBeDisabled();
       await expect(page.getByTestId('admin-staff-prev')).toBeEnabled();
-    } else {
-      test.skip(true, 'Fewer than PAGE_SIZE+1 active moderators seeded — pagination advance not exercisable.');
+      await page.getByTestId('admin-staff-prev').click();
+      await expect(page.getByText('Showing 1–20 of 21', { exact: true })).toBeVisible();
+      await expect(rows).toHaveCount(20);
+      expect(await rows.locator('td:nth-child(2)').allTextContents()).toEqual(firstPageEmails);
+      await expect(page.getByTestId('admin-staff-prev')).toBeDisabled();
+      await expect(nextBtn).toBeEnabled();
+    } finally {
+      cleanup();
     }
   });
 

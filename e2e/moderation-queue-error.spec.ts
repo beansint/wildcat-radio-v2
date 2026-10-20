@@ -1,13 +1,12 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
-import { API_BASE, apiLoginAs, loginAs } from './_fixtures';
+import { assertLocalPlaywrightEnvironment, apiLoginAs, loginAs } from './_fixtures';
 
 let staff: APIRequestContext;
 let reporter: APIRequestContext;
 let reportId: string;
 const reason = `Queue recovery ${Date.now()}`;
 test.beforeAll(async () => {
-  const url = new URL(API_BASE);
-  if (url.hostname !== 'localhost' || url.port !== '3310') throw new Error('Fixtures require isolated API3310');
+  assertLocalPlaywrightEnvironment(process.env);
   staff = await apiLoginAs('custodian');
   reporter = await apiLoginAs('listener');
   const target = await apiLoginAs('moderator');

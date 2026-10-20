@@ -68,20 +68,22 @@ Use Node.js 22+ and pnpm. The frontend can run by itself for visual work, but au
 
 When the backend contract changes, first run `pnpm openapi:export` in the backend repository, then run `pnpm api:refresh` here. Do not hand-edit files under `src/lib/api/endpoints` or `src/lib/api/model`.
 
-For an end-to-end run, start the backend and a production frontend build, then point Playwright at the running URLs:
+For an end-to-end run, migrate and seed a disposable local PostgreSQL database, start the API against that database with `NODE_ENV=test`, and serve a production frontend build. Export the same explicit environment in every terminal (including spawned fixture scripts):
 
 ```bash
-# terminal 1, backend repository
-pnpm dev
-
-# terminal 2, this repository
-pnpm build && pnpm start
-
-# terminal 3, this repository
-PLAYWRIGHT_BASE_URL=http://localhost:3011 pnpm test:e2e
+export DATABASE_URL=postgresql://localhost:5432/wildcat_browser_test
+export PLAYWRIGHT_DATABASE_NAME=wildcat_browser_test
+export PLAYWRIGHT_API_URL=http://localhost:3010
+export PLAYWRIGHT_BASE_URL=http://localhost:3011
+export NEXT_PUBLIC_API_URL=http://localhost:3010
+export NEXT_PUBLIC_SITE_URL=http://localhost:3011
+export SKIP_R2_E2E=0
+pnpm test:e2e
 ```
 
-The browser suite shares a live development backend and database, so it runs serially. Use a safe development environment, never production data.
+The runner refuses missing or remote targets before collecting specs. Database names must include a `test`, `e2e`, or `browser` segment separated by underscores and match `PLAYWRIGHT_DATABASE_NAME`. Frontend API/site origins must match the test origins. Inherited libpq connection overrides are rejected. Fixtures run serially and can replace global broadcast state, so the API and test runner must use the same disposable database. Do not source a shared backend `.env` or frontend `.env.local` over these exports; use `pnpm exec next start -p 3011` to preserve the explicit frontend environment. Keep email disabled and start the [local S3 and real HLS fixture](docs/testing/local-storage-and-hls.md) with synthetic credentials; these cases now execute instead of skipping. SQL fixtures use `psql` on `PATH`, or an explicit `PSQL_EXECUTABLE` path.
+
+See [local Playwright setup](docs/testing/local-playwright.md) for complete API, frontend, seed, and validation commands with synthetic service settings.
 
 ## Contributing
 

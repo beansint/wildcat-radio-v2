@@ -1,15 +1,12 @@
-import { execFileSync } from 'node:child_process';
 import { expect, test } from '@playwright/test';
-
-const api = process.env.PLAYWRIGHT_API_BASE_URL ?? 'http://localhost:3314';
-const db = process.env.DATABASE_URL;
-const sql = (query: string) => execFileSync('/opt/homebrew/opt/postgresql@18/bin/psql', [db!, '-XAt', '-v', 'ON_ERROR_STOP=1', '-c', query], { encoding: 'utf8' }).trim();
+import { API_BASE as api, WEB_BASE as web, assertLocalPlaywrightEnvironment } from './_fixtures';
+import { fixtureSql as sql } from './_sql';
 const quote = (value: string) => "'" + value.replaceAll("'", "''") + "'";
 
 test('same account verification in another tab refreshes chat authorization without reload or duplicate sockets', async ({ page, context, request }) => {
-  if (!db || !/^postgresql:\/\/postgres@127\.0\.0\.1:55432\/review_frontend$/.test(db)) throw new Error('Only the isolated review_frontend database is allowed');
-  const suffix = Date.now().toString(); const email = `verify_refresh_${suffix}@example.com`; const handle = `vr${suffix}`; const episode = `verify-refresh-${suffix}`;
-  const signup = await request.post(`${api}/api/auth/sign-up/email`, { headers: { Origin: 'http://localhost:3311' }, data: { email, name: 'Verification fixture', handle, password: 'Password123!' } });
+  assertLocalPlaywrightEnvironment(process.env);
+  const suffix = Date.now().toString(); const email = `verify_refresh_${suffix}@cit.edu`; const handle = `vr${suffix}`; const episode = `verify-refresh-${suffix}`;
+  const signup = await request.post(`${api}/api/auth/sign-up/email`, { headers: { Origin: web }, data: { email, name: 'Verification fixture', handle, password: 'Password123!' } });
   expect(signup.ok()).toBeTruthy(); const userId = (await signup.json()).user.id as string;
 
   let socketCount = 0; let activeSockets = 0;
@@ -25,8 +22,8 @@ test('same account verification in another tab refreshes chat authorization with
   });
   await page.route('**/api/stream/manifest', route => route.fulfill({ json: { status: 'LIVE', type: 'hls', url: null, reason: null, dj: [], episodeId: episode, showId: null, showName: null } }));
   try {
-    sql(`INSERT INTO episodes (id,"createdAt","startedAt") VALUES (${quote(episode)},NOW(),NOW());`);
-    const login = await context.request.post(`${api}/api/auth/sign-in/email`, { headers: { Origin: 'http://localhost:3311' }, data: { email, password: 'Password123!' } }); expect(login.ok()).toBeTruthy();
+    sql(`UPDATE episodes SET "endedAt"=NOW(),status='OFF_AIR' WHERE "startedAt" IS NOT NULL AND "endedAt" IS NULL; INSERT INTO episodes (id,"createdAt","startedAt") VALUES (${quote(episode)},NOW(),NOW());`);
+    const login = await context.request.post(`${api}/api/auth/sign-in/email`, { headers: { Origin: web }, data: { email, password: 'Password123!' } }); expect(login.ok()).toBeTruthy();
     await page.goto('/listen'); await expect(page.getByTestId('listen-gate-verify').first()).toBeVisible();
     await expect.poll(() => socketCount).toBeGreaterThan(0);
     await page.waitForTimeout(1000);
@@ -45,7 +42,7 @@ test('same account verification in another tab refreshes chat authorization with
       const previous = socketCount;
       await other.bringToFront();
       if (change === 'claims') sql(`UPDATE users SET class='CAMPUS', role='MODERATOR' WHERE id=${quote(userId)};`);
-      else expect((await context.request.post(`${api}/api/auth/sign-in/email`, { headers: { Origin: 'http://localhost:3311' }, data: { email, password: 'Password123!' } })).ok()).toBeTruthy();
+      else expect((await context.request.post(`${api}/api/auth/sign-in/email`, { headers: { Origin: web }, data: { email, password: 'Password123!' } })).ok()).toBeTruthy();
       await page.waitForTimeout(5100); // Better Auth's documented source focus refresh throttle.
       await page.bringToFront(); await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
       await expect.poll(() => socketCount).toBeGreaterThan(previous);

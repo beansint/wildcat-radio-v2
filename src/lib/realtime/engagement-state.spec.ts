@@ -12,6 +12,7 @@ const poll = (id: string, question: string): PollResponseDto =>
 const snapshot = (): EpisodeEngagementSnapshotDto => ({
   episodeId: "episode-a",
   capturedAt: "2026-08-29T08:00:00.000Z",
+  hype: {episodeId: "episode-a",capturedAt: "2026-08-29T08:00:00.000Z", windowSeconds:60, count:0,trend:"flat",buckets:[]},
   recentChat: [
     {
       id: "chat-snapshot",
@@ -25,7 +26,7 @@ const snapshot = (): EpisodeEngagementSnapshotDto => ({
   pinnedTopic: {
     episodeId: "episode-a",
     text: "Snapshot pin",
-    expiresAt: "2026-08-29T09:00:00.000Z",
+    expiresAt: "2099-08-29T09:00:00.000Z",
     expiresAtEpisodeEnd: true,
   },
   reactions: [
@@ -54,7 +55,7 @@ describe("emptyEngagementState", () => {
       receipts: [],
       upNext: [],
       pinnedTopic: null,
-      hype: { count: 0, trend: "flat" },
+      hype: { count: 0, trend: "flat", stale: true, buckets: [] },
     });
   });
 
@@ -107,10 +108,10 @@ describe("mergeEngagementSnapshot", () => {
       "queue-snapshot",
       "queue-live",
     ]);
-    expect(result.hype).toEqual({ count: 6, trend: "flat" });
+    expect(result.hype).toEqual({...snapshot().hype,stale:false});
     expect(result.pinnedTopic).toEqual({
       text: "Snapshot pin",
-      expiresAt: "2026-08-29T09:00:00.000Z",
+      expiresAt: "2099-08-29T09:00:00.000Z",
     });
   });
 
@@ -131,9 +132,9 @@ describe("mergeEngagementSnapshot", () => {
     expect(result.upNext.map((item) => item.id)).toEqual(["queue-snapshot"]);
     expect(result.pinnedTopic).toEqual({
       text: "Snapshot pin",
-      expiresAt: "2026-08-29T09:00:00.000Z",
+      expiresAt: "2099-08-29T09:00:00.000Z",
     });
-    expect(result.hype).toEqual({ count: 6, trend: "flat" });
+    expect(result.hype).toEqual({...snapshot().hype,stale:false});
   });
 
   it("does not let a late snapshot replace pin or hype updated by a socket event", () => {
@@ -164,4 +165,20 @@ describe("mergeEngagementSnapshot", () => {
 
     expect(result).toBe(current);
   });
+});
+
+it('hydrates authoritative measured bins instead of lifetime reaction totals', () => {
+ const bins=Array.from({length:12},(_,i)=>({startedAt:new Date(i*5000).toISOString(),count:0}));
+ const hype={episodeId:'episode-a',capturedAt:new Date().toISOString(),windowSeconds:60 as const,count:0,trend:'flat' as const,buckets:bins};
+ const result=mergeEngagementSnapshot(emptyEngagementState('episode-a'),{...snapshot(),hype});
+ expect(result.hype).toEqual({...hype,stale:false});
+});
+it('does not preserve hype when only a pin event arrived during recovery', () => {
+ const result=mergeEngagementSnapshot({...emptyEngagementState('episode-a'),pinnedTopic:{text:'new'},hype:{count:99,trend:'up'}},snapshot(),{preservePin:true});
+ expect(result.pinnedTopic?.text).toBe('new');expect(result.hype.count).toBe(0);
+});
+
+it('does not resurrect an already expired pin from a delayed snapshot',()=>{
+ const snap=snapshot();snap.pinnedTopic!.expiresAt='2000-01-01T00:00:00Z';
+ expect(mergeEngagementSnapshot(emptyEngagementState('episode-a'),snap).pinnedTopic).toBeNull();
 });

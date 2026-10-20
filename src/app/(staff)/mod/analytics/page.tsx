@@ -27,7 +27,6 @@ import {
   useGetAnalyticsOverview,
   useGetAnalyticsShows,
   useGetAnalyticsDayparts,
-  getAnalyticsEpisode,
 } from "@/lib/api/endpoints/analytics/analytics";
 import type {
   AnalyticsDaypartDto,
@@ -35,8 +34,8 @@ import type {
   AnalyticsShowRankDto,
 } from "@/lib/api/model";
 import { API_BASE_URL } from "@/lib/api/fetcher";
-import { listShowsPublic } from "@/lib/api/endpoints/shows-public/shows-public";
-import { getShowEpisodes } from "@/lib/api/endpoints/shows-public/shows-public";
+import { loadActivitySeries } from "@/lib/analytics/activity-series";
+import { EpisodeAnalytics } from "@/components/mod/analytics/episode-analytics";
 import { SegTabs } from "@/components/mod/seg-tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,33 +47,34 @@ import {
   formatCount,
   formatDecimal,
   periodRange,
+  customPeriodRange,
   toIsoDate,
   type PeriodKey,
 } from "@/lib/analytics/view";
 
 const PERIOD_TABS = [
   { key: "p30", label: "Last 30 days" },
-  { key: "psem", label: "This semester" },
+  { key: "psem", label: "Last 18 weeks" },
   { key: "pcustom", label: "Custom" },
 ];
 
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState<PeriodKey>("p30");
   const today = useMemo(() => toIsoDate(new Date()), []);
-  const [customFrom, setCustomFrom] = useState(() => periodRange("p30", new Date()).from);
+  const [customFrom, setCustomFrom] = useState(() => toIsoDate(new Date(Date.now() - 30 * 86_400_000)));
   const [customTo, setCustomTo] = useState(today);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const [exporting, setExporting] = useState<"csv" | "pdf" | null>(null);
 
   const range = useMemo(() => {
-    if (period === "pcustom") return { from: customFrom, to: customTo };
+    if (period === "pcustom") return customFrom && customTo ? customPeriodRange(customFrom, customTo) : {from: "", to: ""};
     return periodRange(period, new Date());
   }, [period, customFrom, customTo]);
 
   // A custom range the moderator is mid-way through typing would otherwise fire
   // a 400 on every keystroke.
-  const rangeValid = range.from <= range.to;
+  const rangeValid = Boolean(range.from && range.to) && range.from < range.to;
   const params = { from: range.from, to: range.to };
   const enabled = { query: { enabled: rangeValid } };
 
@@ -84,39 +84,11 @@ export default function AnalyticsPage() {
 
   const shows = useMemo(() => showsQuery.data ?? [], [showsQuery.data]);
 
-  // The retention curve compares the two strongest shows' most recent episodes.
-  // The prototype draws exactly two series, and more than two lines on a 200px
-  // chart stops being readable anyway.
+  // Staff discovery includes archived shows and unscheduled episodes without a newest-ten cap.
   const retentionQuery = useQuery({
-    queryKey: ["analytics-retention", range.from, range.to, shows.map((s) => s.showId).join(",")],
-    enabled: rangeValid && shows.length > 0,
-    queryFn: async (): Promise<RetentionSeries[]> => {
-      const top = shows.filter((s) => s.showId !== null).slice(0, 2);
-      // Fetched once, not once per show: it is the same full list either way.
-      const allShows = await listShowsPublic();
-
-      const series = await Promise.all(
-        top.map(async (show) => {
-          try {
-            const episodeId = await episodeInPeriod(allShows, show, range);
-            if (!episodeId) return null;
-            const detail = await getAnalyticsEpisode(episodeId);
-            return {
-              episodeId: detail.episodeId,
-              label: show.name,
-              points: detail.retention ?? [],
-            } satisfies RetentionSeries;
-          } catch {
-            // Per-show, not per-request: an episode that ended before the
-            // snapshot pipeline shipped 404s by design, and one show's missing
-            // curve must not discard the other show's perfectly good one.
-            return null;
-          }
-        }),
-      );
-      return series.filter((s): s is RetentionSeries => s !== null);
-    },
-    // A 404 here is a permanent answer, not a blip worth three retries.
+    queryKey: ["analytics-retention", range.from, range.to],
+    enabled: rangeValid,
+    queryFn: ({signal}): Promise<RetentionSeries[]> => loadActivitySeries(range,signal),
     retry: false,
   });
 
@@ -134,7 +106,7 @@ export default function AnalyticsPage() {
     setExportError(null);
     setExportStatus(null);
     try {
-      const url = `${API_BASE_URL}/api/analytics/media-kit/export?format=${format}&from=${range.from}&to=${range.to}`;
+      const url = `${API_BASE_URL}/api/analytics/media-kit/export?format=${format}&from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`;
       const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error(`Export failed (${res.status})`);
 
@@ -145,7 +117,7 @@ export default function AnalyticsPage() {
       const href = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = href;
-      anchor.download = `wildcat-audience-report-${range.to}.${format}`;
+      anchor.download = `wildcat-audience-report-${toIsoDate(new Date(range.to))}.${format}`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -284,12 +256,13 @@ export default function AnalyticsPage() {
       ) : (
         <>
           <StatCards overview={overviewQuery.data} />
+          <Coverage overview={overviewQuery.data} />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="wc-card wc-card-pad min-w-0">
-              <h2 className="mb-1 font-bold">Retention curve</h2>
+              <h2 className="mb-1 font-bold">Audience activity relative to peak</h2>
               <p className="wc-help mb-3">
-                % of listeners still tuned in, by minutes into the episode.
+                Active web-player connections as a percentage of this episode’s sampled peak, by minute. Latest two measured episodes in the period.
               </p>
               {retentionQuery.isLoading ? (
                 <p className="wc-help py-8 text-center">Loading curves…</p>
@@ -324,7 +297,7 @@ export default function AnalyticsPage() {
             <section className="wc-card wc-card-pad min-w-0 lg:col-span-2">
               <h2 className="mb-1 font-bold">Show ranking</h2>
               <p className="wc-help mb-3">
-                Ordered by average concurrent listeners. Trend compares the period before this one.
+                Ordered by average active web-player connections. Trend compares the period before this one.
               </p>
               <ShowRanking shows={shows} />
             </section>
@@ -341,12 +314,13 @@ export default function AnalyticsPage() {
                   chart that does not plot reach. */}
               <h2 className="mb-1 font-bold">Engagement vs audience</h2>
               <p className="wc-help mb-3">
-                Each dot is a show, plotted by its average concurrent listeners. Bigger dots ran
+                Each dot is a show, plotted by its average active web-player connections. Bigger dots ran
                 more episodes. Top-right are hits; bottom-left are sleepers.
               </p>
               <EngagementScatter shows={shows} />
             </section>
           </div>
+          <EpisodeAnalytics key={`${range.from}:${range.to}`} range={range} shows={shows} />
         </>
       )}
     </div>
@@ -358,7 +332,7 @@ function StatCards({ overview }: { overview?: AnalyticsOverviewDto }) {
     {
       label: "Peak concurrent",
       value: overview ? formatCount(overview.peakConcurrent) : "—",
-      caption: "listeners at once",
+      caption: "active web-player connections",
       testid: "peak",
     },
     {
@@ -367,7 +341,7 @@ function StatCards({ overview }: { overview?: AnalyticsOverviewDto }) {
       // the audience on the station's own dashboard.
       label: "Cumulative reach",
       value: overview ? formatCount(overview.cumulativeEpisodeReach) : "—",
-      caption: "listeners per episode, summed",
+      caption: "episode reach, summed; see measurement quality",
       testid: "reach",
     },
     {
@@ -403,7 +377,7 @@ function ShowRanking({ shows }: { shows: AnalyticsShowRankDto[] }) {
   if (shows.length === 0) {
     return (
       <p className="wc-help py-8 text-center" data-testid="mod-analytics-shows-empty">
-        No show broadcast in this period.
+        No completed show measurements in this period. Check episode coverage below.
       </p>
     );
   }
@@ -419,7 +393,7 @@ function ShowRanking({ shows }: { shows: AnalyticsShowRankDto[] }) {
           <tr>
             <th scope="col">Show</th>
             <th scope="col">Eps</th>
-            <th scope="col">Avg concurrent</th>
+            <th scope="col">Avg connections</th>
             <th scope="col">Avg TLH</th>
             <th scope="col">Avg engagement</th>
             <th scope="col">Trend</th>
@@ -448,6 +422,7 @@ function ShowRanking({ shows }: { shows: AnalyticsShowRankDto[] }) {
 }
 
 function TrendCell({ trend }: { trend: AnalyticsShowRankDto["trend"] }) {
+  if (trend == null) return <span className="wc-muted">Unavailable</span>;
   if (trend === "up") {
     return (
       // No `sr-only` companion: the word "up" is already visible text and the
@@ -472,35 +447,8 @@ function TrendCell({ trend }: { trend: AnalyticsShowRankDto["trend"] }) {
   return <span className="wc-muted">flat</span>;
 }
 
-/**
- * The ranking row carries no episode ids and there is no per-show episode list
- * on the analytics surface, so the retention curve borrows the public
- * show-episodes route to find an episode to draw.
- *
- * It must pick one **inside the selected period**. `GET /shows/:slug/episodes`
- * returns the ten most recent finished episodes with no date filter, so taking
- * `recent[0]` drew July's episode while the other three panels showed January
- * — and because the query key carries the range, the panel visibly "responded"
- * to a period change by re-rendering identical data, which is worse than
- * showing nothing.
- */
-async function episodeInPeriod(
-  allShows: { id: string; slug: string }[],
-  show: AnalyticsShowRankDto,
-  range: { from: string; to: string },
-): Promise<string | null> {
-  if (!show.showId) return null;
-  const slug = allShows.find((s) => s.id === show.showId)?.slug;
-  if (!slug) return null;
-
-  const episodes = await getShowEpisodes(slug);
-  const fromMs = new Date(`${range.from}T00:00:00.000Z`).getTime();
-  // Exclusive upper bound, matching the API's own [from, to) window.
-  const toMs = new Date(`${range.to}T00:00:00.000Z`).getTime();
-
-  const inPeriod = episodes.recent.filter((e) => {
-    const started = e.startedAt ? new Date(e.startedAt).getTime() : null;
-    return started !== null && started >= fromMs && started < toMs;
-  });
-  return inPeriod[0]?.id ?? null;
+function Coverage({overview}:{overview?:AnalyticsOverviewDto}) {
+ const coverage=overview?.coverage;
+ if(!coverage)return <p className="wc-help mb-4">Measurement coverage unavailable.</p>;
+ return <p className="wc-help mb-4" data-testid="mod-analytics-coverage">{coverage.totalEpisodes} episodes · {coverage.completedEpisodes} complete · {coverage.pendingEpisodes} pending · {coverage.unavailableEpisodes} unavailable · {coverage.samplingUnavailableEpisodes ?? 0} complete without audience samples. Aggregate totals include completed measurements only. Reach sums episode-specific browser IDs, with connection fallback counts in legacy or storage-denied sessions; it is not period-unique people.</p>;
 }

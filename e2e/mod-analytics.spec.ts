@@ -98,7 +98,7 @@ test('AN-E-01: golden path — the dashboard renders all four panels with real d
   guard.assertClean();
 });
 
-test('AN-E-02: the heatmap distinguishes a silent slot from one never broadcast', async ({
+test('AN-E-02: the heatmap distinguishes measured silence from missing samples', async ({
   page,
 }) => {
   await loginAs(page, 'moderator');
@@ -119,7 +119,7 @@ test('AN-E-02: the heatmap distinguishes a silent slot from one never broadcast'
   await expect(cells).toHaveCount(rowCount * 7);
 
   const unaired = page.locator('[data-testid^="mod-analytics-heat-"][data-aired="false"]').first();
-  await expect(unaired).toHaveAttribute('aria-label', /no broadcast/);
+  await expect(unaired).toHaveAttribute('aria-label', /no sampled activity/);
 });
 
 test('AN-E-03: switching period refetches, and a custom range is validated before it is sent', async ({

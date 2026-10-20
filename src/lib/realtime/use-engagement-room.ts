@@ -9,7 +9,7 @@ import {
   votePoll,
   useListPolls,
 } from "@/lib/api/endpoints/engagement/engagement";
-import { useGetEpisodeEngagementSnapshot } from "@/lib/api/endpoints/episodes/episodes";
+import { getEpisodeEngagementSnapshot } from "@/lib/api/endpoints/episodes/episodes";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import type { Socket } from "socket.io-client";
 import type {
@@ -19,6 +19,7 @@ import type {
   SubmitQueueItemDto,
 } from "@/lib/api/model";
 import { acquireSocket, type SocketLease } from "./socket";
+import { activePin, SnapshotRecovery } from "./snapshot-recovery";
 import { SEND_TIMEOUT, SOCKET_UNAVAILABLE } from "./engagement-error";
 import {
   emptyEngagementState,
@@ -105,33 +106,11 @@ export function useEngagementRoom(
   // effect cleanup (which fires before the async acquireSocket().then() might
   // have resolved) can detach the *right* handler instance.
   const joinEpisodeRef = useRef<(() => void) | null>(null);
-  const pendingLiveEventsRef = useRef({
-    episodeId: null as string | null,
-    ids: new Set<string>(),
-    removedIds: new Set<string>(),
-    preserveScalars: false,
-  });
-  const markLiveEvent = useCallback(
-    (event: { id?: string; removed?: boolean; scalar?: boolean }) => {
-      if (!episodeId) return;
-      let pending = pendingLiveEventsRef.current;
-      if (pending.episodeId !== episodeId) {
-        pending = {
-          episodeId,
-          ids: new Set<string>(),
-          removedIds: new Set<string>(),
-          preserveScalars: false,
-        };
-        pendingLiveEventsRef.current = pending;
-      }
-      if (event.id) {
-        if (event.removed) pending.removedIds.add(event.id);
-        else pending.ids.add(event.id);
-      }
-      if (event.scalar) pending.preserveScalars = true;
-    },
-    [episodeId],
-  );
+  const recoveryRef = useRef(new SnapshotRecovery());
+  const socketConnectedRef = useRef(false);
+  const markLiveEvent = useCallback((event: { id?: string; removed?: boolean; scalar?: 'pin' | 'hype' }) => {
+    recoveryRef.current.mark(event);
+  }, []);
 
   const pollsQuery = useListPolls(episodeId ?? "", {
     query: {
@@ -141,40 +120,41 @@ export function useEngagementRoom(
       refetchOnWindowFocus: false,
     },
   });
-  const snapshotQuery = useGetEpisodeEngagementSnapshot(episodeId ?? "", {
-    query: {
-      enabled: Boolean(episodeId),
-      refetchOnWindowFocus: false,
-    },
-  });
-  const { data: snapshot, refetch: refetchSnapshot } = snapshotQuery;
-
+  const refetchSnapshot = useCallback(async () => {
+    if (!episodeId) return;
+    const recovery = recoveryRef.current;
+    const token = recovery.begin();
+    try {
+      const snapshot = await getEpisodeEngagementSnapshot(episodeId);
+      const options = recovery.finish(token);
+      if (options) updateState(current => {
+        const recovered = mergeEngagementSnapshot(current, snapshot, options);
+        return socketConnectedRef.current ? recovered : {...recovered, hype: {...recovered.hype, stale: true}};
+      });
+    } catch { recovery.finish(token); }
+  }, [episodeId, updateState]);
   useEffect(() => {
-    if (!snapshot) return;
-    const pending = pendingLiveEventsRef.current.episodeId === snapshot.episodeId
-      ? pendingLiveEventsRef.current
-      : { ids: new Set<string>(), removedIds: new Set<string>(), preserveScalars: false };
-    updateState((current) =>
-      mergeEngagementSnapshot(current, snapshot, {
-        preserveLiveIds: pending.ids,
-        removedIds: pending.removedIds,
-        preserveLiveScalars: pending.preserveScalars,
-      }),
-    );
-    pendingLiveEventsRef.current = {
-      episodeId: snapshot.episodeId,
-      ids: new Set<string>(),
-      removedIds: new Set<string>(),
-      preserveScalars: false,
+    const recovery = recoveryRef.current;
+    void refetchSnapshot();
+    const expire = () => updateState(current => ({
+      ...current,
+      pinnedTopic: activePin(current.pinnedTopic),
+      hype: current.hype.capturedAt && Date.now() - Date.parse(current.hype.capturedAt) > 15_000
+        ? {...current.hype, stale: true} : current.hype,
+    }));
+    const resume = () => { expire(); if (!document.hidden) void refetchSnapshot(); };
+    const timer = window.setInterval(expire, 1_000);
+    window.addEventListener('focus', resume);
+    document.addEventListener('visibilitychange', resume);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', resume);
+      document.removeEventListener('visibilitychange', resume);
+      recovery.cancel();
     };
-  }, [snapshot, updateState]);
+  }, [refetchSnapshot, updateState]);
 
-  const polls = useMemo(() => {
-    return livePolls.reduce(
-      (current, poll) => mergePoll(current, poll),
-      pollsQuery.data ?? [],
-    );
-  }, [livePolls, pollsQuery.data]);
+  const polls = livePolls;
 
   useEffect(() => {
     if (!episodeId) return;
@@ -228,15 +208,21 @@ export function useEngagementRoom(
     }
 
     function onHypeTick(event: HypeState) {
-      markLiveEvent({ scalar: true });
-      updateState((current) => ({ ...current, hype: event }));
+      if (event.episodeId && event.episodeId !== episodeId) return;
+      markLiveEvent({ scalar: "hype" });
+      updateState((current) => ({ ...current, hype: { ...event, stale: false } }));
     }
 
-    function onTopicPinned(event: PinnedTopic) {
-      markLiveEvent({ scalar: true });
-      updateState((current) => ({ ...current, pinnedTopic: event }));
+    function onTopicPinned(event: PinnedTopic | null) {
+      markLiveEvent({ scalar: "pin" });
+      updateState((current) => ({ ...current, pinnedTopic: activePin(event) }));
     }
 
+    function onDisconnect() {
+      socketConnectedRef.current = false;
+      recoveryRef.current.cancel();
+      updateState(current => ({...current, hype: {...current.hype, stale: true}}));
+    }
     acquireSocket()
       .then((nextLease) => {
         if (cancelled) {
@@ -247,6 +233,7 @@ export function useEngagementRoom(
         socket = nextLease.socket;
         const s = nextLease.socket;
 
+        s.on("disconnect", onDisconnect);
         s.on("chat:new", onChatNew);
         s.on("chat:hidden", onChatHidden);
         s.on("queue:receipt", onQueueReceipt);
@@ -255,15 +242,10 @@ export function useEngagementRoom(
         s.on("hype:tick", onHypeTick);
         s.on("topic:pinned", onTopicPinned);
 
-        let hasJoined = false;
-        let refreshNextJoin = false;
         const joinEpisode = () => {
+          socketConnectedRef.current = true;
           s.emit("episode:join", { episodeId });
-          if (hasJoined || refreshNextJoin) {
-            refreshNextJoin = false;
-            void refetchSnapshot();
-          }
-          hasJoined = true;
+          void refetchSnapshot();
         };
         // Persistent (not `once`) so episode room membership is restored after
         // ANY reconnect — including one triggered by the auth-session cycling
@@ -282,7 +264,6 @@ export function useEngagementRoom(
         prevAuthSessionKeyRef.current = authSessionKey ?? null;
 
         if (s.connected && sessionChanged) {
-          refreshNextJoin = true;
           s.disconnect();
           s.connect();
         } else if (s.connected) {
@@ -301,6 +282,7 @@ export function useEngagementRoom(
       if (socket) {
         socket.emit("episode:leave", { episodeId });
         if (joinEpisodeRef.current) socket.off("connect", joinEpisodeRef.current);
+        socket.off("disconnect", onDisconnect);
         socket.off("chat:new", onChatNew);
         socket.off("chat:hidden", onChatHidden);
         socket.off("queue:receipt", onQueueReceipt);
@@ -310,6 +292,7 @@ export function useEngagementRoom(
         socket.off("topic:pinned", onTopicPinned);
       }
       joinEpisodeRef.current = null;
+      socketConnectedRef.current = false;
       lease?.release();
     };
   }, [authSessionKey, episodeId, markLiveEvent, pushToast, queryClient, refetchSnapshot, updateState]);
@@ -467,7 +450,7 @@ export function useEngagementRoom(
       refreshPolls: () => {
         if (!episodeId) return Promise.resolve([]);
         return listPolls(episodeId).then((fresh) => {
-          updateState((current) => ({ ...current, livePolls: [] }));
+          void refetchSnapshot();
           return fresh;
         });
       },
@@ -496,7 +479,7 @@ export function useEngagementRoom(
       voteMutation.isPending,
       voteMutation.variables?.targetEpisodeId,
       vote,
-      updateState,
+      refetchSnapshot,
     ],
   );
 }

@@ -5,11 +5,16 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
+import type { AnalyticsCoverageDto } from './analyticsCoverageDto.ts';
 
 export interface AnalyticsOverviewDto {
-  /** Highest concurrent listeners in any episode in range */
-  peakConcurrent: number;
-  /** Sum of each episode's unique listeners. Counts a repeat listener once per episode. */
+  coverage: AnalyticsCoverageDto;
+  /**
+     * Highest sampled active web-player connections; null when broadcasts have no available sampled concurrency
+     * @nullable
+     */
+  peakConcurrent: number | null;
+  /** Sum of distinct browser identifiers measured per episode; not unique people across a period. */
   cumulativeEpisodeReach: number;
   /** Total listening hours across the period */
   totalListeningHours: number;

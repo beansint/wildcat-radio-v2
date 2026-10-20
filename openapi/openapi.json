@@ -2521,6 +2521,86 @@
         ]
       }
     },
+    "/api/analytics/episodes": {
+      "get": {
+        "operationId": "getAnalyticsEpisodes",
+        "parameters": [
+          {
+            "name": "measurementStatus",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "live",
+                "pending",
+                "complete",
+                "unavailable"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "showId",
+            "required": false,
+            "in": "query",
+            "description": "Show ID, or unscheduled",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, exclusive. Default: now.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ISO date, inclusive. Default: 30 days ago.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsEpisodeListDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Paginated staff episode measurements including archived shows and unscheduled episodes",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
     "/api/analytics/episodes/{id}": {
       "get": {
         "operationId": "getAnalyticsEpisode",
@@ -5753,6 +5833,69 @@
           "startedAt"
         ]
       },
+      "HypeBucketDto": {
+        "type": "object",
+        "properties": {
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "count": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "startedAt",
+          "count"
+        ]
+      },
+      "HypeSnapshotDto": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "windowSeconds": {
+            "type": "number",
+            "enum": [
+              60
+            ]
+          },
+          "count": {
+            "type": "number",
+            "minimum": 0
+          },
+          "trend": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down",
+              "flat"
+            ]
+          },
+          "buckets": {
+            "minItems": 12,
+            "maxItems": 12,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HypeBucketDto"
+            }
+          }
+        },
+        "required": [
+          "episodeId",
+          "capturedAt",
+          "windowSeconds",
+          "count",
+          "trend",
+          "buckets"
+        ]
+      },
       "PublicSnapshotAuthorDto": {
         "type": "object",
         "properties": {
@@ -5859,6 +6002,9 @@
       "EpisodeEngagementSnapshotDto": {
         "type": "object",
         "properties": {
+          "hype": {
+            "$ref": "#/components/schemas/HypeSnapshotDto"
+          },
           "episodeId": {
             "type": "string"
           },
@@ -5901,6 +6047,7 @@
           }
         },
         "required": [
+          "hype",
           "episodeId",
           "capturedAt",
           "recentChat",
@@ -6375,16 +6522,48 @@
           "createdAt"
         ]
       },
+      "AnalyticsCoverageDto": {
+        "type": "object",
+        "properties": {
+          "totalEpisodes": {
+            "type": "number"
+          },
+          "completedEpisodes": {
+            "type": "number"
+          },
+          "pendingEpisodes": {
+            "type": "number"
+          },
+          "unavailableEpisodes": {
+            "type": "number"
+          },
+          "samplingUnavailableEpisodes": {
+            "type": "number",
+            "description": "Completed summaries without any minute samples; excluded from sampled concurrency metrics"
+          }
+        },
+        "required": [
+          "totalEpisodes",
+          "completedEpisodes",
+          "pendingEpisodes",
+          "unavailableEpisodes",
+          "samplingUnavailableEpisodes"
+        ]
+      },
       "AnalyticsOverviewDto": {
         "type": "object",
         "properties": {
+          "coverage": {
+            "$ref": "#/components/schemas/AnalyticsCoverageDto"
+          },
           "peakConcurrent": {
             "type": "number",
-            "description": "Highest concurrent listeners in any episode in range"
+            "nullable": true,
+            "description": "Highest sampled active web-player connections; null when broadcasts have no available sampled concurrency"
           },
           "cumulativeEpisodeReach": {
             "type": "number",
-            "description": "Sum of each episode's unique listeners. Counts a repeat listener once per episode."
+            "description": "Sum of distinct browser identifiers measured per episode; not unique people across a period."
           },
           "totalListeningHours": {
             "type": "number",
@@ -6400,6 +6579,7 @@
           }
         },
         "required": [
+          "coverage",
           "peakConcurrent",
           "cumulativeEpisodeReach",
           "totalListeningHours",
@@ -6426,7 +6606,8 @@
             "type": "number"
           },
           "avgConcurrent": {
-            "type": "number"
+            "type": "number",
+            "nullable": true
           },
           "avgTlh": {
             "type": "number"
@@ -6441,6 +6622,7 @@
               "down",
               "flat"
             ],
+            "nullable": true,
             "description": "Against the immediately preceding window of equal length"
           }
         },
@@ -6478,6 +6660,173 @@
           "hour",
           "avgConcurrent",
           "episodeCount"
+        ]
+      },
+      "AnalyticsQualityDto": {
+        "type": "object",
+        "properties": {
+          "measurementVersion": {
+            "type": "string",
+            "enum": [
+              "legacy",
+              "episode-browser-v1"
+            ]
+          },
+          "sampleCount": {
+            "type": "number",
+            "nullable": true
+          },
+          "expectedSamples": {
+            "type": "number",
+            "nullable": true
+          },
+          "samplingCoverage": {
+            "type": "number",
+            "nullable": true,
+            "description": "Observed samples / expected minute samples, 0–1; null for legacy or pending"
+          },
+          "interruptedSessions": {
+            "type": "number",
+            "nullable": true
+          },
+          "fallbackSessions": {
+            "type": "number",
+            "nullable": true
+          },
+          "rawPrunedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "unobservedIntervalSeconds": {
+            "type": "number",
+            "description": "A crashed process may lose up to one 15-second durable observation interval"
+          }
+        },
+        "required": [
+          "measurementVersion",
+          "sampleCount",
+          "expectedSamples",
+          "samplingCoverage",
+          "interruptedSessions",
+          "fallbackSessions",
+          "rawPrunedAt",
+          "unobservedIntervalSeconds"
+        ]
+      },
+      "AnalyticsEpisodeListItemDto": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string"
+          },
+          "showId": {
+            "type": "string",
+            "nullable": true
+          },
+          "showName": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "endedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "scheduledFor": {
+            "type": "string",
+            "nullable": true
+          },
+          "scheduledEndAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true
+          },
+          "measurementStatus": {
+            "type": "string",
+            "enum": [
+              "live",
+              "pending",
+              "complete",
+              "unavailable"
+            ]
+          },
+          "peak": {
+            "type": "number",
+            "nullable": true
+          },
+          "average": {
+            "type": "number",
+            "nullable": true
+          },
+          "reach": {
+            "type": "number",
+            "nullable": true
+          },
+          "tlh": {
+            "type": "number",
+            "nullable": true
+          },
+          "tsl": {
+            "type": "number",
+            "nullable": true
+          },
+          "quality": {
+            "$ref": "#/components/schemas/AnalyticsQualityDto"
+          }
+        },
+        "required": [
+          "episodeId",
+          "showId",
+          "showName",
+          "title",
+          "startedAt",
+          "endedAt",
+          "scheduledFor",
+          "scheduledEndAt",
+          "durationMinutes",
+          "measurementStatus",
+          "peak",
+          "average",
+          "reach",
+          "tlh",
+          "tsl",
+          "quality"
+        ]
+      },
+      "AnalyticsEpisodeListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsEpisodeListItemDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
         ]
       },
       "AnalyticsRetentionPointDto": {
@@ -6518,6 +6867,18 @@
           },
           "reactions": {
             "type": "number"
+          },
+          "queueByType": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "queueByStatus": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
           }
         },
         "required": [
@@ -6525,7 +6886,9 @@
           "requestsReceived",
           "requestsHandled",
           "pollVotes",
-          "reactions"
+          "reactions",
+          "queueByType",
+          "queueByStatus"
         ]
       },
       "AnalyticsEpisodeDto": {
@@ -6534,7 +6897,15 @@
           "episodeId": {
             "type": "string"
           },
+          "showId": {
+            "type": "string",
+            "nullable": true
+          },
           "showName": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
             "type": "string",
             "nullable": true
           },
@@ -6546,20 +6917,49 @@
             "type": "string",
             "nullable": true
           },
+          "scheduledFor": {
+            "type": "string",
+            "nullable": true
+          },
+          "scheduledEndAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "durationMinutes": {
+            "type": "number",
+            "nullable": true
+          },
+          "measurementStatus": {
+            "type": "string",
+            "enum": [
+              "live",
+              "pending",
+              "complete",
+              "unavailable"
+            ]
+          },
           "peak": {
-            "type": "number"
+            "type": "number",
+            "nullable": true
           },
           "average": {
-            "type": "number"
+            "type": "number",
+            "nullable": true
           },
           "reach": {
-            "type": "number"
+            "type": "number",
+            "nullable": true
           },
           "tlh": {
-            "type": "number"
+            "type": "number",
+            "nullable": true
           },
           "tsl": {
-            "type": "number"
+            "type": "number",
+            "nullable": true
+          },
+          "quality": {
+            "$ref": "#/components/schemas/AnalyticsQualityDto"
           },
           "retention": {
             "type": "array",
@@ -6568,19 +6968,32 @@
             }
           },
           "engagement": {
-            "$ref": "#/components/schemas/AnalyticsEngagementDto"
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnalyticsEngagementDto"
+              }
+            ]
           }
         },
         "required": [
           "episodeId",
+          "showId",
           "showName",
+          "title",
           "startedAt",
           "endedAt",
+          "scheduledFor",
+          "scheduledEndAt",
+          "durationMinutes",
+          "measurementStatus",
           "peak",
           "average",
           "reach",
           "tlh",
           "tsl",
+          "quality",
           "retention",
           "engagement"
         ]

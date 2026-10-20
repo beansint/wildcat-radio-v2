@@ -6,21 +6,41 @@
  * OpenAPI spec version: 0.0.1
  */
 import type { AnalyticsEngagementDto } from './analyticsEngagementDto.ts';
+import type { AnalyticsEpisodeDtoMeasurementStatus } from './analyticsEpisodeDtoMeasurementStatus.ts';
+import type { AnalyticsQualityDto } from './analyticsQualityDto.ts';
 import type { AnalyticsRetentionPointDto } from './analyticsRetentionPointDto.ts';
 
 export interface AnalyticsEpisodeDto {
   episodeId: string;
   /** @nullable */
+  showId: string | null;
+  /** @nullable */
   showName: string | null;
+  /** @nullable */
+  title: string | null;
   /** @nullable */
   startedAt: string | null;
   /** @nullable */
   endedAt: string | null;
-  peak: number;
-  average: number;
-  reach: number;
-  tlh: number;
-  tsl: number;
+  /** @nullable */
+  scheduledFor: string | null;
+  /** @nullable */
+  scheduledEndAt: string | null;
+  /** @nullable */
+  durationMinutes: number | null;
+  measurementStatus: AnalyticsEpisodeDtoMeasurementStatus;
+  /** @nullable */
+  peak: number | null;
+  /** @nullable */
+  average: number | null;
+  /** @nullable */
+  reach: number | null;
+  /** @nullable */
+  tlh: number | null;
+  /** @nullable */
+  tsl: number | null;
+  quality: AnalyticsQualityDto;
   retention: AnalyticsRetentionPointDto[];
-  engagement: AnalyticsEngagementDto;
+  /** @nullable */
+  engagement: AnalyticsEngagementDto | null;
 }

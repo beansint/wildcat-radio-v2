@@ -27,7 +27,7 @@ export function EngagementScatter({ shows }: { shows: AnalyticsShowRankDto[] }) 
   if (points.length === 0) {
     return (
       <p className="wc-help py-8 text-center" data-testid="mod-analytics-scatter-empty">
-        No show broadcast in this period.
+        No sampled show audience data in this period. Check episode coverage.
       </p>
     );
   }
@@ -41,7 +41,7 @@ export function EngagementScatter({ shows }: { shows: AnalyticsShowRankDto[] }) 
         className="wc-chart"
         data-testid="mod-analytics-scatter"
         role="img"
-        aria-label={`Scatter plot of engagement against average concurrent listeners for ${points.length} show${points.length === 1 ? '' : 's'}, dots sized by episode count.`}
+        aria-label={`Scatter plot of engagement against average active web-player connections for ${points.length} show${points.length === 1 ? '' : 's'}, dots sized by episode count.`}
       >
         <ResponsiveContainer width="100%" height={220}>
           <ScatterChart
@@ -52,10 +52,10 @@ export function EngagementScatter({ shows }: { shows: AnalyticsShowRankDto[] }) 
             <XAxis
               type="number"
               dataKey="audience"
-              name="avg concurrent"
+              name="avg connections"
               tickLine={false}
               label={{
-                value: "avg concurrent",
+                value: "avg connections",
                 position: "insideBottom",
                 offset: -10,
                 fill: "var(--muted-foreground)",
@@ -99,7 +99,7 @@ export function EngagementScatter({ shows }: { shows: AnalyticsShowRankDto[] }) 
                   >
                     <div className="font-bold">{point.name}</div>
                     <div className="wc-muted">
-                      {formatDecimal(point.audience)} avg concurrent ·{" "}
+                      {formatDecimal(point.audience)} avg connections ·{" "}
                       {formatDecimal(point.engagement)} engagement
                     </div>
                     <div className="wc-muted">

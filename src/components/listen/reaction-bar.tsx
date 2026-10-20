@@ -4,6 +4,7 @@ import { Flame } from "lucide-react";
 import { useRef } from "react";
 import type { CreateReactionDtoEmoji } from "@/lib/api/model";
 import { EngagementErrorNotice } from "@/components/listen/engagement-error-notice";
+import { measuredBarHeights } from "@/lib/realtime/snapshot-recovery";
 import type { HypeState } from "@/lib/realtime/use-engagement-room";
 
 type ReactionKey = "fire" | "heart" | "laugh" | "clap";
@@ -40,7 +41,7 @@ export function ReactionBar({ hype, onReact, reacting, error, isLive }: Reaction
   const reactions = INITIAL_REACTIONS;
   const bumpRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const hypeTotal = hype.count;
-  const hypeWidth = Math.min(100, Math.max(8, hype.count));
+  const heights = measuredBarHeights(hype.stale ? Array.from({length:12}, () => ({count:0})) : hype.buckets ?? []);
 
   async function handleReact(key: ReactionKey) {
     const btn = bumpRefs.current[key];
@@ -60,30 +61,17 @@ export function ReactionBar({ hype, onReact, reacting, error, isLive }: Reaction
     <div className="mt-6">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[.68rem] font-bold uppercase tracking-[.12em] text-white/55">
-          Hype meter
+          Reactions in the last 60 seconds
         </span>
         <span className="inline-flex items-center gap-1.5 text-sm font-extrabold text-gold">
           <Flame className="w-4 h-4" aria-hidden="true" />
-          <span className="tnum">{formatCount(hypeTotal)}</span>
+          <span className="tnum">{hype.stale ? "Unavailable" : formatCount(hypeTotal)}</span>
         </span>
       </div>
-      <div
-        className="h-2 rounded-full overflow-hidden"
-        style={{ background: "rgba(255,255,255,.16)" }}
-        role="meter"
-        aria-valuenow={hypeWidth}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label="Hype level"
-        data-testid="engagement-hype-meter"
-      >
-        <div
-          className="h-full transition-[width] duration-300"
-          style={{
-            width: `${hypeWidth}%`,
-            background: "linear-gradient(90deg,var(--gold),var(--amber))",
-          }}
-        />
+      <div className="flex h-8 items-end gap-1" role="img"
+        aria-label={hype.stale ? "Reaction measurements unavailable" : `${hype.count} reactions in the last 60 seconds; twelve five-second intervals`}
+        data-testid="engagement-hype-meter">
+        {heights.map((height,index) => <span key={index} className="flex-1 rounded-sm bg-gold" style={{height: `${height}%`}} />)}
       </div>
       <div className="grid grid-cols-4 gap-2 mt-3">
         {REACTION_KEYS.map((key) => {

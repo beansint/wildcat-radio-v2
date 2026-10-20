@@ -153,7 +153,7 @@ export function buildScatter(shows: readonly AnalyticsShowRankDto[]): ScatterPoi
     // The API's synthetic "Unscheduled" row (showId: null) is a bucket, not a
     // show. Plotting it invited the caption to advise "review the slot" about a
     // slot that does not exist.
-    .filter((s): s is AnalyticsShowRankDto & { showId: string } => s.showId !== null)
+    .filter((s): s is AnalyticsShowRankDto & { showId: string; avgConcurrent: number } => s.showId !== null && s.avgConcurrent !== null)
     .map((s) => ({
       showId: s.showId,
       name: s.name,
@@ -189,12 +189,14 @@ export function hitAndSleeper(points: readonly ScatterPoint[]): {
 }
 
 /** Thousands separators for the stat cards, which use `tnum`. */
-export function formatCount(value: number): string {
+export function formatCount(value: number | null): string {
+  if (value === null) return "Unavailable";
   return Math.round(value).toLocaleString("en-US");
 }
 
 /** One decimal, but only when it says something. */
-export function formatDecimal(value: number): string {
+export function formatDecimal(value: number | null): string {
+  if (value === null) return "Unavailable";
   const rounded = Math.round(value * 10) / 10;
   return Number.isInteger(rounded)
     ? rounded.toLocaleString("en-US")
@@ -212,7 +214,7 @@ export function periodRange(key: PeriodKey, now: Date): { from: string; to: stri
   const to = now;
   const days = key === "psem" ? 126 : 30;
   const from = new Date(to.getTime() - days * 86_400_000);
-  return { from: toIsoDate(from), to: toIsoDate(to) };
+  return { from: from.toISOString(), to: to.toISOString() };
 }
 
 /**
@@ -226,4 +228,11 @@ export function toIsoDate(date: Date): string {
   return new Date(date.getTime() + STATION_UTC_OFFSET_MINUTES * 60_000)
     .toISOString()
     .slice(0, 10);
+}
+
+/** Calendar inputs include the whole selected day at the station. */
+export function customPeriodRange(from:string,to:string):{from:string;to:string}{
+ const start = new Date(`${from}T00:00:00+08:00`);
+ const end = new Date(new Date(`${to}T00:00:00+08:00`).getTime()+86_400_000);
+ return {from:start.toISOString(),to:end.toISOString()};
 }

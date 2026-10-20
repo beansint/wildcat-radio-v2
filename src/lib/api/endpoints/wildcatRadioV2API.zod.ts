@@ -982,7 +982,27 @@ export const GetEpisodeEngagementSnapshotParams = zod.object({
   "id": zod.string().describe('Episode id (cuid)')
 })
 
+export const getEpisodeEngagementSnapshotResponseHypeCountMin = 0;
+
+export const getEpisodeEngagementSnapshotResponseHypeBucketsItemCountMin = 0;
+
+export const getEpisodeEngagementSnapshotResponseHypeBucketsMin = 12;
+export const getEpisodeEngagementSnapshotResponseHypeBucketsMax = 12;
+
+
+
 export const GetEpisodeEngagementSnapshotResponse = zod.object({
+  "hype": zod.object({
+  "episodeId": zod.string(),
+  "capturedAt": zod.iso.datetime({"offset":true}),
+  "windowSeconds": zod.literal(60),
+  "count": zod.number().min(getEpisodeEngagementSnapshotResponseHypeCountMin),
+  "trend": zod.enum(['up', 'down', 'flat']),
+  "buckets": zod.array(zod.object({
+  "startedAt": zod.iso.datetime({"offset":true}),
+  "count": zod.number().min(getEpisodeEngagementSnapshotResponseHypeBucketsItemCountMin)
+})).min(getEpisodeEngagementSnapshotResponseHypeBucketsMin).max(getEpisodeEngagementSnapshotResponseHypeBucketsMax)
+}),
   "episodeId": zod.string(),
   "capturedAt": zod.iso.datetime({"offset":true}),
   "recentChat": zod.array(zod.object({
@@ -1350,8 +1370,15 @@ export const GetAnalyticsOverviewQueryParams = zod.object({
 })
 
 export const GetAnalyticsOverviewResponse = zod.object({
-  "peakConcurrent": zod.number().describe('Highest concurrent listeners in any episode in range'),
-  "cumulativeEpisodeReach": zod.number().describe('Sum of each episode\'s unique listeners. Counts a repeat listener once per episode.'),
+  "coverage": zod.object({
+  "totalEpisodes": zod.number(),
+  "completedEpisodes": zod.number(),
+  "pendingEpisodes": zod.number(),
+  "unavailableEpisodes": zod.number(),
+  "samplingUnavailableEpisodes": zod.number().describe('Completed summaries without any minute samples; excluded from sampled concurrency metrics')
+}),
+  "peakConcurrent": zod.number().nullable().describe('Highest sampled active web-player connections; null when broadcasts have no available sampled concurrency'),
+  "cumulativeEpisodeReach": zod.number().describe('Sum of distinct browser identifiers measured per episode; not unique people across a period.'),
   "totalListeningHours": zod.number().describe('Total listening hours across the period'),
   "averageEngagementPerEpisode": zod.number().describe('Mean engagement actions per episode'),
   "episodeCount": zod.number().describe('Episodes with a snapshot in range')
@@ -1371,10 +1398,10 @@ export const GetAnalyticsShowsResponseItem = zod.object({
   "name": zod.string(),
   "theme": zod.string().nullable(),
   "episodeCount": zod.number(),
-  "avgConcurrent": zod.number(),
+  "avgConcurrent": zod.number().nullable(),
   "avgTlh": zod.number(),
   "avgEngagement": zod.number(),
-  "trend": zod.enum(['up', 'down', 'flat']).describe('Against the immediately preceding window of equal length')
+  "trend": zod.union([zod.literal('up'),zod.literal('down'),zod.literal('flat'),zod.literal(null)]).nullable().describe('Against the immediately preceding window of equal length')
 })
 export const GetAnalyticsShowsResponse = zod.array(GetAnalyticsShowsResponseItem)
 
@@ -1409,6 +1436,52 @@ export const ExportMediaKitResponse = zod.unknown()
 
 
 /**
+ * @summary Paginated staff episode measurements including archived shows and unscheduled episodes
+ */
+export const GetAnalyticsEpisodesQueryParams = zod.object({
+  "measurementStatus": zod.enum(['live', 'pending', 'complete', 'unavailable']).optional(),
+  "showId": zod.string().optional().describe('Show ID, or unscheduled'),
+  "pageSize": zod.number().optional(),
+  "page": zod.number().optional(),
+  "to": zod.string().optional().describe('ISO date, exclusive. Default: now.'),
+  "from": zod.string().optional().describe('ISO date, inclusive. Default: 30 days ago.')
+})
+
+export const GetAnalyticsEpisodesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "episodeId": zod.string(),
+  "showId": zod.string().nullable(),
+  "showName": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "startedAt": zod.string().nullable(),
+  "endedAt": zod.string().nullable(),
+  "scheduledFor": zod.string().nullable(),
+  "scheduledEndAt": zod.string().nullable(),
+  "durationMinutes": zod.number().nullable(),
+  "measurementStatus": zod.enum(['live', 'pending', 'complete', 'unavailable']),
+  "peak": zod.number().nullable(),
+  "average": zod.number().nullable(),
+  "reach": zod.number().nullable(),
+  "tlh": zod.number().nullable(),
+  "tsl": zod.number().nullable(),
+  "quality": zod.object({
+  "measurementVersion": zod.enum(['legacy', 'episode-browser-v1']),
+  "sampleCount": zod.number().nullable(),
+  "expectedSamples": zod.number().nullable(),
+  "samplingCoverage": zod.number().nullable().describe('Observed samples / expected minute samples, 0–1; null for legacy or pending'),
+  "interruptedSessions": zod.number().nullable(),
+  "fallbackSessions": zod.number().nullable(),
+  "rawPrunedAt": zod.string().nullable(),
+  "unobservedIntervalSeconds": zod.number().describe('A crashed process may lose up to one 15-second durable observation interval')
+})
+})),
+  "total": zod.number(),
+  "page": zod.number(),
+  "pageSize": zod.number()
+})
+
+
+/**
  * @summary One episode's stored snapshot, including its retention curve
  */
 export const GetAnalyticsEpisodeParams = zod.object({
@@ -1417,14 +1490,30 @@ export const GetAnalyticsEpisodeParams = zod.object({
 
 export const GetAnalyticsEpisodeResponse = zod.object({
   "episodeId": zod.string(),
+  "showId": zod.string().nullable(),
   "showName": zod.string().nullable(),
+  "title": zod.string().nullable(),
   "startedAt": zod.string().nullable(),
   "endedAt": zod.string().nullable(),
-  "peak": zod.number(),
-  "average": zod.number(),
-  "reach": zod.number(),
-  "tlh": zod.number(),
-  "tsl": zod.number(),
+  "scheduledFor": zod.string().nullable(),
+  "scheduledEndAt": zod.string().nullable(),
+  "durationMinutes": zod.number().nullable(),
+  "measurementStatus": zod.enum(['live', 'pending', 'complete', 'unavailable']),
+  "peak": zod.number().nullable(),
+  "average": zod.number().nullable(),
+  "reach": zod.number().nullable(),
+  "tlh": zod.number().nullable(),
+  "tsl": zod.number().nullable(),
+  "quality": zod.object({
+  "measurementVersion": zod.enum(['legacy', 'episode-browser-v1']),
+  "sampleCount": zod.number().nullable(),
+  "expectedSamples": zod.number().nullable(),
+  "samplingCoverage": zod.number().nullable().describe('Observed samples / expected minute samples, 0–1; null for legacy or pending'),
+  "interruptedSessions": zod.number().nullable(),
+  "fallbackSessions": zod.number().nullable(),
+  "rawPrunedAt": zod.string().nullable(),
+  "unobservedIntervalSeconds": zod.number().describe('A crashed process may lose up to one 15-second durable observation interval')
+}),
   "retention": zod.array(zod.object({
   "minute": zod.number().describe('Minutes into the episode, 0-based'),
   "activeCount": zod.number(),
@@ -1435,8 +1524,10 @@ export const GetAnalyticsEpisodeResponse = zod.object({
   "requestsReceived": zod.number(),
   "requestsHandled": zod.number(),
   "pollVotes": zod.number(),
-  "reactions": zod.number()
-})
+  "reactions": zod.number(),
+  "queueByType": zod.record(zod.string(), zod.number()),
+  "queueByStatus": zod.record(zod.string(), zod.number())
+}).nullable()
 })
 
 

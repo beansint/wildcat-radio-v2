@@ -55,7 +55,7 @@ export function RetentionCurve({ series }: { series: RetentionSeries[] }) {
   if (series.length === 0 || series.every((s) => s.points.length === 0)) {
     return (
       <p className="wc-help py-8 text-center" data-testid="mod-analytics-retention-empty">
-        No episode has a retention curve in this period yet.
+        No measured audience activity curve in this period yet.
       </p>
     );
   }
@@ -75,7 +75,7 @@ export function RetentionCurve({ series }: { series: RetentionSeries[] }) {
         className="wc-chart"
         data-testid="mod-analytics-retention"
         role="img"
-        aria-label={`Line chart of listener retention by minutes into the episode, for ${series
+        aria-label={`Line chart of audience activity relative to sampled peak by minutes into the episode, for ${series
           .slice(0, SERIES_STYLES.length)
           .map((s) => s.label)
           .join(' and ')}.`}

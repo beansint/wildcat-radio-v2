@@ -1,5 +1,6 @@
 import { expect, request as pwRequest, test, type APIRequestContext } from '@playwright/test';
 import { attachConsoleGuard } from './_console';
+import { startPublicThrottleHarness } from './_public-throttle';
 import {
   API_BASE,
   WEB_BASE,
@@ -142,7 +143,7 @@ test.describe('@contract', () => {
     expect(Object.keys(item).sort()).toEqual(
       // `slug`/`publicId` are the readable-address fields (AC-C9). Still no
       // moderator identity of any kind — that's what this assertion guards.
-      ['content', 'id', 'isPinned', 'photos', 'publicId', 'publishedAt', 'slug', 'title'].sort(),
+      ['content', 'id', 'isFeatured', 'isPinned', 'photos', 'publicId', 'publishedAt', 'slug', 'title'].sort(),
     );
   });
 
@@ -243,15 +244,31 @@ test.describe('@contract', () => {
     await setRosterActive(modApi, activeDjB.id, true);
   });
 
-  // GATED: the per-minute public-read throttle is relaxed 200x under
-  // NODE_ENV=test on the API (Slice B AC-B2), and the `request` context has
-  // no route-interception mechanism (that's browser-only) to fake a 429
-  // deterministically. Brute-forcing hundreds of real requests against a
-  // shared dev DB is not a reliable, fast, or polite way to prove this.
-  test.skip(
+  test(
     'PUB-C-06: public reads are throttled — GET /api/announcements returns 429 past its window',
     async () => {
-      // Intentionally not implemented — see GATED comment above.
+      // A fresh process imports the real controller's production preset and
+      // serves it over loopback HTTP. The global default is 120, so a missing
+      // route decorator/guard cannot accidentally satisfy the 60/61 boundary.
+      // Database read content is covered above; only this harness payload is stubbed.
+      const harness = await startPublicThrottleHarness();
+      const client = await pwRequest.newContext({ baseURL: harness.baseURL });
+      try {
+        for (let index = 1; index <= 60; index += 1) {
+          const response = await client.get('/api/announcements');
+          expect(response.status(), `production public read ${index}/60`).toBe(200);
+          expect((await response.json()).fixtureRead).toBe(index);
+        }
+        const limited = await client.get('/api/announcements');
+        expect(limited.status(), 'request 61 must be rejected by the real guard').toBe(429);
+        expect(await limited.json()).toMatchObject({ statusCode: 429 });
+        expect(Number(limited.headers()['retry-after'])).toBeGreaterThan(0);
+        expect(Number(limited.headers()['retry-after'])).toBeLessThanOrEqual(60);
+        expect((await client.get('/api/announcements')).status()).toBe(429);
+      } finally {
+        await client.dispose();
+        await harness.close();
+      }
     },
   );
 

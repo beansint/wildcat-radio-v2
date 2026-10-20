@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto';
 import { expect as baseExpect, test, type Page } from '@playwright/test';
-import { API_BASE, WEB_BASE, execBackendTsx } from './_fixtures';
+import { API_BASE, WEB_BASE, assertLocalPlaywrightEnvironment, execBackendTsx } from './_fixtures';
 
 /**
  * FE#132 / BE#195 — show transitions in the studio kiosk. Spec-first from
  * .agent/test-suites/show-transitions/web/e2e.md (W-E1..W-E14).
  *
  * Real API (3010) + real browser against a THROWAWAY local database only
- * (`SHOW_TRANSITIONS_DATABASE_URL`, local host, name ending `_test`): the
+ * (the shared explicit local database guard is mandatory): the
  * fixtures close every open episode. The API clock is real, so slots sit
  * relative to now in station time:
  *   A  [now-50m, now+4m]  — on air, in its last five minutes
@@ -17,15 +17,8 @@ import { API_BASE, WEB_BASE, execBackendTsx } from './_fixtures';
 
 const expect = baseExpect.configure({ timeout: 10_000 });
 
-const DB_URL = process.env.SHOW_TRANSITIONS_DATABASE_URL ?? '';
-const dbOk = (() => {
-  try {
-    const u = new URL(DB_URL);
-    return ['localhost', '127.0.0.1'].includes(u.hostname) && u.pathname.replace(/^\//, '').endsWith('_test');
-  } catch {
-    return false;
-  }
-})();
+assertLocalPlaywrightEnvironment(process.env);
+const DB_URL = process.env.SHOW_TRANSITIONS_DATABASE_URL ?? process.env.DATABASE_URL!;
 
 const STATION_TOKEN = process.env.STATION_DEVICE_TOKEN ?? 'e2e-195-browser-token';
 const STATION_DEVICE_ID = 'e2e-195-browser-device';
@@ -63,8 +56,7 @@ function seed({ onAir = ['A1'] as DjKey[], aEnd = 4, bStart = 4 } = {}) {
     const f = ${JSON.stringify(fixture)};
     async function main() {
       const url = ${JSON.stringify(DB_URL)};
-      const u = new URL(url);
-      if (!['localhost', '127.0.0.1'].includes(u.hostname) || !u.pathname.endsWith('_test')) throw new Error('refusing non-throwaway DB');
+      if (url !== process.env.DATABASE_URL) throw new Error('refusing mismatched fixture DB');
       const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
       const at = (hm: string) => {
         const [y, mo, d] = f.date.split('-').map(Number); const [h, mi] = hm.split(':').map(Number);
@@ -116,8 +108,7 @@ function cleanup() {
     import { PrismaClient } from '@prisma/client';
     async function main() {
       const url = ${JSON.stringify(DB_URL)};
-      const u = new URL(url);
-      if (!['localhost', '127.0.0.1'].includes(u.hostname) || !u.pathname.endsWith('_test')) throw new Error('refusing non-throwaway DB');
+      if (url !== process.env.DATABASE_URL) throw new Error('refusing mismatched fixture DB');
       const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
       const shows = [${JSON.stringify(id('show-a'))}, ${JSON.stringify(id('show-b'))}];
       const djs = ${JSON.stringify(Object.keys(DJ).map(id))};
@@ -165,10 +156,9 @@ const ours = (errors: string[]) => errors.filter((e) => !/Failed to load resourc
 test.describe.configure({ mode: 'serial' });
 
 test.describe('FE#132 show transitions', () => {
-  test.skip(!dbOk, 'needs SHOW_TRANSITIONS_DATABASE_URL = a local *_test database (the API on :3010 must use it too)');
   test.skip(NOW < 60 || NOW + 61 > 24 * 60, 'fixtures need now-60m … now+61m inside one station day');
   test.afterAll(() => {
-    if (dbOk) cleanup();
+    cleanup();
   });
 
   test('W-E1/E2/E3/E4/E7/E9/E10: golden hand-over, with the keep-broadcasting edge', async ({ page }) => {

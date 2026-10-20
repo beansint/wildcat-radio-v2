@@ -1,0 +1,2 @@
+# Local S3 protocol emulator only; never uses an AWS profile or remote account.
+moto[server]==5.1.15

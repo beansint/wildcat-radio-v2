@@ -1,7 +1,9 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+import { playwrightSubprocessEnvironment } from '../src/lib/tooling/playwright-safety';
 import { request as pwRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { normalizeFilterWord } from '../src/lib/settings/filter-list';
+export { assertLocalPlaywrightEnvironment } from '../src/lib/tooling/playwright-safety';
 
 /**
  * API-driven fixture helpers for FE#9 (public content + /mod/announcements +
@@ -43,15 +45,16 @@ export const BACKEND_DIR =
  * top-level await is rejected.
  */
 export function execBackendTsx(script: string): void {
+  const env = playwrightSubprocessEnvironment(process.env);
   const apiDir = path.join(BACKEND_DIR, 'apps', 'api');
   const tsxEntry = path.join(apiDir, 'node_modules', 'tsx', 'dist', 'cli.mjs');
-  execFileSync(process.execPath, [tsxEntry, '-e', script], { stdio: 'pipe', cwd: apiDir });
+  execFileSync(process.execPath, [tsxEntry, '-e', script], { stdio: 'pipe', cwd: apiDir, env });
 }
 
 export const ACCOUNTS = {
   moderator: 'mod@example.com',
   custodian: 'custodian@example.com',
-  listener: 'campuslistener@example.com',
+  listener: 'campuslistener@cit.edu',
 } as const;
 
 export type Role = keyof typeof ACCOUNTS;

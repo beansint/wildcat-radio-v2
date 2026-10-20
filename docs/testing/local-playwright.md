@@ -68,6 +68,9 @@ discard one real `episode:started` notification. Every other frame is forwarded
 from the actual server, and API requests, playback and PostgreSQL measurements
 remain real. This deliberate transport fault proves that fresh manifest recovery
 repairs a missed lifecycle event; it does not fabricate a replacement payload.
+The listener realtime case also holds its real room-join frame until initial
+snapshot reads finish and an actual booth chat commits, then releases admission.
+This proves the acknowledged-join recovery read fills that subscription gap.
 
 The public-read rate-boundary case launches a separate loopback test process using the compiled backend public controller and production throttle policy. Keep the backend build step above: removing the route's throttle or guard must make that case fail. Its read payload is stubbed; other public-content cases retain the database-backed API checks.
 

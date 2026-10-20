@@ -161,6 +161,7 @@ export function useEngagementRoom(
     let cancelled = false;
     let socket: Socket | null = null;
     let lease: SocketLease<Socket> | null = null;
+    let joinVersion = 0;
 
     function onChatNew(event: ChatEvent) {
       markLiveEvent({ id: event.id });
@@ -219,6 +220,7 @@ export function useEngagementRoom(
     }
 
     function onDisconnect() {
+      joinVersion += 1;
       socketConnectedRef.current = false;
       recoveryRef.current.cancel();
       updateState(current => ({...current, hype: {...current.hype, stale: true}}));
@@ -244,8 +246,14 @@ export function useEngagementRoom(
 
         const joinEpisode = () => {
           socketConnectedRef.current = true;
-          s.emit("episode:join", { episodeId });
-          void refetchSnapshot();
+          const version = ++joinVersion;
+          // Subscribe before reading history, so a commit between the initial
+          // snapshot and room admission is included in this recovery read.
+          s.timeout(5_000).emit("episode:join", { episodeId }, (error: Error | null, decision?: { ok: boolean }) => {
+            if (cancelled || version !== joinVersion || !s.connected) return;
+            if (error || !decision?.ok) { onDisconnect(); return; }
+            void refetchSnapshot();
+          });
         };
         // Persistent (not `once`) so episode room membership is restored after
         // ANY reconnect — including one triggered by the auth-session cycling

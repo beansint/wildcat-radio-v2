@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { acquireSocket, type SocketLease } from "@/lib/realtime/socket";
+import { getStreamManifest } from "@/lib/api/endpoints/stream/stream";
 import type { Socket } from "socket.io-client";
 import {
   LIVE_GRACE_MS,
@@ -25,25 +26,71 @@ const CLOSED: LiveGraceView = { episodeId: null, open: false, interrupted: false
 export function useLiveGrace(status: LiveStatus | null, episodeId: string | null): LiveGraceView {
   const [memory, setMemory] = useState<LiveGraceMemory | null>(null);
   const [endedEpisodeId, setEndedEpisodeId] = useState<string | null>(null);
+  const lifecycleVersion = useRef(0);
+  const reconcileRef = useRef<() => void>(() => {});
   useEffect(() => {
     let cancelled = false;
     let lease: SocketLease<Socket> | undefined;
-    const ended = (event: { episodeId: string }) => setEndedEpisodeId(event.episodeId);
-    const started = (event: { episodeId: string }) => setEndedEpisodeId(current => current === event.episodeId ? null : current);
+    const ended = (event: { episodeId: string }) => {
+      lifecycleVersion.current += 1;
+      setEndedEpisodeId(event.episodeId);
+    };
+    const started = (event: { episodeId: string }) => {
+      lifecycleVersion.current += 1;
+      setEndedEpisodeId(current => current === event.episodeId ? null : current);
+    };
+    const connected = () => reconcileRef.current();
     void acquireSocket().then(next => {
       if (cancelled) { next.release(); return; }
       lease = next;
       next.socket.on('episode:ended', ended);
       next.socket.on('episode:started', started);
+      next.socket.on('connect', connected);
       if (!next.socket.connected) next.socket.connect();
     }).catch(() => { /* Existing status polling/grace remains the fallback. */ });
     return () => {
       cancelled = true;
       lease?.socket.off('episode:ended', ended);
       lease?.socket.off('episode:started', started);
+      lease?.socket.off('connect', connected);
       lease?.release();
     };
   }, []);
+
+  useEffect(() => {
+    if (!endedEpisodeId) return;
+    let active = true;
+    let controller: AbortController | undefined;
+    const reconcile = async () => {
+      if (document.hidden) return;
+      controller?.abort();
+      const request = new AbortController();
+      controller = request;
+      const version = lifecycleVersion.current;
+      try {
+        // Fetch after the end, never trust the player's cached LIVE observation.
+        const manifest = await getStreamManifest({ signal: request.signal, cache: 'no-store' });
+        if (active && !request.signal.aborted && version === lifecycleVersion.current
+          && manifest.status === 'LIVE' && manifest.episodeId === endedEpisodeId) {
+          setEndedEpisodeId(current => current === endedEpisodeId ? null : current);
+        }
+      } catch { /* Keep the terminal marker until a fresh observation succeeds. */ }
+    };
+    const resume = () => { void reconcile(); };
+    reconcileRef.current = resume;
+    resume();
+    const timer = window.setInterval(resume, 15_000);
+    window.addEventListener('focus', resume);
+    document.addEventListener('visibilitychange', resume);
+    return () => {
+      active = false;
+      controller?.abort();
+      reconcileRef.current = () => {};
+      window.clearInterval(timer);
+      window.removeEventListener('focus', resume);
+      document.removeEventListener('visibilitychange', resume);
+    };
+  }, [endedEpisodeId]);
 
   useEffect(() => {
     const observation = { status, episodeId, endedEpisodeId };

@@ -104,9 +104,7 @@ test('AC-3 edge: notification toggles update via save', async ({ page }) => {
   // Wait for profile to load
   await expect(page.getByTestId('profile-handle')).toBeVisible({ timeout: 8_000 });
 
-  // Scroll the notifications section into view then click the label
-  // (wc-switch hides the checkbox input with opacity:0 width:0 height:0)
-  await clickLabel(page, 'notif-email');
+  await page.getByTestId('notif-inapp').click();
 
   // Intercept the PATCH call
   let patchCalled = false;
@@ -115,10 +113,7 @@ test('AC-3 edge: notification toggles update via save', async ({ page }) => {
     route.continue();
   });
 
-  // Click the notifications Save button — it's inside the Notifications wc-card
-  const saveButtons = page.locator('.wc-card .wc-btn-primary');
-  await saveButtons.last().scrollIntoViewIfNeeded();
-  await saveButtons.last().click({ force: true });
+  await page.getByTestId('profile-notification-save').click();
 
   await expect(async () => {
     expect(patchCalled).toBe(true);

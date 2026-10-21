@@ -18,6 +18,9 @@ for (const name of ['alpha', 'beta']) {
 writeFileSync(join(root, 'apps', 'ordinary-file'), 'not a directory');
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 const resolveRoots = (rootDir?: unknown) => getRootDirs({ cwd: root, settings: { next: { rootDir } } });
+// tinyglobby returns slash-normalized paths; compare path identities on Windows too.
+const normalizePath = (path: string) => path.replaceAll("\\", "/");
+const normalizedRoots = (rootDir?: unknown): string[] => resolveRoots(rootDir).map(normalizePath);
 
 describe('Next ESLint root discovery with the scoped tinyglobby replacement', () => {
   it('preserves the ordinary cwd default', () => {
@@ -25,17 +28,17 @@ describe('Next ESLint root discovery with the scoped tinyglobby replacement', ()
   });
 
   it('finds directories only through wildcard and brace patterns', () => {
-    const expected = ['alpha', 'beta'].map(name => join(root, 'apps', name)).sort();
-    expect(resolveRoots(join(root, 'apps', '*')).sort()).toEqual(expected);
-    expect(resolveRoots(join(root, 'apps', '{alpha,beta}')).sort()).toEqual(expected);
+    const expected = ['alpha', 'beta'].map(name => normalizePath(join(root, 'apps', name))).sort();
+    expect(normalizedRoots(join(root, 'apps', '*')).sort()).toEqual(expected);
+    expect(normalizedRoots(join(root, 'apps', '{alpha,beta}')).sort()).toEqual(expected);
   });
 
   it('preserves multiple roots, missing roots and normalized backslashes', () => {
     const alpha = join(root, 'apps', 'alpha');
     const beta = join(root, 'apps', 'beta');
-    expect(resolveRoots([alpha, beta, 42])).toEqual([alpha, beta]);
+    expect(normalizedRoots([alpha, beta, 42])).toEqual([alpha, beta].map(normalizePath));
     expect(resolveRoots(join(root, 'missing', '*'))).toEqual([]);
-    expect(resolveRoots(alpha.replaceAll('/', '\\'))).toEqual([alpha]);
+    expect(normalizedRoots(alpha.replaceAll('/', '\\'))).toEqual([normalizePath(alpha)]);
   });
 
   it('keeps the actual Next internal-link lint rule effective for discovered pages', async () => {

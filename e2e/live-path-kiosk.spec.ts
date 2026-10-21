@@ -10,7 +10,7 @@ import { json, manifestBody, mockManifest, mockSocket, snapshotBody, type Manife
  * hiding the roster or locking the booth out, and recover console state.
  */
 
-// 02:30Z = 10:30 station time (UTC+8, NEXT_PUBLIC_STATION_UTC_OFFSET_MINUTES=480).
+// Fixed instant; station wall-clock expectations follow the explicit test offset.
 const T0 = Date.parse('2026-10-06T02:30:00.000Z');
 const iso = (offsetMs: number) => new Date(T0 + offsetMs).toISOString();
 const MIN = 60_000;
@@ -147,7 +147,10 @@ test.describe('live-path kiosk', () => {
     await page.clock.fastForward(15_100);
     const alert = page.getByTestId('studio-attendance-alert');
     await expect.poll(async () => { await page.clock.fastForward(1_000); return alert.isVisible(); }, { timeout: 30_000 }).toBe(true);
-    await expect(alert).toHaveText(/^Connection lost — updated 10:3\d$/);
+    const stationOffsetMinutes = Number.parseInt(process.env.NEXT_PUBLIC_STATION_UTC_OFFSET_MINUTES ?? '', 10);
+    expect(Number.isFinite(stationOffsetMinutes), 'set the station offset used to build the test frontend').toBe(true);
+    const expectedUpdated = new Date(T0 + stationOffsetMinutes * MIN).toISOString().slice(11, 16);
+    await expect(alert).toHaveText(`Connection lost — updated ${expectedUpdated}`);
     await expect(rows).toHaveCount(2);
     await expect(page.getByTestId('studio-schedule-row')).toHaveCount(1);
     await expect(page.getByTestId('studio-kiosk-onair')).toBeVisible();

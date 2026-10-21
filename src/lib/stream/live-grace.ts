@@ -16,6 +16,8 @@ export const LIVE_GRACE_MS = 60_000;
 export type LiveStatus = "LIVE" | "STATION_ROTATION" | "OFF_AIR";
 
 export interface LiveObservation {
+  /** Authoritative lifecycle end wins over stale status observations. */
+  endedEpisodeId?: string | null;
   /** null = status unknown (status service unavailable). */
   status: LiveStatus | null;
   episodeId: string | null;
@@ -38,7 +40,8 @@ export function reduceLiveGrace(
   observation: LiveObservation,
   now: number,
 ): LiveGraceMemory | null {
-  const { status, episodeId } = observation;
+  const { status, episodeId, endedEpisodeId } = observation;
+  if (endedEpisodeId && endedEpisodeId === (episodeId ?? memory?.episodeId)) return null;
   if (status === "LIVE" && episodeId) {
     if (memory && memory.episodeId === episodeId && memory.leftLiveAt === null) return memory;
     return { episodeId, leftLiveAt: null };
@@ -54,3 +57,5 @@ export function liveGraceView(memory: LiveGraceMemory | null): LiveGraceView {
   if (!memory) return { episodeId: null, open: false, interrupted: false };
   return { episodeId: memory.episodeId, open: true, interrupted: memory.leftLiveAt !== null };
 }
+
+

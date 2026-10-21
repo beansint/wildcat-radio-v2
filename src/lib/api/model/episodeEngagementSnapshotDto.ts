@@ -8,10 +8,12 @@
 import type { EpisodeSnapshotChatMessageDto } from './episodeSnapshotChatMessageDto.ts';
 import type { EpisodeSnapshotReactionDto } from './episodeSnapshotReactionDto.ts';
 import type { EpisodeSnapshotUpNextDto } from './episodeSnapshotUpNextDto.ts';
+import type { HypeSnapshotDto } from './hypeSnapshotDto.ts';
 import type { PinnedTopicResponseDto } from './pinnedTopicResponseDto.ts';
 import type { PollResponseDto } from './pollResponseDto.ts';
 
 export interface EpisodeEngagementSnapshotDto {
+  hype: HypeSnapshotDto;
   episodeId: string;
   capturedAt: string;
   recentChat: EpisodeSnapshotChatMessageDto[];

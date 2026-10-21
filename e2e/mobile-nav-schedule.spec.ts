@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { WEB_BASE, loginAs } from './_fixtures';
+import { createScheduleLinkFixture } from './_owned-content-fixtures';
 
 /**
  * FE#42 / FE#43 / FE#49 — public schedule + footer at a 375px viewport.
@@ -16,7 +17,10 @@ import { WEB_BASE, loginAs } from './_fixtures';
  */
 
 const VIEWPORT_375 = { width: 375, height: 812 };
-
+const scheduleShow = { slug: `e2e-schedule-links-${Date.now()}`, name: 'E2E filled schedule links' };
+let cleanupSchedule: (() => void) | undefined;
+test.beforeAll(() => { cleanupSchedule = createScheduleLinkFixture(scheduleShow); });
+test.afterAll(() => { cleanupSchedule?.(); });
 
 test.describe('FE#43 — Footer on (app) listener pages', () => {
   // /profile lives behind the (app) client-side auth guard, which renders a
@@ -70,23 +74,24 @@ test.describe('FE#42 — /schedule mobile view', () => {
 
   test('a filled schedule card navigates to /shows/...', async ({ page }) => {
     await page.goto(`${WEB_BASE}/schedule`);
-    const card = page.getByTestId('schedule-mobile-card').first();
-    // Skip gracefully if the seeded week has no shows on the default day.
-    if ((await card.count()) === 0) test.skip();
-
-    const href = await card.getAttribute('href');
-    expect(href).toMatch(/^\/shows\//);
+    await page.getByTestId('schedule-day-tab-MON').click();
+    const card = page.getByTestId('schedule-mobile-card').filter({ hasText: scheduleShow.name });
+    await expect(card).toBeVisible();
+    await expect(card).toHaveAttribute('href', `/shows/${scheduleShow.slug}`);
     await card.click();
-    await page.waitForURL(/\/shows\//, { timeout: 8_000 });
+    await expect(page).toHaveURL(`${WEB_BASE}/shows/${scheduleShow.slug}`);
+    await expect(page.getByRole('heading', { level: 1, name: scheduleShow.name })).toBeVisible();
   });
 });
 
 test.describe('FE#42 — /schedule desktop table cells are links', () => {
   test('table cells link into /shows/...', async ({ page }) => {
     await page.goto(`${WEB_BASE}/schedule`);
-    const cell = page.locator('.wc-slot').first();
-    if ((await cell.count()) === 0) test.skip();
-    const href = await cell.getAttribute('href');
-    expect(href).toMatch(/^\/shows\//);
+    const cell = page.getByTestId('schedule-grid').locator('a.wc-slot').filter({ hasText: scheduleShow.name }).first();
+    await expect(cell).toBeVisible();
+    await expect(cell).toHaveAttribute('href', `/shows/${scheduleShow.slug}`);
+    await cell.click();
+    await expect(page).toHaveURL(`${WEB_BASE}/shows/${scheduleShow.slug}`);
+    await expect(page.getByRole('heading', { level: 1, name: scheduleShow.name })).toBeVisible();
   });
 });

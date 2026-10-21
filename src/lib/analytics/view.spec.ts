@@ -9,6 +9,7 @@ import {
   hitAndSleeper,
   peakSlot,
   periodRange,
+  customPeriodRange,
 } from "./view";
 import type { AnalyticsDaypartDto, AnalyticsShowRankDto } from "@/lib/api/model";
 
@@ -185,7 +186,7 @@ describe("periodRange", () => {
   const NOW = new Date("2026-07-29T10:00:00.000Z");
 
   it("last 30 days", () => {
-    expect(periodRange("p30", NOW)).toEqual({ from: "2026-06-29", to: "2026-07-29" });
+    expect(periodRange("p30", NOW)).toEqual({ from: "2026-06-29T10:00:00.000Z", to: "2026-07-29T10:00:00.000Z" });
   });
 
   it("truncates to the STATION's date, not UTC's", () => {
@@ -194,12 +195,25 @@ describe("periodRange", () => {
     // silently excluded both today and yesterday every morning before 08:00.
     const earlyMorningManila = new Date("2026-07-28T23:00:00.000Z");
     expect(toIsoDate(earlyMorningManila)).toBe("2026-07-29");
-    expect(periodRange("p30", earlyMorningManila).to).toBe("2026-07-29");
+    expect(periodRange("p30", earlyMorningManila).to).toBe("2026-07-28T23:00:00.000Z");
   });
 
   it("this semester is a longer rolling window", () => {
     const { from, to } = periodRange("psem", NOW);
-    expect(to).toBe("2026-07-29");
+    expect(to).toBe("2026-07-29T10:00:00.000Z");
     expect(new Date(from).getTime()).toBeLessThan(new Date("2026-06-29").getTime());
   });
+});
+
+describe('custom station boundaries', () => {
+ it('includes the selected Manila day with exclusive next midnight', () => {
+  expect(customPeriodRange('2026-07-29','2026-07-29')).toEqual({from:'2026-07-28T16:00:00.000Z',to:'2026-07-29T16:00:00.000Z'});
+ });
+});
+
+it('shows unavailable concurrency without turning it into measured zero',()=>{
+ expect(formatCount(null)).toBe('Unavailable');expect(formatDecimal(null)).toBe('Unavailable');
+ const unsampled: AnalyticsShowRankDto={...show(),avgConcurrent:null};
+ expect(buildScatter([unsampled])).toEqual([]);
+ expect(buildScatter([show({avgConcurrent:0})])[0].audience).toBe(0);
 });

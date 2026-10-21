@@ -71,3 +71,19 @@ describe("live grace", () => {
     expect(reduceLiveGrace(left, rotation(), T0 + 30_000)).toBe(left);
   });
 });
+
+it("integrity AC-5: authoritative end overrides a stale LIVE manifest immediately", () => {
+  const memory = reduceLiveGrace(null, live(), T0);
+  const ended = { ...live(), endedEpisodeId: "E" };
+  expect(liveGraceView(reduceLiveGrace(memory, ended, T0 + 1))).toEqual({ episodeId: null, open: false, interrupted: false });
+  expect(liveGraceView(reduceLiveGrace(null, ended, T0 + 2)).open).toBe(false);
+});
+it("integrity AC-5: a same-occurrence start can reopen after the terminal marker clears", () => {
+  expect(liveGraceView(reduceLiveGrace(null, { ...live(), endedEpisodeId: null }, T0 + 2))).toEqual({ episodeId: "E", open: true, interrupted: false });
+});
+it("integrity AC-5: an old end cannot suppress a newer episode or its signal grace", () => {
+  const old = reduceLiveGrace(null, live("E1"), T0);
+  const next = reduceLiveGrace(old, { ...live("E2"), endedEpisodeId: "E1" }, T0+1);
+  expect(next).toEqual({ episodeId: "E2", leftLiveAt: null });
+  expect(liveGraceView(reduceLiveGrace(next, rotation("E2"), T0+2)).open).toBe(true);
+});

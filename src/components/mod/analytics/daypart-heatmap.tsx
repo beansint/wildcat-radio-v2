@@ -8,7 +8,7 @@
  * than CSS does, and the prototype's own note calls these chart bits
  * "self-contained, no JS".
  *
- * The distinction the grid has to carry is **never-broadcast vs broadcast-quiet**.
+ * The distinction the grid has to carry is **no sampled activity vs measured quiet**.
  * A zero-intensity cell would read as "we aired and nobody came"; an unaired
  * slot is a different fact, and for a tool whose job is to suggest *when to
  * schedule*, it is the more actionable of the two. Unaired cells are drawn as a
@@ -81,7 +81,7 @@ export function DaypartHeatmap({ dayparts }: { dayparts: AnalyticsDaypartDto[] }
             className="inline-block h-3 w-6 rounded-[4px] border border-dashed"
             style={{ borderColor: "var(--border)" }}
           />
-          <span className="wc-muted">no broadcast</span>
+          <span className="wc-muted">no sampled activity</span>
         </span>
         {peak && (
           <span className="wc-help" data-testid="mod-analytics-heatmap-peak">
@@ -128,12 +128,12 @@ function HeatRow({
             title={
               aired
                 ? `${weekdayLabel(col.weekday)} ${label}: ${value} avg concurrent`
-                : `${weekdayLabel(col.weekday)} ${label}: no broadcast`
+                : `${weekdayLabel(col.weekday)} ${label}: no sampled activity`
             }
             aria-label={
               aired
-                ? `${weekdayLabel(col.weekday)} ${label}, ${value} average concurrent listeners`
-                : `${weekdayLabel(col.weekday)} ${label}, no broadcast`
+                ? `${weekdayLabel(col.weekday)} ${label}, ${value} average active web-player connections`
+                : `${weekdayLabel(col.weekday)} ${label}, no sampled activity`
             }
             style={
               aired

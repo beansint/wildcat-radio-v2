@@ -7,6 +7,7 @@ function snapshot(overrides: Partial<EpisodeEngagementSnapshotDto> = {}): Episod
   return {
     episodeId: "ep",
     capturedAt: "2026-10-06T10:00:00.000Z",
+    hype: {episodeId:"ep",capturedAt:"2026-10-06T10:00:00.000Z",windowSeconds:60,count:0,trend:"flat",buckets:[]},
     recentChat: [],
     polls: [],
     pinnedTopic: null,
@@ -64,9 +65,21 @@ describe("mergeSnapshotChat", () => {
 describe("mergeSnapshotPolls", () => {
   it("live polls win over snapshot copies; snapshot fills the gaps", () => {
     const poll = (id: string, question: string) => ({ id, question }) as unknown as PollResponseDto;
-    expect(mergeSnapshotPolls([poll("1", "live")], [poll("1", "old"), poll("2", "snap")])).toEqual([
+    expect(mergeSnapshotPolls([poll("1", "live")], [poll("1", "old"), poll("2", "snap")],new Set(["1"]))).toEqual([
       poll("1", "live"),
       poll("2", "snap"),
     ]);
   });
+});
+
+it('authoritative studio recovery removes old hidden chat and replaces stale poll totals',()=>{
+ expect(mergeSnapshotChat([live('hidden','2026-10-06T10:02:00Z')],snapshot())).toEqual([]);
+ const old={id:'poll',status:'OPEN'} as unknown as PollResponseDto;
+ const closed={id:'poll',status:'CLOSED'} as unknown as PollResponseDto;
+ expect(mergeSnapshotPolls([old],[closed])).toEqual([closed]);
+});
+it('keeps only current-request chat and removes moderation events',()=>{
+ const messages=[live('new','2026-10-06T10:02:00Z'),live('old','2026-10-06T10:01:00Z')];
+ expect(mergeSnapshotChat(messages,snapshot(),new Set(['new']))).toEqual([messages[0]]);
+ expect(mergeSnapshotChat(messages,snapshot({recentChat:[{id:'new',content:'hidden',createdAt:'2026-10-06T10:02:00Z',asBooth:false,author:null}]}),new Set(),new Set(['new']))).toEqual([]);
 });

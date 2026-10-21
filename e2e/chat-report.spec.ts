@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
-import { API_BASE, apiLoginAs, execBackendTsx, loginAs } from './_fixtures';
+import { API_BASE, assertLocalPlaywrightEnvironment, apiLoginAs, execBackendTsx, loginAs } from './_fixtures';
 
 let listener: APIRequestContext;
 let staff: APIRequestContext;
@@ -14,12 +14,11 @@ const body = 'A listener message to report';
 const reason = 'This message needs staff review.';
 
 test.beforeAll(async () => {
-  const api = new URL(API_BASE); const db = new URL(process.env.DATABASE_URL ?? '');
-  if (api.hostname !== 'localhost' || api.port !== '3314' || db.hostname !== '127.0.0.1' || db.port !== '55432' || db.pathname !== '/review_frontend') throw new Error('Use isolated consumerAPI3314/review_frontend');
+  assertLocalPlaywrightEnvironment(process.env);
   listener = await apiLoginAs('listener'); staff = await apiLoginAs('custodian');
   reporterId = (await (await listener.get('/api/users/me')).json()).id;
   authorId = (await (await staff.get('/api/users/me')).json()).id;
-  execBackendTsx(`import { PrismaService } from './src/prisma/prisma.service'; const p=new PrismaService(); async function main(){await p.episode.create({data:{id:${JSON.stringify(episodeId)},unscheduled:true,startedAt:new Date()}});await p.chatMessage.createMany({data:${JSON.stringify([{id:foreignId,episodeId,userId:authorId,content:body},{id:ownId,episodeId,userId:reporterId,content:'My own message'},{id:boothId,episodeId,asBooth:true,content:'Booth message'}])}});await p.$disconnect();}main().catch(e=>{console.error(e);process.exit(1)});`);
+  execBackendTsx(`import { PrismaService } from './src/prisma/prisma.service'; const p=new PrismaService(); async function main(){await p.episode.updateMany({where:{startedAt:{not:null},endedAt:null},data:{endedAt:new Date(),status:'OFF_AIR'}});await p.episode.create({data:{id:${JSON.stringify(episodeId)},unscheduled:true,startedAt:new Date()}});await p.chatMessage.createMany({data:${JSON.stringify([{id:foreignId,episodeId,userId:authorId,content:body},{id:ownId,episodeId,userId:reporterId,content:'My own message'},{id:boothId,episodeId,asBooth:true,content:'Booth message'}])}});await p.$disconnect();}main().catch(e=>{console.error(e);process.exit(1)});`);
 });
 test.afterAll(async () => {
   execBackendTsx(`import { PrismaService } from './src/prisma/prisma.service'; const p=new PrismaService(); async function main(){await p.report.deleteMany({where:{targetMessageId:{in:${JSON.stringify([foreignId,ownId,boothId])}}}});await p.chatMessage.deleteMany({where:{episodeId:${JSON.stringify(episodeId)}}});await p.episodeAnalyticsSnapshot.deleteMany({where:{episodeId:${JSON.stringify(episodeId)}}});await p.episode.deleteMany({where:{id:${JSON.stringify(episodeId)}}});await p.$disconnect();}main().catch(e=>{console.error(e);process.exit(1)});`);
@@ -28,7 +27,7 @@ test.afterAll(async () => {
 test.beforeEach(async ({ page }) => {
   // Controlled manifest metadata allows the real snapshot/report boundary to
   // run without a physical broadcast or audio provider. Chat is actual SQL data.
-  await page.route('**/api/stream/manifest', route => route.fulfill({ contentType:'application/json', body:JSON.stringify({status:'LIVE',reason:null,type:'hls',url:'http://localhost:3314/test-media.m3u8',dj:[],episodeId,showId:null,showName:null}) }));
+  await page.route('**/api/stream/manifest', route => route.fulfill({ contentType:'application/json', body:JSON.stringify({status:'LIVE',reason:null,type:'hls',url:`${API_BASE}/test-media.m3u8`,dj:[],episodeId,showId:null,showName:null}) }));
 });
 
 test('AC-1: keyboard report validates reason and stores actual message/server-derived author', async ({ page }) => {

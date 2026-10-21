@@ -1,13 +1,7 @@
-import { execFileSync } from 'node:child_process';
 import { expect, test, type BrowserContext, type APIRequestContext } from '@playwright/test';
-const api = process.env.PLAYWRIGHT_API_BASE_URL ?? 'http://localhost:3314';
-const web = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3311';
-const db = process.env.DATABASE_URL;
+import { API_BASE as api, WEB_BASE as web } from './_fixtures';
+import { fixtureSql as sql } from './_sql';
 const q = (value: string) => "'" + value.replaceAll("'", "''") + "'";
-function sql(query: string) {
-  if (db !== 'postgresql://postgres@127.0.0.1:55432/review_frontend') throw new Error('Only isolated review_frontend SQL permitted');
-  return execFileSync('/opt/homebrew/opt/postgresql@18/bin/psql', [db, '-XAt', '-v', 'ON_ERROR_STOP=1', '-c', query], { encoding: 'utf8' }).trim();
-}
 async function account(request: APIRequestContext) {
   const id = `inbox${Date.now()}${Math.floor(Math.random()*10000)}`; const email = `${id}@example.com`;
   const result = await request.post(`${api}/api/auth/sign-up/email`, { headers: { Origin: web }, data: { email, name: id, handle: id, password: 'Password123!' } });
@@ -19,7 +13,7 @@ async function login(context: BrowserContext, email: string) {
 function cleanup(ids: string[]) {
   for (const id of ids) sql(`DELETE FROM notifications WHERE "userId"=${q(id)}; DELETE FROM consent_records WHERE "userId"=${q(id)}; DELETE FROM users WHERE id=${q(id)};`);
 }
-test('private real inbox pages, read action retry, escaped text and genuine related standing link', async ({ page, context, request }) => {
+test('private real inbox pages, read action retry, escaped text and genuine related standing link', async ({ page, context, request }, testInfo) => {
   await page.setViewportSize({width:375,height:812});
   const owner = await account(request); const foreign = await account(request);
   const ids = Array.from({ length: 25 }, (_, n) => `inbox-${owner.id}-${n}`);
@@ -40,7 +34,7 @@ test('private real inbox pages, read action retry, escaped text and genuine rela
     const previous=page.getByRole('button',{name:'Prev',exact:true}); await previous.focus(); await page.keyboard.press('Enter');
     await expect(page.getByRole('heading',{name:'Decision 24',exact:true})).toBeVisible(); await expect(previous).toBeDisabled();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({path:'/tmp/wildcat-inbox-mobile.png'});
+    await page.screenshot({path:testInfo.outputPath('inbox-mobile.png')});
   } finally { await page.goto('about:blank'); cleanup([owner.id,foreign.id]); }
 });
 test('empty inbox and list outage are truthful and retry recovers', async ({page,context,request}) => {

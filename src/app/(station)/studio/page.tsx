@@ -47,6 +47,8 @@ import { acquireSocket, type SocketLease } from "@/lib/realtime/socket";
 import type { StreamStatusEvent } from "@/lib/realtime/use-stream-presence";
 import { getEpisodeEngagementSnapshot } from "@/lib/api/endpoints/episodes/episodes";
 import { useStream } from "@/lib/stream/stream-context";
+import { activePin, measuredBarHeights, SnapshotRecovery } from "@/lib/realtime/snapshot-recovery";
+import type { HypeState, PinnedTopic } from "@/lib/realtime/engagement-state";
 import { isAuthFailure, mergeSnapshotChat, mergeSnapshotPolls } from "@/lib/studio/console-snapshot";
 import { type KioskBroadcastStatus } from "@/components/studio/broadcast-badge";
 import type { Socket } from "socket.io-client";
@@ -134,19 +136,12 @@ function FormAlert({ message }: { message: string | null }) {
   );
 }
 
-/** Deterministic pseudo-random bar heights so the equalizer feels alive without faking real data. */
-function hypeBarHeights(seed: number, count: number) {
-  return Array.from({ length: count }, (_, index) => {
-    const value = Math.sin(seed * 0.37 + index * 1.7) * 0.5 + 0.5;
-    return Math.round(30 + value * 65);
-  });
-}
-
 export default function StudioPage() {
   const queryClient = useQueryClient();
   const [polls, setPolls] = useState<PollResponseDto[]>([]);
-  const [hype, setHype] = useState({ count: 0, trend: "flat" });
-  const [pinnedTopic, setPinnedTopicState] = useState("");
+  const [hype, setHype] = useState<HypeState>({ count: 0, trend: "flat", stale: true, buckets: [] });
+  const [pin, setPin] = useState<PinnedTopic | null>(null);
+  const pinnedTopic = pin?.text ?? "";
   const [messages, setMessages] = useState<ChatMessageResponseDto[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   // Attendance is the default surface (booth kiosk convention). Console mode
@@ -236,7 +231,7 @@ export default function StudioPage() {
     queryFn: () => getStudioQueue(),
   });
 
-  const episodeId = unlocked ? (today?.episode?.id ?? null) : null;
+  const episodeId = unlocked && today?.episode?.id !== endedEpisodeId ? (today?.episode?.id ?? null) : null;
 
   // FE#132 F3 — the API announces every show start/end; refresh at once
   // instead of waiting up to 15 s for the next poll.
@@ -342,31 +337,36 @@ export default function StudioPage() {
     void Promise.resolve().then(() => {
       if (cancelled) return;
       setPolls([]);
-      setHype({ count: 0, trend: "flat" });
-      setPinnedTopicState("");
+      setHype({ count: 0, trend: "flat", stale: true, buckets: [] });
+      setPin(null);
       setMessages([]);
     });
     if (!episodeId) return () => { cancelled = true; };
     let socket: Socket | null = null;
     let lease: SocketLease<Socket> | null = null;
     let joinEpisode: (() => void) | null = null;
+    const recovery = new SnapshotRecovery();
     function onPollUpdated(poll: PollResponseDto) {
       if (cancelled) return;
+      recovery.mark({id: poll.id});
       setPolls((prev) => {
         const exists = prev.some((item) => item.id === poll.id);
         return exists ? prev.map((item) => (item.id === poll.id ? poll : item)) : [poll, ...prev];
       });
     }
-    function onHypeTick(event: { count: number; trend: string }) {
-      if (cancelled) return;
-      setHype(event);
+    function onHypeTick(event: HypeState) {
+      if (cancelled || (event.episodeId && event.episodeId !== episodeId)) return;
+      recovery.mark({scalar: "hype"});
+      setHype({...event, stale: false});
     }
-    function onTopicPinned(event: { text: string }) {
+    function onTopicPinned(event: PinnedTopic | null) {
       if (cancelled) return;
-      setPinnedTopicState(event.text);
+      recovery.mark({scalar: "pin"});
+      setPin(activePin(event));
     }
     function onChatNew(event: ChatMessageResponseDto) {
       if (cancelled) return;
+      recovery.mark({id: event.id});
       addChatMessage(event);
     }
     function onStreamStatus(event: StreamStatusEvent) {
@@ -382,20 +382,31 @@ export default function StudioPage() {
     // episode's engagement snapshot on join and again on every reconnect.
     const currentEpisodeId = episodeId;
     async function loadSnapshot() {
+      const token = recovery.begin();
       try {
         const snapshot = await getEpisodeEngagementSnapshot(currentEpisodeId);
-        if (cancelled || snapshot.episodeId !== currentEpisodeId) return;
-        setMessages((prev) => mergeSnapshotChat(prev, snapshot));
-        setPolls((prev) => mergeSnapshotPolls(prev, snapshot.polls));
-        if (snapshot.pinnedTopic) {
-          const text = snapshot.pinnedTopic.text;
-          setPinnedTopicState((prev) => prev || text);
-        }
-      } catch {
-        // Live events still flow; the next reconnect retries the snapshot.
-      }
+        const events = recovery.finish(token);
+        if (cancelled || !events || snapshot.episodeId !== currentEpisodeId) return;
+        setMessages(prev => mergeSnapshotChat(prev, snapshot, events.preserveLiveIds, events.removedIds));
+        setPolls(prev => mergeSnapshotPolls(prev, snapshot.polls, events.preserveLiveIds));
+        if (!events.preservePin) setPin(activePin(snapshot.pinnedTopic));
+        const measured = (snapshot as typeof snapshot & {hype?: HypeState}).hype;
+        if (!events.preserveHype) setHype(measured ? {...measured, stale: !socket?.connected} : {count: 0, trend: "flat", stale: true, buckets: []});
+      } catch { recovery.finish(token); }
     }
-    void loadSnapshot();
+    function onChatHidden(event: {id: string}) {
+      recovery.mark({id: event.id, removed: true});
+      setMessages(prev => prev.filter(message => message.id !== event.id));
+    }
+    function onDisconnect() { recovery.cancel(); setHype(prev => ({...prev, stale: true})); }
+    const expire = () => {
+      setPin(prev => activePin(prev));
+      setHype(prev => prev.capturedAt && Date.now() - Date.parse(prev.capturedAt) > 15_000 ? {...prev, stale: true} : prev);
+    };
+    const resume = () => { expire(); if (!document.hidden) void loadSnapshot(); };
+    const timer = window.setInterval(expire, 1_000);
+    window.addEventListener('focus', resume);
+    document.addEventListener('visibilitychange', resume);
     acquireSocket()
       .then((nextLease) => {
         if (cancelled) {
@@ -405,27 +416,32 @@ export default function StudioPage() {
         lease = nextLease;
         socket = nextLease.socket;
         const s = nextLease.socket;
-        let joined = false;
         joinEpisode = () => {
           s.emit("episode:join", { episodeId });
-          // The first join's snapshot is already loading (above).
-          if (joined) void loadSnapshot();
-          joined = true;
+          void loadSnapshot();
         };
         s.on("connect", joinEpisode);
-        if (s.connected) joinEpisode();
+        s.on("disconnect", onDisconnect);
+        s.on("chat:hidden", onChatHidden);
         s.on("stream:status", onStreamStatus);
         s.on("poll:updated", onPollUpdated);
         s.on("hype:tick", onHypeTick);
         s.on("topic:pinned", onTopicPinned);
         s.on("chat:new", onChatNew);
+        if (s.connected) joinEpisode();
       })
       .catch((error) => {
         if (!cancelled) setStatus(getApiErrorMessage(error));
       });
     return () => {
       cancelled = true;
+      recovery.cancel();
+      window.clearInterval(timer);
+      window.removeEventListener("focus", resume);
+      document.removeEventListener("visibilitychange", resume);
       if (socket) {
+        socket.off("disconnect", onDisconnect);
+        socket.off("chat:hidden", onChatHidden);
         socket.emit("episode:leave", { episodeId });
         if (joinEpisode) socket.off("connect", joinEpisode);
         socket.off("poll:updated", onPollUpdated);
@@ -486,7 +502,7 @@ export default function StudioPage() {
   const pinMutation = useMutation({
     mutationFn: (values: PinForm) => setPinnedTopic(values),
     onSuccess: (topic) => {
-      setPinnedTopicState(topic.text);
+      setPin(activePin(topic));
       pinForm.reset({ text: "", expiresAtEpisodeEnd: topic.expiresAtEpisodeEnd });
       setStatus("Pinned topic updated.");
     },
@@ -583,7 +599,7 @@ export default function StudioPage() {
     );
   }
 
-  const barHeights = hypeBarHeights(hype.count, 12);
+  const barHeights = measuredBarHeights(hype.stale ? Array.from({length: 12}, () => ({count: 0})) : hype.buckets ?? []);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -762,7 +778,7 @@ export default function StudioPage() {
                 <div className="flex flex-col gap-2">
                   <label className="flex items-center gap-2 text-sm font-medium">
                     <input type="radio" value="PUBLIC" {...pollForm.register("visibility")} />
-                    Public — show who voted
+                    Public — aggregate results
                   </label>
                   <label className="flex items-center gap-2 text-sm font-medium">
                     <input type="radio" value="ANONYMOUS" {...pollForm.register("visibility")} />
@@ -778,7 +794,7 @@ export default function StudioPage() {
             {polls.length > 0 && (
               <div className="mt-4 wc-stack">
                 {polls.map((poll) => (
-                  <div key={poll.id} className="wc-card wc-card-pad" style={{ borderColor: "var(--maroon)" }}>
+                  <div key={poll.id} data-testid={`studio-poll-${poll.id}`} className="wc-card wc-card-pad" style={{ borderColor: "var(--maroon)" }}>
                     <div className="mb-2 flex items-center gap-2">
                       <span className="wc-badge-live text-[.6rem] py-0.5">
                         <span className="dot" />
@@ -817,7 +833,7 @@ export default function StudioPage() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="mt-3"
+                        className="mt-3" data-testid="studio-poll-close"
                         onClick={() => closePollMutation.mutate(poll.id)}
                         disabled={closePollMutation.isPending}
                       >
@@ -837,7 +853,7 @@ export default function StudioPage() {
             </h2>
             {pinnedTopic && (
               <div
-                className="mb-3 rounded-xl px-3 py-2 text-sm font-medium"
+                data-testid="studio-pinned-topic" className="mb-3 rounded-xl px-3 py-2 text-sm font-medium"
                 style={{ background: "var(--accent)", color: "var(--accent-foreground)" }}
               >
                 {pinnedTopic}
@@ -852,7 +868,7 @@ export default function StudioPage() {
                 Pinned topic text
               </Label>
               <Textarea
-                id="studio-pin-text"
+                id="studio-pin-text" data-testid="studio-pin-text"
                 rows={3}
                 placeholder="What should listeners talk about?"
                 aria-invalid={Boolean(pinAlert)}
@@ -877,7 +893,7 @@ export default function StudioPage() {
               </div>
               <FormAlert message={pinAlert} />
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={pinMutation.isPending}>
+                <Button type="submit" data-testid="studio-pin-submit" disabled={pinMutation.isPending}>
                   Set pinned topic
                 </Button>
                 {pinnedTopic && (
@@ -904,26 +920,25 @@ export default function StudioPage() {
               <Flame className="h-4 w-4 text-gold" aria-hidden="true" />
               Hype
             </h2>
-            <div className="flex h-12 items-end gap-1" aria-hidden="true">
+            <div className="flex h-12 items-end gap-1" aria-hidden="true" data-testid="studio-hype-bars">
               {barHeights.map((height, index) => (
                 <span
                   key={index}
-                  className="flex-1 animate-pulse rounded-sm"
+                  className="flex-1 rounded-sm"
                   style={{
                     height: `${height}%`,
                     background: "linear-gradient(180deg, var(--gold), var(--maroon))",
-                    animationDelay: `${index * 90}ms`,
                   }}
                 />
               ))}
             </div>
             <div className="mt-2 flex items-center justify-between text-sm">
-              <span className="font-extrabold tnum" style={{ color: "var(--gold)" }}>
-                {hype.count}
+              <span data-testid="studio-hype-count" className="font-extrabold tnum" style={{ color: "var(--gold)" }}>
+                {hype.stale ? "Unavailable" : hype.count}
               </span>
-              <span className="wc-pill wc-pill-neutral">Trend: {hype.trend}</span>
+              <span className="wc-pill wc-pill-neutral">Trend: {hype.stale ? "unavailable" : hype.trend}</span>
             </div>
-            <p className="wc-help mt-1">Live reactions — the meter climbs as listeners tap 🔥❤️👏.</p>
+            <p className="wc-help mt-1">Reactions in the last 60 seconds. Each bar is a measured five-second interval.</p>
           </section>
         </div>
 
@@ -1044,13 +1059,13 @@ function ChatCard({
             Booth message
           </Label>
           <Input
-            id="studio-chat-content"
+            id="studio-chat-content" data-testid="studio-chat-input"
             className="flex-1"
             placeholder="Say something to the booth…"
             aria-invalid={Boolean(chatAlert)}
             {...chatForm.register("content")}
           />
-          <Button type="submit" variant="maroon" size="icon" disabled={isPending} aria-label="Post as booth">
+          <Button type="submit" variant="maroon" size="icon" disabled={isPending} aria-label="Post as booth" data-testid="studio-chat-submit">
             <Send className="h-5 w-5" aria-hidden="true" />
           </Button>
         </div>

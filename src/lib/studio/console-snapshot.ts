@@ -23,10 +23,12 @@ export function isAuthFailure(error: unknown): boolean {
 export function mergeSnapshotChat(
   current: ChatMessageResponseDto[],
   snapshot: EpisodeEngagementSnapshotDto,
+  preserveIds: ReadonlySet<string> = new Set(),
+  removedIds: ReadonlySet<string> = new Set(),
 ): ChatMessageResponseDto[] {
-  const byId = new Map(current.map((message) => [message.id, message]));
+  const byId = new Map(current.filter(message => preserveIds.has(message.id) && !removedIds.has(message.id)).map((message) => [message.id, message]));
   for (const message of snapshot.recentChat) {
-    if (byId.has(message.id)) continue;
+    if (byId.has(message.id) || removedIds.has(message.id)) continue;
     byId.set(message.id, {
       id: message.id,
       episodeId: snapshot.episodeId,
@@ -42,7 +44,8 @@ export function mergeSnapshotChat(
     .slice(-CONSOLE_CHAT_LIMIT);
 }
 
-export function mergeSnapshotPolls(current: PollResponseDto[], snapshot: PollResponseDto[]): PollResponseDto[] {
-  const known = new Set(current.map((poll) => poll.id));
-  return [...current, ...snapshot.filter((poll) => !known.has(poll.id))];
+export function mergeSnapshotPolls(current: PollResponseDto[], snapshot: PollResponseDto[], preserveIds: ReadonlySet<string> = new Set()): PollResponseDto[] {
+  const byId = new Map(snapshot.map(poll => [poll.id, poll]));
+  for (const poll of current) if (preserveIds.has(poll.id)) byId.set(poll.id, poll);
+  return [...byId.values()];
 }

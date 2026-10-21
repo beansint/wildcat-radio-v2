@@ -1,5 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Request } from "@playwright/test";
 import { attachConsoleGuard } from "./_console";
+import { API_BASE, execBackendTsx } from './_fixtures';
 
 const LIVE_MANIFEST = {
   status: "LIVE",
@@ -61,9 +62,10 @@ test("#64: API failure is unavailable, not genuine OFF_AIR", async ({ page }, te
   expect(
     consoleGuard.errors().filter((entry) => !entry.includes("503 (Service Unavailable)")),
   ).toEqual([]);
-  expect(consoleGuard.badResponses()).toEqual([
-    expect.objectContaining({ status: 503 }),
-  ]);
+  expect(consoleGuard.badResponses()).toHaveLength(3); // initial poll + two bounded retries
+  expect(consoleGuard.badResponses().every(response =>
+    response.status === 503 && new URL(response.url).pathname === '/api/stream/manifest',
+  )).toBe(true);
 });
 
 // #127: a SINGLE failed poll no longer clears LIVE (see live-path-listener.spec.ts
@@ -140,9 +142,10 @@ test("#64: a sustained manifest outage clears prior LIVE data and stops playback
   await expect(page.getByTestId("player-status")).toHaveText("UNAVAILABLE", {
     timeout: 45_000,
   });
-  await expect(page.getByText("DJ Test")).toHaveCount(0);
+  // The player retains an already sounding source for at most 60 seconds.
+  await expect(page.getByText("DJ Test")).toHaveCount(0, { timeout: 45_000 });
   await expect(page.locator(".wc-player .wc-badge-live")).toHaveCount(0);
-  await expect(page.getByTestId("player-play")).toBeDisabled();
+  await expect(page.getByTestId("player-play")).toBeDisabled({ timeout: 45_000 });
   await expect
     .poll(() =>
       page.evaluate(() => (window as typeof window & { __pauseCalls: number }).__pauseCalls),
@@ -312,13 +315,59 @@ test("#64: cancelling while the HLS manifest is pending never starts late audio"
   consoleGuard.assertClean();
 });
 
+test.afterEach(async ({ page }, testInfo) => {
+  if (!testInfo.title.startsWith('#64 realtime:')) return;
+  await page.goto('about:blank');
+  execBackendTsx(`import { PrismaService } from './src/prisma/prisma.service';
+    const p=new PrismaService(); async function main(){
+      const rosters=['listener64-a','listener64-b'];
+      const ids=(await p.episode.findMany({where:{attendance:{some:{rosterId:{in:rosters}}}},select:{id:true}})).map(e=>e.id);
+      await p.chatMessage.deleteMany({where:{episodeId:{in:ids}}});
+      await p.episodeAnalyticsSnapshot.deleteMany({where:{episodeId:{in:ids}}});
+      await p.attendanceRecord.deleteMany({where:{rosterId:{in:rosters}}});
+      await p.episode.deleteMany({where:{id:{in:ids}}});
+      await p.rosterEntry.deleteMany({where:{id:{in:rosters}}});
+      await p.streamHealth.deleteMany({}); await p.$disconnect();
+    } main().catch(e=>{console.error(e);process.exit(1)});`);
+});
+
 test("#64 realtime: pause, resume, reconnect, and episode turnover stay coherent", async ({
   page,
   request,
 }) => {
-  test.skip(process.env.PLAYWRIGHT_REALTIME !== "true", "requires the runnable local API/socket fixture");
-  const api = process.env.PLAYWRIGHT_API_URL ?? "http://127.0.0.1:3210";
+  let holdAdmission = true;
+  const deferredJoins: (() => void)[] = [];
+  const pendingSnapshots = new Set<Request>();
+  let completedSnapshots = 0;
+  page.on('request', req => {
+    if (req.url().includes('/engagement-snapshot')) pendingSnapshots.add(req);
+  });
+  page.on('requestfinished', req => {
+    if (req.url().includes('/engagement-snapshot')) {
+      pendingSnapshots.delete(req);
+      completedSnapshots += 1;
+    }
+  });
+  await page.routeWebSocket('**/socket.io/**', socket => {
+    const server = socket.connectToServer();
+    socket.onMessage(message => {
+      if (holdAdmission && String(message).includes('"episode:join"')) deferredJoins.push(() => server.send(message));
+      else server.send(message);
+    });
+  });
+  const api = API_BASE;
   const token = process.env.STATION_DEVICE_TOKEN ?? "e2e-stream-integrity-token";
+  const deviceId = process.env.WC_DEVICE_ID ?? 'e2e-browser-device-3011';
+  execBackendTsx(`import { createHash } from 'node:crypto'; import { PrismaService } from './src/prisma/prisma.service';
+    const p=new PrismaService(); async function main(){
+      await p.episode.updateMany({where:{startedAt:{not:null},endedAt:null},data:{endedAt:new Date(),status:'OFF_AIR'}});
+      await p.streamHealth.deleteMany({});
+      for(const id of ['listener64-a','listener64-b']) await p.rosterEntry.upsert({where:{id},update:{isActive:true},create:{id,displayName:id,isActive:true}});
+      const tokenHash=createHash('sha256').update(${JSON.stringify(token)}).digest('hex');
+      const data={tokenHash,deviceId:${JSON.stringify(deviceId)},isActive:true,generation:1,revokedAt:null,leaseExpiresAt:null};
+      await p.stationSession.upsert({where:{id:'seed-studio-pc-0001'},update:data,create:{id:'seed-studio-pc-0001',label:'Realtime browser fixture',...data}});
+      await p.$disconnect();
+    } main().catch(e=>{console.error(e);process.exit(1)});`);
   const socketUrls: string[] = [];
   let closedSockets = 0;
   page.on("websocket", (socket) => {
@@ -330,6 +379,19 @@ test("#64 realtime: pause, resume, reconnect, and episode turnover stay coherent
   });
   await page.addInitScript(() => {
     HTMLMediaElement.prototype.play = async function () {};
+    // Chromium's HTTP offline emulation does not necessarily close an
+    // established WebSocket. Drop the real transport explicitly as well.
+    const transports: WebSocket[] = [];
+    const NativeWebSocket = window.WebSocket;
+    window.WebSocket = class extends NativeWebSocket {
+      constructor(url: string | URL, protocols?: string | string[]) {
+        super(url, protocols);
+        if (String(url).includes('/socket.io/')) transports.push(this);
+      }
+    };
+    (window as typeof window & { __dropRealtimeTransport: () => void }).__dropRealtimeTransport = () => {
+      for (const socket of transports) socket.close();
+    };
   });
   await page.route("**/live.m3u8", (route) =>
     route.fulfill({
@@ -351,7 +413,7 @@ test("#64 realtime: pause, resume, reconnect, and episode turnover stay coherent
 
   const stationPost = (path: string, data: unknown) =>
     request.post(`${api}${path}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, 'x-wildcat-device-id': deviceId },
       data,
     });
   const freshHeartbeat = () => {
@@ -360,6 +422,7 @@ test("#64 realtime: pause, resume, reconnect, and episode turnover stay coherent
       sourceConnected: true,
       lastSegmentAt: now,
       lastPublishedAt: now,
+      publisherGeneration: 1,
     });
   };
 
@@ -369,8 +432,15 @@ test("#64 realtime: pause, resume, reconnect, and episode turnover stay coherent
   await expect(page.getByRole("heading", { name: "Live on air" })).toBeVisible();
   await expect.poll(() => socketUrls.length).toBe(1);
 
+  // Commit the chat after initial reads but before real room admission. The
+  // post-admission snapshot must fill this gap without fabricating any data.
+  await expect.poll(() => deferredJoins.length).toBeGreaterThan(0);
+  await expect.poll(() => completedSnapshots > 0 && pendingSnapshots.size === 0).toBe(true);
+
   const beforePause = `Before pause ${Date.now()}`;
   expect((await stationPost("/api/studio/chat", { content: beforePause })).ok()).toBe(true);
+  holdAdmission = false;
+  for (const send of deferredJoins) send();
   await expect(page.getByText(beforePause)).toBeVisible();
 
   const play = page.getByTestId("player-play");
@@ -390,6 +460,7 @@ test("#64 realtime: pause, resume, reconnect, and episode turnover stay coherent
   expect(socketUrls).toHaveLength(1);
 
   await page.context().setOffline(true);
+  await page.evaluate(() => (window as typeof window & { __dropRealtimeTransport: () => void }).__dropRealtimeTransport());
   await expect.poll(() => closedSockets, { timeout: 10_000 }).toBeGreaterThan(0);
   await page.context().setOffline(false);
   await expect.poll(() => socketUrls.length, { timeout: 15_000 }).toBeGreaterThan(1);
@@ -399,10 +470,10 @@ test("#64 realtime: pause, resume, reconnect, and episode turnover stay coherent
   expect((await stationPost("/api/studio/chat", { content: afterReconnect })).ok()).toBe(true);
   await expect(page.getByText(afterReconnect)).toBeVisible({ timeout: 10_000 });
 
-  expect((await stationPost("/api/studio/time-out", { rosterId: "listener64-a" })).ok()).toBe(true);
-  await expect(page.getByText(beforePause)).toHaveCount(0);
-  await expect(page.getByText(whilePaused)).toHaveCount(0);
-  await expect(page.getByText(afterReconnect)).toHaveCount(0);
+  expect((await stationPost("/api/studio/time-out", { rosterId: "listener64-a", confirmEnd: true })).ok()).toBe(true);
+  expect((await (await request.get(`${api}/api/stream/manifest`)).json()).episodeId).toBeNull();
+  // An authoritative end closes engagement. A new episode must open its own
+  // room when its manifest is observed, without retaining the old messages.
 
   expect((await stationPost("/api/studio/time-in", { rosterId: "listener64-b" })).ok()).toBe(true);
   expect((await freshHeartbeat()).ok()).toBe(true);
@@ -410,8 +481,10 @@ test("#64 realtime: pause, resume, reconnect, and episode turnover stay coherent
 
   const episodeB = `Episode B ${Date.now()}`;
   expect((await stationPost("/api/studio/chat", { content: episodeB })).ok()).toBe(true);
-  await expect(page.getByText(episodeB)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(episodeB)).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(beforePause)).toHaveCount(0);
+  await expect(page.getByText(whilePaused)).toHaveCount(0);
+  await expect(page.getByText(afterReconnect)).toHaveCount(0);
 
   await page.getByTestId("player-audio").evaluate((audio) => {
     audio.setAttribute("data-runtime-instance", "listener-64");
@@ -424,5 +497,5 @@ test("#64 realtime: pause, resume, reconnect, and episode turnover stay coherent
   );
   await expect(page.getByTestId("player-status")).toHaveText("LIVE");
 
-  expect((await stationPost("/api/studio/time-out", { rosterId: "listener64-b" })).ok()).toBe(true);
+  expect((await stationPost("/api/studio/time-out", { rosterId: "listener64-b", confirmEnd: true })).ok()).toBe(true);
 });

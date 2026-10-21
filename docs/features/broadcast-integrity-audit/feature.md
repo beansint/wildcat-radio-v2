@@ -16,3 +16,12 @@ Confirmed website findings:
 Focused frontend units: **11 files, 90 tests passed**. Typecheck passed. ESLint exited zero with **6 existing warnings**. These checks do not establish production readiness; the cross-repository integration baseline remains failing and high-priority database privacy/recovery findings remain open.
 
 Proposed repairs preserve the current brand surfaces and UI primitives. No individualized audience reporting or public voter identity disclosure is proposed.
+
+
+## 2026-10-21 release-preflight advisory refresh
+
+Fresh promotion CI rejected the prior lockfile because the advisory feed now flags Vite 7.3.6 and, in the website toolchain, markdown-it 14.3.2. Vite is constrained to 7.3.7; the website markdown-it floor is 14.3.3. These are development/build-tool dependencies; application source and migration SQL are unchanged. The website explicitly pins the Vitest Vite peer and pnpm 10.32.1 to match CI resolution.
+
+Both refreshed lockfiles report no known vulnerabilities with `pnpm audit --audit-level high`. Full PR CI remains the merge gate. Earlier browser acceptance applies to unchanged application source; this dependency update needs fresh unit/build/static checks. The paired release must be repinned to the resulting green dev commits.
+
+Advisories: https://github.com/advisories/GHSA-587h-7wmj-h5pm and https://github.com/advisories/GHSA-gfr2-rv44-r23c.

@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
-import { API_BASE, apiLoginAs, archiveAnnouncement, createAnnouncement, execBackendTsx, loginAs, reviewAnnouncement, submitAnnouncement } from './_fixtures';
+import { assertLocalPlaywrightEnvironment, apiLoginAs, archiveAnnouncement, createAnnouncement, execBackendTsx, loginAs, reviewAnnouncement, submitAnnouncement } from './_fixtures';
 
 let mod: APIRequestContext;
 let custodian: APIRequestContext;
@@ -7,8 +7,7 @@ let custodianId: string;
 const rows: Array<{ id: string; title: string; owner: 'moderator' | 'custodian'; state: string }> = [];
 const prefix = `Publish permission ${Date.now()}`;
 test.beforeAll(async () => {
-  const api = new URL(API_BASE); const db = new URL(process.env.DATABASE_URL ?? '');
-  if (api.hostname !== 'localhost' || api.port !== '3314' || db.hostname !== '127.0.0.1' || db.port !== '55432' || db.pathname !== '/review_frontend') throw new Error('Use isolated consumer API3314/review_frontend');
+  assertLocalPlaywrightEnvironment(process.env);
   mod = await apiLoginAs('moderator'); custodian = await apiLoginAs('custodian');
   custodianId = (await (await custodian.get('/api/users/me')).json()).id;
   for (const owner of ['moderator', 'custodian'] as const) {

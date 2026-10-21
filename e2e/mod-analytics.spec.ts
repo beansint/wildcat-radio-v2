@@ -98,7 +98,7 @@ test('AN-E-01: golden path — the dashboard renders all four panels with real d
   guard.assertClean();
 });
 
-test('AN-E-02: the heatmap distinguishes a silent slot from one never broadcast', async ({
+test('AN-E-02: the heatmap distinguishes measured silence from missing samples', async ({
   page,
 }) => {
   await loginAs(page, 'moderator');
@@ -119,7 +119,7 @@ test('AN-E-02: the heatmap distinguishes a silent slot from one never broadcast'
   await expect(cells).toHaveCount(rowCount * 7);
 
   const unaired = page.locator('[data-testid^="mod-analytics-heat-"][data-aired="false"]').first();
-  await expect(unaired).toHaveAttribute('aria-label', /no broadcast/);
+  await expect(unaired).toHaveAttribute('aria-label', /no sampled activity/);
 });
 
 test('AN-E-03: switching period refetches, and a custom range is validated before it is sent', async ({
@@ -131,8 +131,10 @@ test('AN-E-03: switching period refetches, and a custom range is validated befor
   await expect(page.getByTestId('mod-analytics-stat-peak')).toBeVisible({ timeout: 15_000 });
 
   const requests: string[] = [];
+  const analyticsRequests: string[] = [];
   page.on('request', (req) => {
     if (req.url().includes('/api/analytics/overview')) requests.push(req.url());
+    if (new URL(req.url()).pathname.startsWith('/api/analytics/')) analyticsRequests.push(req.url());
   });
 
   await page.getByTestId('mod-analytics-period-psem').click();
@@ -146,6 +148,20 @@ test('AN-E-03: switching period refetches, and a custom range is validated befor
   // `appAlerts`, not getByRole('alert'): Next injects its own
   // #__next-route-announcer__ with role="alert", which over-counts.
   await expect(appAlerts(page)).toContainText(/must not be after/i);
+
+  // Let the invalid-range render and its effects finish. Every collection
+  // query, including episode discovery, must stay disabled for this range.
+  await page.evaluate(() => new Promise<void>(resolve =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+  ));
+  const collections = new Set(['/api/analytics/overview', '/api/analytics/shows', '/api/analytics/dayparts', '/api/analytics/episodes']);
+  expect(analyticsRequests.filter(value => {
+    const url = new URL(value);
+    if (!collections.has(url.pathname)) return false;
+    const from = url.searchParams.get('from');
+    const to = url.searchParams.get('to');
+    return !from || !to || !(Date.parse(from) < Date.parse(to));
+  })).toEqual([]);
 
   guard.assertClean();
 });
@@ -190,7 +206,10 @@ test('AN-E-07: a11y — headings are structured, the table has real headers, cel
   await expect(page.getByTestId('mod-analytics-heatmap')).toBeVisible({ timeout: 15_000 });
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
-  await expect(page.getByRole('heading', { level: 2 })).toHaveCount(4);
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText([
+    'Audience activity relative to peak', 'Daypart heatmap', 'Show ranking',
+    'Engagement vs audience', 'Episode measurements',
+  ]);
 
   // Every heat cell carries its value for a screen reader, even though only the
   // strongest cells print it visually.

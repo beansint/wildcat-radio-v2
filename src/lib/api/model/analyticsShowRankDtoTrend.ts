@@ -8,8 +8,9 @@
 
 /**
  * Against the immediately preceding window of equal length
+ * @nullable
  */
-export type AnalyticsShowRankDtoTrend = typeof AnalyticsShowRankDtoTrend[keyof typeof AnalyticsShowRankDtoTrend];
+export type AnalyticsShowRankDtoTrend = typeof AnalyticsShowRankDtoTrend[keyof typeof AnalyticsShowRankDtoTrend] | null;
 
 
 export const AnalyticsShowRankDtoTrend = {

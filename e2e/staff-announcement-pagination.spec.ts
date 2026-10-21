@@ -1,13 +1,12 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
-import { API_BASE, apiLoginAs, archiveAnnouncement, createAnnouncement, loginAs } from './_fixtures';
+import { assertLocalPlaywrightEnvironment, apiLoginAs, archiveAnnouncement, createAnnouncement, loginAs } from './_fixtures';
 
 let api: APIRequestContext;
 const rows: Array<{ id: string; title: string }> = [];
 const prefix = `Pagination ${Date.now()}`;
 
 test.beforeAll(async () => {
-  const url = new URL(API_BASE);
-  if (url.hostname !== 'localhost' || url.port !== '3310') throw new Error('Pagination fixtures require the isolated local API on3310');
+  assertLocalPlaywrightEnvironment(process.env);
   api = await apiLoginAs('moderator');
   for (let i = 0; i < 205; i += 1) {
     const title = `${prefix} ${i}`;

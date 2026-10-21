@@ -26,10 +26,12 @@ const MOD_EMAIL = 'mod@example.com';
 const LISTENER_EMAIL = 'test@example.com';
 const PASSWORD = 'Password123!';
 const BACKEND_DIR = process.env.WILDCAT_BACKEND_DIR ?? path.resolve(process.cwd(), '../wildcat-radio-v2-backend');
-// All backend fixture rows created by the additions below are id-prefixed
-// with this so a single afterAll can clean them up regardless of which test
-// created them, without touching seed data or other specs' fixtures.
+// Helpers register their exact owned IDs for FK-safe afterAll cleanup,
+// without touching seed data, prior runs, or other specs' fixtures.
 const FIXTURE_PREFIX = 'e2e-fe5-qa-';
+const ownedRosterIds: string[] = [];
+const ownedEpisodeIds: string[] = [];
+const ownedShowIds: string[] = [];
 
 function uniqueSuffix() {
   return `${Date.now()}${Math.floor(Math.random() * 1000)}`;
@@ -63,14 +65,17 @@ function runPrismaScript(body: string) {
 
 /**
  * Seeds a roster entry + an open, show-less episode + an attendance record
- * for it, with `timeIn` at station-local `today 13:00` — used by the
- * station-TZ-edge and validation tests below. Both need a real, editable
- * attendance row that isn't tied to any other spec's seed data.
+ * for it, with `timeIn` at station-local `13:00` on an explicit selected date
+ * or today. The golden, station-TZ, and validation tests need their own real,
+ * editable attendance row, independent of the global seed's calendar day.
  */
-function seedOpenAttendanceRow(runId: string) {
+function seedOpenAttendanceRow(runId: string, dateISO?: string) {
+  if (dateISO !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(dateISO)) throw new Error('Expected a station-local attendance date');
   const rosterId = `${FIXTURE_PREFIX}tz-roster-${runId}`;
   const episodeId = `${FIXTURE_PREFIX}tz-episode-${runId}`;
   const djName = `E2E TZ DJ ${runId}`;
+  ownedRosterIds.push(rosterId);
+  ownedEpisodeIds.push(episodeId);
   runPrismaScript(`
     const OFFSET_MIN = Number.parseInt(process.env.STATION_UTC_OFFSET_MINUTES ?? '480', 10);
     function stationDateNow() {
@@ -81,7 +86,7 @@ function seedOpenAttendanceRow(runId: string) {
       const [h, mi] = hhmm.split(':').map(Number);
       return new Date(Date.UTC(y, mo - 1, d, h, mi) - OFFSET_MIN * 60000);
     }
-    const today = stationDateNow();
+    const today = ${JSON.stringify(dateISO)} ?? stationDateNow();
     const timeIn = stationLocalToUtc(today, '13:00');
     await prisma.rosterEntry.upsert({
       where: { id: ${JSON.stringify(rosterId)} },
@@ -113,6 +118,8 @@ function seedAbsentToday(runId: string) {
   const djName = `E2E Absent DJ ${runId}`;
   const showName = `E2E Absent Show ${runId}`;
   const slug = `${FIXTURE_PREFIX}absent-${runId}`;
+  ownedRosterIds.push(rosterId);
+  ownedShowIds.push(showId);
   runPrismaScript(`
     const OFFSET_MIN = Number.parseInt(process.env.STATION_UTC_OFFSET_MINUTES ?? '480', 10);
     const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -160,6 +167,9 @@ function seedTwoShowsWithAttendance(runId: string) {
     djName: `E2E Filter DJ B ${runId}`,
     showName: `E2E Filter Show B ${runId}`,
   };
+  ownedRosterIds.push(a.rosterId, b.rosterId);
+  ownedEpisodeIds.push(a.episodeId, b.episodeId);
+  ownedShowIds.push(a.showId, b.showId);
   runPrismaScript(`
     const OFFSET_MIN = Number.parseInt(process.env.STATION_UTC_OFFSET_MINUTES ?? '480', 10);
     const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -215,12 +225,12 @@ function seedTwoShowsWithAttendance(runId: string) {
 /** Deletes every backend row this file's fixtures created, FK-safe order. */
 function cleanupFixtures() {
   runPrismaScript(`
-    await prisma.attendanceRecord.deleteMany({ where: { rosterId: { startsWith: ${JSON.stringify(FIXTURE_PREFIX)} } } });
-    await prisma.attendanceRecord.deleteMany({ where: { episodeId: { startsWith: ${JSON.stringify(FIXTURE_PREFIX)} } } });
-    await prisma.showRosterEntry.deleteMany({ where: { rosterId: { startsWith: ${JSON.stringify(FIXTURE_PREFIX)} } } });
-    await prisma.episode.deleteMany({ where: { id: { startsWith: ${JSON.stringify(FIXTURE_PREFIX)} } } });
-    await prisma.show.deleteMany({ where: { id: { startsWith: ${JSON.stringify(FIXTURE_PREFIX)} } } });
-    await prisma.rosterEntry.deleteMany({ where: { id: { startsWith: ${JSON.stringify(FIXTURE_PREFIX)} } } });
+    await prisma.attendanceRecord.deleteMany({ where: { rosterId: { in: ${JSON.stringify(ownedRosterIds)} } } });
+    await prisma.attendanceRecord.deleteMany({ where: { episodeId: { in: ${JSON.stringify(ownedEpisodeIds)} } } });
+    await prisma.showRosterEntry.deleteMany({ where: { rosterId: { in: ${JSON.stringify(ownedRosterIds)} } } });
+    await prisma.episode.deleteMany({ where: { id: { in: ${JSON.stringify(ownedEpisodeIds)} } } });
+    await prisma.show.deleteMany({ where: { id: { in: ${JSON.stringify(ownedShowIds)} } } });
+    await prisma.rosterEntry.deleteMany({ where: { id: { in: ${JSON.stringify(ownedRosterIds)} } } });
   `);
 }
 
@@ -341,36 +351,29 @@ test.describe('mod org/schedule/attendance', () => {
     // ── Attendance (AC-5) ────────────────────────────────────────────────────
     await page.goto('/mod/attendance');
 
-    // The page already defaults `mod-attendance-date` to "today" using the
-    // browser's own local date (src/app/(staff)/mod/attendance/page.tsx
-    // `todayIso()`). Don't recompute/overwrite it from Node — the app runs in
-    // an Asia/Manila (UTC+8) browser context while this test runner's host
-    // clock may be in a different zone, so a Node-computed "today" can be off
-    // by a calendar day from what the seeded attendance row is dated against.
-    const attendanceRows = page.getByTestId('mod-attendance-row');
-    await expect(attendanceRows.first()).toBeVisible({ timeout: 10_000 });
+    // Capture the actual station date selected by the page. Seed this test's
+    // own editable row for that exact date, then restore the selection after
+    // refetching: the suite may have crossed midnight since the global seed.
+    const attendanceDate = await page.getByTestId('mod-attendance-date').inputValue();
+    const { djName: attendanceDjName } = seedOpenAttendanceRow(runId, attendanceDate);
+    await page.reload();
+    await page.getByTestId('mod-attendance-date').fill(attendanceDate);
+    const attendanceRow = page.getByTestId('mod-attendance-row').filter({ hasText: attendanceDjName });
+    await expect(attendanceRow).toBeVisible({ timeout: 10_000 });
 
-    // Correct the first row that has an edit trigger (seeded attendance record).
-    const editButton = page.getByTestId('mod-attendance-edit').first();
+    const editButton = attendanceRow.getByTestId('mod-attendance-edit');
     await expect(editButton).toBeVisible({ timeout: 10_000 });
     await editButton.click();
 
-    // Times deliberately kept mid-day (not pre-08:00 local), see the app-bug
-    // note in the task summary: the correction dialog builds the new
-    // `timeIn`/`timeOut` as `new Date(`${date}T${hhmm}:00`)` (browser-local,
-    // Asia/Manila/UTC+8), but `GET /api/attendance?date=` buckets records by
-    // UTC calendar day. A local time before ~08:00 rolls back to the
-    // *previous* UTC date, so the corrected row silently vanishes from
-    // "today"'s sheet. Not exercising that edge here keeps this golden path
-    // green; it's reported precisely as a real app bug in the task summary,
-    // not fixed in app source per the task's instructions.
-    await page.getByTestId('att-timein').fill('13:15');
+    // Correct the owned 13:00 arrival with a valid mid-day interval. The
+    // separate station-TZ edge below covers a pre-08:00 correction.
+    await page.getByTestId('att-timein').fill('12:45');
     await page.getByTestId('att-timeout').fill('14:00');
     await page.getByTestId('att-note').fill(noteText);
     await page.getByTestId('att-save').click();
 
     await expect(page.getByTestId('att-save')).toHaveCount(0, { timeout: 10_000 }); // dialog closed
-    await expect(page.getByText(noteText)).toBeVisible({ timeout: 10_000 });
+    await expect(attendanceRow).toContainText(noteText, { timeout: 10_000 });
 
     // ── Console cleanliness (rubric item) ───────────────────────────────────
     expect(consoleErrors, `console errors observed during golden run:\n${consoleErrors.join('\n')}`).toEqual([]);
@@ -559,7 +562,7 @@ test.describe('mod org/schedule/attendance', () => {
 
     await loginAs(page, MOD_EMAIL, '/mod/attendance');
     // The date filter already defaults to the station-local date (stationDate()
-    // in the page source) — don't overwrite it, see the golden test's note above.
+    // in the page source), matching the helper's default fixture date.
     const row = page.getByTestId('mod-attendance-row').filter({ hasText: djName });
     await expect(row).toBeVisible({ timeout: 10_000 });
 

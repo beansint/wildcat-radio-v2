@@ -1,3 +1,4 @@
+import { activePin } from "./snapshot-recovery";
 import type {
   EpisodeEngagementSnapshotDto,
   EpisodeSnapshotChatMessageDto,
@@ -41,6 +42,11 @@ export interface PinnedTopic {
 }
 
 export interface HypeState {
+  episodeId?: string;
+  capturedAt?: string;
+  windowSeconds?: 60;
+  buckets?: { startedAt: string; count: number }[];
+  stale?: boolean;
   count: number;
   trend: "up" | "down" | "flat" | string;
 }
@@ -65,7 +71,7 @@ export function emptyEngagementState(episodeId: string | null): EngagementState 
     receipts: [],
     upNext: [],
     pinnedTopic: null,
-    hype: { count: 0, trend: "flat" },
+    hype: { count: 0, trend: "flat", stale: true, buckets: [] },
   };
 }
 
@@ -108,21 +114,20 @@ function mergeById<T extends { id: string }>(
 
 export function mergeEngagementSnapshot(
   current: EngagementState,
-  snapshot: EpisodeEngagementSnapshotDto,
+  snapshot: EpisodeEngagementSnapshotDto & { hype?: HypeState },
   options: {
     preserveLiveIds?: ReadonlySet<string>;
     removedIds?: ReadonlySet<string>;
     preserveLiveScalars?: boolean;
+    preservePin?: boolean;
+    preserveHype?: boolean;
   } = {},
 ): EngagementState {
   if (current.episodeId !== snapshot.episodeId) return current;
 
   const preserveLiveIds = options.preserveLiveIds ?? new Set<string>();
   const removedIds = options.removedIds ?? new Set<string>();
-  const snapshotHype = {
-    count: snapshot.reactions.reduce((total, reaction) => total + reaction.count, 0),
-    trend: "flat",
-  };
+  const snapshotHype = snapshot.hype ? { ...snapshot.hype, stale: false } : { count: 0, trend: "flat", stale: true, buckets: [] };
   const snapshotPin = snapshot.pinnedTopic
     ? { text: snapshot.pinnedTopic.text, expiresAt: snapshot.pinnedTopic.expiresAt }
     : null;
@@ -148,7 +153,7 @@ export function mergeEngagementSnapshot(
       preserveLiveIds,
       removedIds,
     ),
-    pinnedTopic: options.preserveLiveScalars ? current.pinnedTopic : snapshotPin,
-    hype: options.preserveLiveScalars ? current.hype : snapshotHype,
+    pinnedTopic: activePin((options.preservePin ?? options.preserveLiveScalars) ? current.pinnedTopic : snapshotPin),
+    hype: (options.preserveHype ?? options.preserveLiveScalars) ? current.hype : snapshotHype,
   };
 }

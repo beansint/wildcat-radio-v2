@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import type { GetStreamManifest200Reason } from "@/lib/api/model";
 import { acquireSocket, type SocketLease } from "./socket";
+import { getEpisodeBrowserIdentity, listeningJoinPayload } from "./episode-browser-id";
 import { computePresenceTransition } from "./presence-actions";
 
 export interface StreamStatusEvent {
@@ -118,9 +119,16 @@ export function useStreamPresence(
     // membership on disconnect, so a reconnect (e.g. triggered by an auth
     // handshake cycle elsewhere) must re-emit `listening:join` or the
     // listener silently falls out of the live count until a full reload.
+    async function joinPresence(target: string) {
+      const identity = await getEpisodeBrowserIdentity(target);
+      if (!cancelled && socket?.connected && prevEpisodeId.current === target) {
+        socket.emit("listening:join", listeningJoinPayload(target, identity));
+      }
+    }
+
     function onConnect() {
       if (prevEpisodeId.current) {
-        socket?.emit("listening:join", { episodeId: prevEpisodeId.current });
+        void joinPresence(prevEpisodeId.current);
       }
     }
 
@@ -145,7 +153,7 @@ export function useStreamPresence(
             s.emit("listening:leave", { episodeId: transition.leave });
           }
           if (transition.join) {
-            s.emit("listening:join", { episodeId: transition.join });
+            void joinPresence(transition.join);
           }
         }
       })

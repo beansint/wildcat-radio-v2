@@ -49,6 +49,9 @@ function openSlotEpisode() {
       const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
       const prisma = new PrismaClient({ adapter });
       const now = new Date();
+      // Each serial spec owns the station for its fixture. Retire an earlier
+      // fixture before opening this one (the database enforces one on-air row).
+      await prisma.episode.updateMany({ where: { startedAt: { not: null }, endedAt: null }, data: { endedAt: now, status: 'OFF_AIR' } });
       await prisma.stationSession.upsert({
         where: { id: 'seed-studio-pc-0001' },
         update: { tokenHash: ${JSON.stringify(TOKEN_HASH)}, isActive: true, deviceId: ${JSON.stringify(STATION_DEVICE_ID)}, generation: 1, revokedAt: null, leaseExpiresAt: null, label: 'FE5 Studio Token' },

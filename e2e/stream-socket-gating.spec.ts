@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { API_BASE, WEB_BASE } from './_fixtures';
+import { WEB_BASE } from './_fixtures';
+import { startLocalBroadcast } from './_live-broadcast';
 
 // FE#40 (BEA-167): socket.io must NOT open on anonymous/marketing routes
 // before the user presses play, and must open once real listen intent
@@ -57,59 +58,61 @@ for (const route of ROUTES_WITHOUT_LISTEN_INTENT) {
 }
 
 test('FE#40: a socket connection opens after pressing play on /listen', async ({ page, request }) => {
-  // Precondition: presence only joins a room when there IS a room — the socket
-  // is gated on a live `episodeId`. With nothing on air the correct behaviour
-  // is to open no socket at all, so this test cannot distinguish "gated
-  // properly" from "broken". Skip loudly rather than pass vacuously; the six
-  // negative tests above still prove the gating on every marketing route.
-  // The guard itself must survive an unhealthy API. When the backend cannot
-  // reach its database this endpoint does not 500 quickly — it HANGS on the
-  // Prisma timeout (measured: >60s), which disposes the request context and
-  // surfaced as an opaque "Request context disposed" failure rather than the
-  // skip this test is designed to take. Bound it and treat any failure as
-  // "nothing on air", so an unreachable backend skips loudly instead of
-  // masquerading as a socket-gating regression.
-  let manifest: { episodeId?: string; status?: string } | null = null;
+  const broadcast = await startLocalBroadcast(request);
   try {
-    const res = await request.get(`${API_BASE}/api/stream/manifest`, { timeout: 10_000 });
-    if (res.ok()) manifest = await res.json();
-  } catch {
-    manifest = null;
-  }
-  test.skip(
-    !manifest?.episodeId,
-    `no live episode on air (status=${manifest?.status ?? 'API unreachable'}) — cannot assert the post-play connection`,
-  );
+    let websocketOpened = false;
+    const socketIoRequests: string[] = [];
 
-  let websocketOpened = false;
-  const socketIoRequests: string[] = [];
+    page.on('websocket', (ws) => {
+      if (isRealtimeSocket(ws.url())) websocketOpened = true;
+    });
+    page.on('request', (req) => {
+      if (req.url().includes('/socket.io/')) {
+        socketIoRequests.push(req.url());
+      }
+    });
 
-  page.on('websocket', (ws) => {
-    if (isRealtimeSocket(ws.url())) websocketOpened = true;
-  });
-  page.on('request', (req) => {
-    if (req.url().includes('/socket.io/')) {
-      socketIoRequests.push(req.url());
+    await page.goto(`${WEB_BASE}/listen`);
+
+    // NOTE: deliberately NOT asserting "no socket before play" here.
+    // `/listen` is the listen-intent page: it also mounts the engagement room
+    // (chat / polls / hype), which is expected to be live whether or not audio
+    // is playing — you can read the room without listening. FE#40's requirement
+    // is specifically about the six anonymous marketing routes above, and those
+    // are asserted individually. Asserting it here would be testing a rule the
+    // product does not have.
+    await page.waitForTimeout(1500);
+
+    await page.getByTestId('player-play').click();
+
+    await expect
+      .poll(() => websocketOpened || socketIoRequests.length > 0, {
+        message: 'expected a socket.io connection to open after pressing play',
+        timeout: 15_000,
+      })
+      .toBe(true);
+    // Also prove intent opens a socket on a marketing page, where it is genuinely
+    // closed before play. /listen's engagement room may connect immediately.
+    await page.goto('about:blank');
+    const marketing = await page.context().newPage();
+    try {
+      const sockets: string[] = [];
+      marketing.on('websocket', (ws) => { if (isRealtimeSocket(ws.url())) sockets.push(ws.url()); });
+      await marketing.goto('/');
+      await expect(marketing.getByTestId('player-status')).toHaveText('LIVE');
+      await marketing.waitForTimeout(1500);
+      expect(sockets).toHaveLength(0);
+      await marketing.getByTestId('player-play').click();
+      await expect.poll(() => sockets.length, { timeout: 15000 }).toBeGreaterThan(0);
+      await marketing.waitForFunction(() => { const audio=document.querySelector('[data-testid="player-audio"]') as HTMLAudioElement | null; return !!audio && !audio.paused && audio.currentTime > 0; });
+    } finally {
+      await marketing.close();
     }
-  });
-
-  await page.goto(`${WEB_BASE}/listen`);
-
-  // NOTE: deliberately NOT asserting "no socket before play" here.
-  // `/listen` is the listen-intent page: it also mounts the engagement room
-  // (chat / polls / hype), which is expected to be live whether or not audio
-  // is playing — you can read the room without listening. FE#40's requirement
-  // is specifically about the six anonymous marketing routes above, and those
-  // are asserted individually. Asserting it here would be testing a rule the
-  // product does not have.
-  await page.waitForTimeout(1500);
-
-  await page.getByTestId('player-play').click();
-
-  await expect
-    .poll(() => websocketOpened || socketIoRequests.length > 0, {
-      message: 'expected a socket.io connection to open after pressing play',
-      timeout: 15_000,
-    })
-    .toBe(true);
+  } finally {
+    try {
+      await page.goto('about:blank');
+    } finally {
+      await broadcast.cleanup();
+    }
+  }
 });

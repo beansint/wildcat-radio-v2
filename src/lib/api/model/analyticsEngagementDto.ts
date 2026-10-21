@@ -5,6 +5,8 @@
  * Control plane — see docs/final-build-plan/03-API-CONTRACT.md
  * OpenAPI spec version: 0.0.1
  */
+import type { AnalyticsEngagementDtoQueueByStatus } from './analyticsEngagementDtoQueueByStatus.ts';
+import type { AnalyticsEngagementDtoQueueByType } from './analyticsEngagementDtoQueueByType.ts';
 
 export interface AnalyticsEngagementDto {
   /** Listener chat only — booth output excluded */
@@ -13,4 +15,6 @@ export interface AnalyticsEngagementDto {
   requestsHandled: number;
   pollVotes: number;
   reactions: number;
+  queueByType: AnalyticsEngagementDtoQueueByType;
+  queueByStatus: AnalyticsEngagementDtoQueueByStatus;
 }

@@ -117,9 +117,9 @@ async function openEpisode(request: APIRequestContext): Promise<string> {
   const now = new Date().toISOString();
   const heartbeat = await request.post(`${API_BASE}/api/stream/heartbeat`, {
     headers: { Authorization: `Bearer ${STATION_TOKEN}`, 'x-wildcat-device-id': STATION_DEVICE_ID },
-    data: { sourceConnected: true, lastSegmentAt: now, lastPublishedAt: now },
+    data: { sourceConnected: true, lastSegmentAt: now, lastPublishedAt: now, publisherGeneration: 1 },
   });
-  expect(heartbeat.ok()).toBeTruthy();
+  expect(heartbeat.ok(), await heartbeat.text()).toBeTruthy();
   return episodeId;
 }
 
@@ -199,7 +199,7 @@ test.describe.configure({ mode: 'serial' });
  * (same guard idea as stream-playback.spec.ts).
  */
 async function requireOnAir(page: Page): Promise<void> {
-  const res = await page.request.get('/api/stream/manifest');
+  const res = await page.request.get(`${API_BASE}/api/stream/manifest`);
   const manifest = res.ok() ? ((await res.json().catch(() => null)) as { status?: string; reason?: string }) : null;
   test.skip(
     !res.ok() || manifest?.status === 'OFF_AIR',
@@ -209,6 +209,15 @@ async function requireOnAir(page: Page): Promise<void> {
 
 test.describe('engagement UI', () => {
   let fixtureEpisodeId = '';
+
+  test.beforeEach(async ({ request }) => {
+    const now = new Date().toISOString();
+    const response = await request.post(`${API_BASE}/api/stream/heartbeat`, {
+      headers: { Authorization: `Bearer ${STATION_TOKEN}`, 'x-wildcat-device-id': STATION_DEVICE_ID },
+      data: { sourceConnected: true, lastSegmentAt: now, lastPublishedAt: now, publisherGeneration: 1 },
+    });
+    expect(response.ok(), await response.text()).toBeTruthy();
+  });
 
   test.beforeAll(async () => {
     runBackendFixture();

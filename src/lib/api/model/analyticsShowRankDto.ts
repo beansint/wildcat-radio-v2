@@ -17,9 +17,13 @@ export interface AnalyticsShowRankDto {
   /** @nullable */
   theme: string | null;
   episodeCount: number;
-  avgConcurrent: number;
+  /** @nullable */
+  avgConcurrent: number | null;
   avgTlh: number;
   avgEngagement: number;
-  /** Against the immediately preceding window of equal length */
+  /**
+     * Against the immediately preceding window of equal length
+     * @nullable
+     */
   trend: AnalyticsShowRankDtoTrend;
 }

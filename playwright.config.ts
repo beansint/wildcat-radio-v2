@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import { assertLocalPlaywrightEnvironment } from './src/lib/tooling/playwright-safety';
+
+assertLocalPlaywrightEnvironment(process.env);
 
 // Spike #4 stream-playback e2e. Requires the spike stack running (see backend
 // docs/features/004-streaming-spike/qa-plan.md): ffmpeg + serve-hls.mjs(:8888) +
@@ -6,7 +9,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
-  // Every spec drives the SAME live backend and Neon dev database, and some of
+  // Every spec drives the SAME isolated local backend and database, and some of
   // the invariants under test are global rather than per-row — the announcement
   // pin cap ("at most N pinned station-wide") is the clearest example. Running
   // spec files concurrently makes those tests fight each other over shared

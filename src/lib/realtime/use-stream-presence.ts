@@ -6,7 +6,7 @@ import type { GetStreamManifest200Reason } from "@/lib/api/model";
 import { acquireSocket, type SocketLease } from "./socket";
 import { getEpisodeBrowserIdentity, listeningJoinPayload } from "./episode-browser-id";
 import { computePresenceTransition } from "./presence-actions";
-import { getEpisodeEngagementSnapshot } from "@/lib/api/endpoints/episodes/episodes";
+import { requestEngagementSnapshot } from "./snapshot-requests";
 import { authoritativeUpNext } from "./engagement-state";
 import { joinPresenceWithSnapshot } from "./presence-recovery";
 
@@ -91,11 +91,11 @@ export function useStreamPresence(
       if (!episodeId) return;
       const version = ++queueVersion;
       try {
-        const snapshot = await getEpisodeEngagementSnapshot(episodeId);
+        const snapshot = await requestEngagementSnapshot(episodeId);
         if (!cancelled && version === queueVersion && snapshot.episodeId === episodeId) {
           setState(prev => ({ ...prev, upNext: authoritativeUpNext(snapshot.upNext)[0] ?? null }));
         }
-      } catch { /* A reconnect or later invalidation retries without fabricating a queue. */ }
+      } catch { /* Bounded throttle retries are exhausted; reconnect or a later invalidation can retry. */ }
     }
 
     // Never render presence-derived state from a previous episode while the

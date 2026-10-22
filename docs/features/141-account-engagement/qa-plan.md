@@ -8,6 +8,8 @@ origins and named disposable database (docs/testing/local-playwright.md). Use
 `e2e/local-mail-api.cjs` to capture external email while keeping Better Auth and outbox real;
 set AUTH_EMAIL_CAPTURE_PATH to a task-owned .agent JSONL file. This file is not committed.
 
+Review follow-up: run `snapshot-requests.spec.ts` with the existing presence, engagement-state and snapshot-recovery units. Cover duplicate events across player/listener, in-flight handling, independent episodes, fresh post-success reads, a production-like eleven-client request budget, automatic delayed 429 recovery, bounded retry exhaustion, and non-retryable ended episodes. Use fake clocks rather than waiting for real rate-limit windows. The paired backend account-email suite checks anonymous known/missing-address 401 parity and preserved signed-in cooldowns. Follow this with frontend typecheck, changed-file lint and API compile; no full-suite or CI waiting gate.
+
 - `e2e/account-engagement.spec.ts`: Pending/Up Next/History decisions and receipt opt-out,
   private history/quotas and end refresh, seven accepted submissions/reconnect/player ordering,
   independent booth pauses/staff precedence, lock without stopping playback, reading-position

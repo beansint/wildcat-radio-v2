@@ -50,3 +50,13 @@ Local acceptance is complete: [machine-readable evidence](verification-results.j
 Prior code CI passed. Final workflow/docs checks run in the background; development handoff does not wait for CI or another full suite. Owned local processes and the mail capture are cleaned at handoff. Provider delivery and physical mobile keyboard behavior remain separate gates. No production deployment is included.
 
 Screenshots from the actual final browser run: [mobile chat](evidence/mobile-chat-focus.png), [DJ history](evidence/studio-history.png), [private listener history](evidence/listener-private-history.png). The first focused recovery was 22/24; the final seven-case transition recheck passed after waiting for the kiosk's current socket rather than the prior listener-page connection. Combined affected coverage is 24/24; both reports remain in verification-results.json.
+
+## Review fixes — 23 October 2026
+
+The two P2 findings from PRs #204/#142 are repaired. Backend verification resend now requires a session; repeated anonymous calls for known/missing addresses produce the same 401 and no mail. Signed-in cooldowns, automatic signup mail and actual account links passed the paired local integration suite (10/10).
+
+Listener/player snapshot reads now use one shared per-episode coordinator. Duplicate events coalesce over 50ms; a change during a read forces a follow-up, and completed results are discarded rather than cached. A 429 retries automatically after 61 seconds, at most twice per job; other failures do not retry. Existing hook cancellation/version guards still reject stale results. Eleven clients and three acceptances now issue 33 reads rather than 132.
+
+Before the fix, four coordinator regressions failed under the extracted uncoordinated behavior. After the fix, 30/30 focused units passed across snapshot requests, presence admission, engagement-state merging and snapshot recovery. The nine coordinator tests passed again after completing the typed API fixture; frontend typecheck and changed-file ESLint passed. Paired API compile also passed. Logs: workspace `.agent/account-engagement/review-{snapshot-green,snapshot-final,web-types,web-lint,auth-green,api-build}.log`. No full browser/unit/integration suites or live provider checks were rerun; the owner authorized focused verification and merge without waiting for CI.
+
+The [focused review-fix ledger](review-fix-results.json) records the source commits and separates this follow-up from the original full-run evidence.

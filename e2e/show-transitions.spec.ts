@@ -143,9 +143,22 @@ async function openStudio(page: Page): Promise<string[]> {
   });
   expect(handoff.ok()).toBeTruthy();
   const { handoff: code } = (await handoff.json()) as { handoff: string };
+  // The board's first HTTP read can render before the shared realtime
+  // transport connects. External transitions below require an admitted socket.
+  const admittedSockets = new Set<object>();
+  page.on('websocket', (socket) => {
+    if (!socket.url().includes('/socket.io/')) return;
+    socket.on('framereceived', (frame) => {
+      if (String(frame.payload).startsWith('40')) admittedSockets.add(socket);
+    });
+    socket.on('close', () => admittedSockets.delete(socket));
+  });
   await page.goto(`${WEB_BASE}/listen#station_handoff=${encodeURIComponent(code)}`);
   await page.waitForURL(`${WEB_BASE}/studio`, { timeout: 15_000 });
   await expect(page.getByTestId('studio-slot-row').first()).toBeVisible();
+  // /listen's player transport closes during navigation to /studio. Wait for
+  // the kiosk's current admitted connection, not that earlier handshake.
+  await expect.poll(() => admittedSockets.size).toBeGreaterThan(0);
   return errors;
 }
 
@@ -294,16 +307,18 @@ test.describe('FE#132 show transitions', () => {
 
     // A hand-over from elsewhere (another kiosk tab / API) reaches the console
     // through the socket, well inside the 15 s poll.
-    await station(page, 'time-in', { rosterId: id('B1') });
+    const checkIn = await station(page, 'time-in', { rosterId: id('B1') });
+    expect(checkIn.ok(), await checkIn.text()).toBeTruthy();
     const t0 = Date.now();
-    await station(page, 'handover', { rosterId: id('B1') });
+    const handover = await station(page, 'handover', { rosterId: id('B1') });
+    expect(handover.ok(), await handover.text()).toBeTruthy();
     await expect(page.getByTestId('studio-transition')).toContainText('Show Bravo is live', { timeout: 5_000 });
     expect(Date.now() - t0).toBeLessThan(5_000);
     await expect(page.getByTestId('studio-console-show')).toHaveText('Show Bravo');
 
-    // W-E11 Lock kiosk: Cancel keeps the session; Confirm locks.
+    // W-E11 Lock this browser: Cancel keeps the session; Confirm locks.
     await page.getByTestId('studio-lock-kiosk').click();
-    await expect(page.getByTestId('studio-lock-dialog')).toContainText('Lock this kiosk?');
+    await expect(page.getByTestId('studio-lock-dialog')).toContainText('Lock this browser?');
     await page.getByTestId('studio-lock-cancel').click();
     await expect(page.getByTestId('studio-console-show')).toBeVisible();
     await page.getByTestId('studio-lock-kiosk').click();

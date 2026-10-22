@@ -1,13 +1,21 @@
 name: CI
 
-# Development CI keeps the fast quality checks. Run Playwright explicitly
-# when browser verification is needed: pnpm test:e2e.
+# Fast feedback for development; coverage/build run for main or on demand.
+# Feature handoff does not wait for remote CI. See docs/testing/verification-policy.md.
 
 on:
   pull_request:
     branches: [dev, main]
+    paths-ignore: ['docs/**', '**/*.md']
   push:
     branches: [dev, main]
+    paths-ignore: ['docs/**', '**/*.md']
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Run coverage and the production build
+        type: boolean
+        default: true
 
 concurrency:
   # A new push supersedes an in-flight run for the same ref.
@@ -19,7 +27,7 @@ permissions:
 
 jobs:
   verify:
-    name: lint · typecheck · unit tests + coverage · build
+    name: lint · typecheck · unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -51,14 +59,16 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
-      - name: Unit tests + coverage
-        # Report-only for now (#72): no thresholds until a baseline exists.
-        # The v8 report prints in the job log on every PR.
+      - name: Unit tests
+        if: github.ref != 'refs/heads/main' && github.base_ref != 'main' && !(github.event_name == 'workflow_dispatch' && inputs.full)
+        run: pnpm run test:unit
+
+      - name: Unit tests + coverage (full validation)
+        if: github.ref == 'refs/heads/main' || github.base_ref == 'main' || (github.event_name == 'workflow_dispatch' && inputs.full)
         run: pnpm run test:coverage
 
-      - name: Build
-        # Last, because it is the slowest and the cheaper gates above catch
-        # most of what would fail here.
+      - name: Production build (full validation)
+        if: github.ref == 'refs/heads/main' || github.base_ref == 'main' || (github.event_name == 'workflow_dispatch' && inputs.full)
         run: pnpm run build
 
   audit:

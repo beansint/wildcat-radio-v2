@@ -97,9 +97,27 @@ pnpm test:e2e
 
 Run unit/coverage commands with the production-default media/upload-host variables
 unset; the CSP unit case asserts the default production host. Restore the common
-local-media variables before the frontend build and Playwright. For a release
-candidate, freeze product/test source, run the complete Playwright suite twice
-consecutively with retries off, and record each JSON result plus owned-fixture
-cleanup. A focused rerun does not substitute for a second complete pass.
+local-media variables before the frontend build and Playwright. Run affected
+specs once after a fix. Full suites are for release preparation or explicit
+requests; repeat only for a demonstrated risk or explicit release requirement.
+Record full-run failures and focused recovery separately, with retries off and
+owned-fixture cleanup. Do not wait for background CI to hand off development
+work; see [verification policy](verification-policy.md).
 
-Playwright validates the explicit local origins and isolated database name before collecting any specs. All 49 spec files run serially. Reports must distinguish failures, explicit skips, and tests blocked by serial setup failures. The local encoder cases decode real AAC/HLS media and check advancing playback time; they do not prove a production booth/network broadcast. Stop only API, frontend and local-service processes you started when validation ends, using the local-service shutdown endpoint so its encoder also stops.
+Playwright validates the explicit local origins and isolated database name before collecting any specs. All spec files run serially. Reports must distinguish failures, explicit skips, and tests blocked by serial setup failures. The local encoder cases decode real AAC/HLS media and check advancing playback time; they do not prove a production booth/network broadcast. Stop only API, frontend and local-service processes you started when validation ends, using the local-service shutdown endpoint so its encoder also stops.
+
+## Actual account links with a captured mail provider
+
+The account verification suite requires `e2e/local-mail-api.cjs` in place of the normal API start command. It loads the compiled sibling Nest application and changes only the external email transport. Signup, durable jobs, generated verification/reset links, sessions and PostgreSQL remain real. It never sends mail to Resend.
+
+Use a loopback PostgreSQL test database on port **55432** for this guarded bootstrap. After migrating, seeding and building the backend, run from the frontend repository with the common variables above:
+
+```powershell
+$env:NODE_ENV='test'
+$env:LOCAL_REALSTACK_SCHEDULES='1'
+$env:WILDCAT_BACKEND_DIR='D:/Workplace/wildcat-radio-v2-workspace/.agent/account-engagement/wildcat-radio-v2-backend'
+$env:AUTH_EMAIL_CAPTURE_PATH='D:/Workplace/wildcat-radio-v2-workspace/.agent/account-engagement/mail-capture.jsonl'
+node e2e/local-mail-api.cjs
+```
+
+Replace the two absolute workspace paths with your local checkout and an untracked `.agent` destination. Set the same capture path in the Playwright terminal. The bootstrap rejects nonlocal origins, non-test database names and capture paths outside `.agent`. Captures contain synthetic short-lived credentials: never commit them, and remove the exact capture file after stopping the owned API. No Resend key or sender is needed. A separate configured-provider check remains necessary before enabling live email in deployment; local acceptance does not certify inbox delivery.

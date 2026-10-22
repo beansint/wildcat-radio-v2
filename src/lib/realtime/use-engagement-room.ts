@@ -9,7 +9,7 @@ import {
   votePoll,
   useListPolls,
 } from "@/lib/api/endpoints/engagement/engagement";
-import { getEpisodeEngagementSnapshot } from "@/lib/api/endpoints/episodes/episodes";
+import { requestEngagementSnapshot } from "./snapshot-requests";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import type { Socket } from "socket.io-client";
 import type {
@@ -124,7 +124,7 @@ export function useEngagementRoom(
     const recovery = recoveryRef.current;
     const token = recovery.begin();
     try {
-      const snapshot = await getEpisodeEngagementSnapshot(episodeId);
+      const snapshot = await requestEngagementSnapshot(episodeId);
       const options = recovery.finish(token);
       if (options) updateState(current => {
         const recovered = mergeEngagementSnapshot(current, snapshot, options);

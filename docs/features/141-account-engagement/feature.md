@@ -21,6 +21,12 @@ See the [QA log](qa-log.md), [test ledger](verification-results.json) and screen
 
 ## Canonical contract
 
+### Review follow-up — 23 October 2026
+
+Verification resend now requires sign-in on the API, matching the existing signed-out UI. Both known and missing addresses receive the same anonymous 401, while signed-in cooldowns remain visible.
+
+Listener and player share `snapshot-requests.ts` for public snapshots. A 50ms burst window coalesces duplicate queue events into one read. Changes observed during a read trigger a fresh follow-up before results are applied; there is no completed-result cache. Throttled reads retry after 61 seconds, at most twice, without waiting for another event. Permanent failures do not retry. Eleven clients and three acceptances now cause 33 reads instead of 132. Regression tests use fake clocks, including missed updates, retry exhaustion, fresh reads and separate episodes; the existing join-acknowledgement/stale-response guards remain in the hooks.
+
 The canonical numbered specification, contract, implementation plan and QA plan live in backend `docs/features/203-account-engagement/`. This implementation fulfills AC-1–16: verification journeys, Pending/Up Next/History and Handled, private submission history and clear quotas, episode-scoped booth pauses, full-height chat with stable reading position, truthful profile/consent state.
 
 Frontend source rules: AGENTS.md; existing shadcn primitives and wc tokens; existing API/auth conventions. No required demographics, custom identity/token system, broad station privilege grant or unrelated redesign. Preserve accessible alerts/testids and mobile/global-player behavior.

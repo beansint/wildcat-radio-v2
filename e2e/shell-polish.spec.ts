@@ -21,12 +21,13 @@ test.describe('public shell layout', () => {
     expect(docHeight).toBeGreaterThanOrEqual(viewport);
   });
 
-  test('SHELL-02: the listen stage is not shoved down onto the footer (sticky, not relative+top)', async ({ page }) => {
+  test('SHELL-02: the listen column sticks without a nested sticky stage or footer overlap', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1100 });
     await page.goto(`${WEB_BASE}/listen`);
     const stage = page.locator('main section.wc-grad-maroon').first();
     await expect(stage).toBeVisible();
-    expect(await stage.evaluate((el) => getComputedStyle(el).position)).toBe('sticky');
+    expect(await stage.evaluate((el) => getComputedStyle(el.parentElement!).position)).toBe('sticky');
+    expect(await stage.evaluate((el) => getComputedStyle(el).position)).not.toBe('sticky');
     const [stageBox, footerBox] = await Promise.all([
       stage.boundingBox(),
       page.locator('footer').boundingBox(),

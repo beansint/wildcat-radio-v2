@@ -13,4 +13,5 @@ export const QueueActDtoAction = {
   QUEUE: 'QUEUE',
   READ: 'READ',
   DECLINE: 'DECLINE',
+  HANDLE: 'HANDLE',
 } as const;

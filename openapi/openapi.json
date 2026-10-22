@@ -779,6 +779,68 @@
         ]
       }
     },
+    "/api/episodes/{episodeId}/queue/mine": {
+      "get": {
+        "operationId": "getMyEpisodeQueue",
+        "parameters": [
+          {
+            "name": "episodeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyEpisodeQueueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read your own submissions and episode allowance",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/episodes/{episodeId}/controls": {
+      "get": {
+        "operationId": "getEpisodeEngagementControls",
+        "parameters": [
+          {
+            "name": "episodeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EpisodeEngagementControlsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read safe engagement restriction flags",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
     "/api/episodes/{id}/queue": {
       "post": {
         "operationId": "submitQueueItem",
@@ -969,6 +1031,47 @@
         "summary": "Soft-hide a chat message",
         "tags": [
           "engagement"
+        ]
+      }
+    },
+    "/api/studio/episodes/{episodeId}/controls": {
+      "put": {
+        "operationId": "updateStudioEngagementControls",
+        "parameters": [
+          {
+            "name": "episodeId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEpisodeEngagementControlsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EpisodeEngagementControlsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Pause or resume current episode engagement",
+        "tags": [
+          "studio"
         ]
       }
     },
@@ -4712,6 +4815,131 @@
           "role"
         ]
       },
+      "MyEpisodeQueueItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "REQUEST",
+              "DEDICATION",
+              "QUESTION"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "recipient": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "QUEUED",
+              "READ",
+              "HANDLED",
+              "CLOSED"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "text",
+          "recipient",
+          "status",
+          "createdAt",
+          "actedAt"
+        ]
+      },
+      "EpisodeQueueBudgetDto": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "nullable": true
+          },
+          "used": {
+            "type": "number"
+          },
+          "remaining": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "limit",
+          "used",
+          "remaining"
+        ]
+      },
+      "MyEpisodeQueueResponseDto": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyEpisodeQueueItemDto"
+            }
+          },
+          "budget": {
+            "$ref": "#/components/schemas/EpisodeQueueBudgetDto"
+          },
+          "historyTruncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "episodeId",
+          "items",
+          "budget",
+          "historyTruncated"
+        ]
+      },
+      "EpisodeEngagementControlsDto": {
+        "type": "object",
+        "properties": {
+          "episodeId": {
+            "type": "string"
+          },
+          "chatPaused": {
+            "type": "boolean"
+          },
+          "submissionsPaused": {
+            "type": "boolean"
+          },
+          "staffChatFrozen": {
+            "type": "boolean"
+          },
+          "staffGuestsDisabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "episodeId",
+          "chatPaused",
+          "submissionsPaused",
+          "staffChatFrozen",
+          "staffGuestsDisabled"
+        ]
+      },
       "SubmitQueueItemDto": {
         "type": "object",
         "properties": {
@@ -4753,7 +4981,8 @@
           },
           "remaining": {
             "type": "number",
-            "description": "Remaining queue submissions available to this listener for the episode"
+            "nullable": true,
+            "description": "Remaining queue submissions; null for unlimited staff"
           }
         },
         "required": [
@@ -4883,6 +5112,17 @@
           "isHidden"
         ]
       },
+      "UpdateEpisodeEngagementControlsDto": {
+        "type": "object",
+        "properties": {
+          "chatPaused": {
+            "type": "boolean"
+          },
+          "submissionsPaused": {
+            "type": "boolean"
+          }
+        }
+      },
       "EngagementUserResponseDto": {
         "type": "object",
         "properties": {
@@ -4939,6 +5179,7 @@
               "PENDING",
               "QUEUED",
               "READ",
+              "HANDLED",
               "DECLINED",
               "EXPIRED",
               "REMOVED"
@@ -4949,6 +5190,11 @@
             "nullable": true
           },
           "actedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "handledAt": {
             "type": "string",
             "format": "date-time",
             "nullable": true
@@ -4971,6 +5217,7 @@
           "status",
           "actedById",
           "actedAt",
+          "handledAt",
           "createdAt",
           "submitter"
         ]
@@ -4992,12 +5239,16 @@
             "items": {
               "$ref": "#/components/schemas/StudioQueueItemResponseDto"
             }
+          },
+          "historyTruncated": {
+            "type": "boolean"
           }
         },
         "required": [
           "episodeId",
           "showName",
-          "items"
+          "items",
+          "historyTruncated"
         ]
       },
       "QueueActDto": {
@@ -5008,7 +5259,8 @@
             "enum": [
               "QUEUE",
               "READ",
-              "DECLINE"
+              "DECLINE",
+              "HANDLE"
             ]
           }
         },
@@ -5028,7 +5280,8 @@
             "enum": [
               "QUEUED",
               "READ",
-              "DECLINED"
+              "DECLINED",
+              "HANDLED"
             ]
           },
           "receipt": {
@@ -6094,6 +6347,10 @@
           "emailVerified": {
             "type": "boolean"
           },
+          "ageBucketContributed": {
+            "type": "boolean",
+            "description": "Whether the anonymous one-time age sample was already contributed; the selected age is not stored on the profile"
+          },
           "notifyEmail": {
             "type": "boolean"
           },
@@ -6123,6 +6380,7 @@
           "class",
           "role",
           "emailVerified",
+          "ageBucketContributed",
           "notifyEmail",
           "notifyInApp",
           "yearLevel",
@@ -6133,6 +6391,14 @@
       "UpdateMeDto": {
         "type": "object",
         "properties": {
+          "demographicsConsent": {
+            "type": "boolean",
+            "description": "Atomically grant or withdraw optional demographics consent with this update"
+          },
+          "expectedDemographicsConsent": {
+            "type": "boolean",
+            "description": "Required when changing demographicsConsent; the state loaded by the form, to reject stale re-grants"
+          },
           "handle": {
             "type": "string"
           },

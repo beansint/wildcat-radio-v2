@@ -22,7 +22,9 @@ import type {
 
 import type {
   CreateReactionDto,
+  EpisodeEngagementControlsDto,
   HideChatMessageResultDto,
+  MyEpisodeQueueResponseDto,
   PollResponseDto,
   QueueSubmissionResponseDto,
   ReactionResponseDto,
@@ -51,6 +53,206 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetMyEpisodeQueueUrl = (episodeId: string,) => {
+
+
+
+
+  return `/api/episodes/${episodeId}/queue/mine`
+}
+
+/**
+ * @summary Read your own submissions and episode allowance
+ */
+export const getMyEpisodeQueue = async (episodeId: string, options?: Parameters<typeof customFetch>[1]): Promise<MyEpisodeQueueResponseDto> => {
+
+  return customFetch<MyEpisodeQueueResponseDto>(getGetMyEpisodeQueueUrl(episodeId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyEpisodeQueueQueryKey = (episodeId: string,) => {
+    return [
+    `/api/episodes/${episodeId}/queue/mine`
+    ] as const;
+    }
+
+
+export const getGetMyEpisodeQueueQueryOptions = <TData = Awaited<ReturnType<typeof getMyEpisodeQueue>>, TError = unknown>(episodeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyEpisodeQueue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyEpisodeQueueQueryKey(episodeId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyEpisodeQueue>>> = ({ signal }) => getMyEpisodeQueue(episodeId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: episodeId !== null && episodeId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyEpisodeQueue>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMyEpisodeQueueQueryResult = NonNullable<Awaited<ReturnType<typeof getMyEpisodeQueue>>>
+export type GetMyEpisodeQueueQueryError = unknown
+
+
+export function useGetMyEpisodeQueue<TData = Awaited<ReturnType<typeof getMyEpisodeQueue>>, TError = unknown>(
+ episodeId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyEpisodeQueue>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyEpisodeQueue>>,
+          TError,
+          Awaited<ReturnType<typeof getMyEpisodeQueue>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMyEpisodeQueue<TData = Awaited<ReturnType<typeof getMyEpisodeQueue>>, TError = unknown>(
+ episodeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyEpisodeQueue>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyEpisodeQueue>>,
+          TError,
+          Awaited<ReturnType<typeof getMyEpisodeQueue>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMyEpisodeQueue<TData = Awaited<ReturnType<typeof getMyEpisodeQueue>>, TError = unknown>(
+ episodeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyEpisodeQueue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Read your own submissions and episode allowance
+ */
+
+export function useGetMyEpisodeQueue<TData = Awaited<ReturnType<typeof getMyEpisodeQueue>>, TError = unknown>(
+ episodeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyEpisodeQueue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMyEpisodeQueueQueryOptions(episodeId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetEpisodeEngagementControlsUrl = (episodeId: string,) => {
+
+
+
+
+  return `/api/episodes/${episodeId}/controls`
+}
+
+/**
+ * @summary Read safe engagement restriction flags
+ */
+export const getEpisodeEngagementControls = async (episodeId: string, options?: Parameters<typeof customFetch>[1]): Promise<EpisodeEngagementControlsDto> => {
+
+  return customFetch<EpisodeEngagementControlsDto>(getGetEpisodeEngagementControlsUrl(episodeId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEpisodeEngagementControlsQueryKey = (episodeId: string,) => {
+    return [
+    `/api/episodes/${episodeId}/controls`
+    ] as const;
+    }
+
+
+export const getGetEpisodeEngagementControlsQueryOptions = <TData = Awaited<ReturnType<typeof getEpisodeEngagementControls>>, TError = unknown>(episodeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEpisodeEngagementControls>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEpisodeEngagementControlsQueryKey(episodeId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEpisodeEngagementControls>>> = ({ signal }) => getEpisodeEngagementControls(episodeId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: episodeId !== null && episodeId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEpisodeEngagementControls>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetEpisodeEngagementControlsQueryResult = NonNullable<Awaited<ReturnType<typeof getEpisodeEngagementControls>>>
+export type GetEpisodeEngagementControlsQueryError = unknown
+
+
+export function useGetEpisodeEngagementControls<TData = Awaited<ReturnType<typeof getEpisodeEngagementControls>>, TError = unknown>(
+ episodeId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEpisodeEngagementControls>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEpisodeEngagementControls>>,
+          TError,
+          Awaited<ReturnType<typeof getEpisodeEngagementControls>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEpisodeEngagementControls<TData = Awaited<ReturnType<typeof getEpisodeEngagementControls>>, TError = unknown>(
+ episodeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEpisodeEngagementControls>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEpisodeEngagementControls>>,
+          TError,
+          Awaited<ReturnType<typeof getEpisodeEngagementControls>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEpisodeEngagementControls<TData = Awaited<ReturnType<typeof getEpisodeEngagementControls>>, TError = unknown>(
+ episodeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEpisodeEngagementControls>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Read safe engagement restriction flags
+ */
+
+export function useGetEpisodeEngagementControls<TData = Awaited<ReturnType<typeof getEpisodeEngagementControls>>, TError = unknown>(
+ episodeId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEpisodeEngagementControls>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetEpisodeEngagementControlsQueryOptions(episodeId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
 
 export const getSubmitQueueItemUrl = (id: string,) => {
 

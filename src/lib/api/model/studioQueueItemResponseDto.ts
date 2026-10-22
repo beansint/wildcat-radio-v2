@@ -25,6 +25,8 @@ export interface StudioQueueItemResponseDto {
   actedById: string | null;
   /** @nullable */
   actedAt: string | null;
+  /** @nullable */
+  handledAt: string | null;
   createdAt: string;
   submitter: EngagementUserResponseDto;
 }

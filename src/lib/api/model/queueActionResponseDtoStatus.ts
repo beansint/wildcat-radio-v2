@@ -13,4 +13,5 @@ export const QueueActionResponseDtoStatus = {
   QUEUED: 'QUEUED',
   READ: 'READ',
   DECLINED: 'DECLINED',
+  HANDLED: 'HANDLED',
 } as const;

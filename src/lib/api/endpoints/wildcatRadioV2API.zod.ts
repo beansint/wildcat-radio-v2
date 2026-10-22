@@ -476,6 +476,49 @@ export const AdminControllerDeactivateResponse = zod.object({
 
 
 /**
+ * @summary Read your own submissions and episode allowance
+ */
+export const GetMyEpisodeQueueParams = zod.object({
+  "episodeId": zod.string()
+})
+
+export const GetMyEpisodeQueueResponse = zod.object({
+  "episodeId": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['REQUEST', 'DEDICATION', 'QUESTION']),
+  "text": zod.string(),
+  "recipient": zod.string().nullable(),
+  "status": zod.enum(['PENDING', 'QUEUED', 'READ', 'HANDLED', 'CLOSED']),
+  "createdAt": zod.iso.datetime({"offset":true}),
+  "actedAt": zod.iso.datetime({"offset":true}).nullable()
+})),
+  "budget": zod.object({
+  "limit": zod.number().nullable(),
+  "used": zod.number(),
+  "remaining": zod.number().nullable()
+}),
+  "historyTruncated": zod.boolean()
+})
+
+
+/**
+ * @summary Read safe engagement restriction flags
+ */
+export const GetEpisodeEngagementControlsParams = zod.object({
+  "episodeId": zod.string()
+})
+
+export const GetEpisodeEngagementControlsResponse = zod.object({
+  "episodeId": zod.string(),
+  "chatPaused": zod.boolean(),
+  "submissionsPaused": zod.boolean(),
+  "staffChatFrozen": zod.boolean(),
+  "staffGuestsDisabled": zod.boolean()
+})
+
+
+/**
  * @summary Submit to the show queue
  */
 export const SubmitQueueItemParams = zod.object({
@@ -497,7 +540,7 @@ export const SubmitQueueItemBody = zod.object({
 export const SubmitQueueItemResponse = zod.object({
   "id": zod.string().describe('Queue item id (cuid)'),
   "status": zod.enum(['PENDING']),
-  "remaining": zod.number().describe('Remaining queue submissions available to this listener for the episode')
+  "remaining": zod.number().nullable().describe('Remaining queue submissions; null for unlimited staff')
 })
 
 
@@ -578,6 +621,27 @@ export const HideChatMessageResponse = zod.object({
 
 
 /**
+ * @summary Pause or resume current episode engagement
+ */
+export const UpdateStudioEngagementControlsParams = zod.object({
+  "episodeId": zod.string()
+})
+
+export const UpdateStudioEngagementControlsBody = zod.object({
+  "chatPaused": zod.boolean().optional(),
+  "submissionsPaused": zod.boolean().optional()
+})
+
+export const UpdateStudioEngagementControlsResponse = zod.object({
+  "episodeId": zod.string(),
+  "chatPaused": zod.boolean(),
+  "submissionsPaused": zod.boolean(),
+  "staffChatFrozen": zod.boolean(),
+  "staffGuestsDisabled": zod.boolean()
+})
+
+
+/**
  * @summary Live engagement queue
  */
 export const GetStudioQueueResponse = zod.object({
@@ -590,16 +654,18 @@ export const GetStudioQueueResponse = zod.object({
   "type": zod.enum(['REQUEST', 'DEDICATION', 'QUESTION']),
   "text": zod.string(),
   "recipient": zod.string().nullable(),
-  "status": zod.enum(['PENDING', 'QUEUED', 'READ', 'DECLINED', 'EXPIRED', 'REMOVED']),
+  "status": zod.enum(['PENDING', 'QUEUED', 'READ', 'HANDLED', 'DECLINED', 'EXPIRED', 'REMOVED']),
   "actedById": zod.string().nullable(),
   "actedAt": zod.iso.datetime({"offset":true}).nullable(),
+  "handledAt": zod.iso.datetime({"offset":true}).nullable(),
   "createdAt": zod.iso.datetime({"offset":true}),
   "submitter": zod.object({
   "id": zod.string().describe('User id (cuid)'),
   "handle": zod.string(),
   "name": zod.string()
 })
-}))
+})),
+  "historyTruncated": zod.boolean()
 })
 
 
@@ -611,12 +677,12 @@ export const ActOnQueueItemParams = zod.object({
 })
 
 export const ActOnQueueItemBody = zod.object({
-  "action": zod.enum(['QUEUE', 'READ', 'DECLINE'])
+  "action": zod.enum(['QUEUE', 'READ', 'DECLINE', 'HANDLE'])
 })
 
 export const ActOnQueueItemResponse = zod.object({
   "id": zod.string().describe('Queue item id (cuid)'),
-  "status": zod.enum(['QUEUED', 'READ', 'DECLINED']),
+  "status": zod.enum(['QUEUED', 'READ', 'DECLINED', 'HANDLED']),
   "receipt": zod.boolean().describe('Whether a private queue receipt is emitted to the submitter')
 })
 
@@ -1070,6 +1136,7 @@ export const UsersControllerGetMeResponse = zod.object({
   "class": zod.enum(['CAMPUS', 'GUEST']),
   "role": zod.enum(['CUSTODIAN', 'MODERATOR', 'LISTENER']),
   "emailVerified": zod.boolean(),
+  "ageBucketContributed": zod.boolean().describe('Whether the anonymous one-time age sample was already contributed; the selected age is not stored on the profile'),
   "notifyEmail": zod.boolean(),
   "notifyInApp": zod.boolean(),
   "yearLevel": zod.string().nullable().describe('Stored year level; PATCH accepts an integer or null'),
@@ -1082,6 +1149,8 @@ export const UsersControllerGetMeResponse = zod.object({
  * @summary Update current user profile
  */
 export const UsersControllerUpdateMeBody = zod.object({
+  "demographicsConsent": zod.boolean().optional().describe('Atomically grant or withdraw optional demographics consent with this update'),
+  "expectedDemographicsConsent": zod.boolean().optional().describe('Required when changing demographicsConsent; the state loaded by the form, to reject stale re-grants'),
   "handle": zod.string().optional(),
   "avatarUrl": zod.string().nullish(),
   "notifyEmail": zod.boolean().optional(),
@@ -1100,6 +1169,7 @@ export const UsersControllerUpdateMeResponse = zod.object({
   "class": zod.enum(['CAMPUS', 'GUEST']),
   "role": zod.enum(['CUSTODIAN', 'MODERATOR', 'LISTENER']),
   "emailVerified": zod.boolean(),
+  "ageBucketContributed": zod.boolean().describe('Whether the anonymous one-time age sample was already contributed; the selected age is not stored on the profile'),
   "notifyEmail": zod.boolean(),
   "notifyInApp": zod.boolean(),
   "yearLevel": zod.string().nullable().describe('Stored year level; PATCH accepts an integer or null'),

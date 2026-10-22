@@ -6,6 +6,9 @@ import type { GetStreamManifest200Reason } from "@/lib/api/model";
 import { acquireSocket, type SocketLease } from "./socket";
 import { getEpisodeBrowserIdentity, listeningJoinPayload } from "./episode-browser-id";
 import { computePresenceTransition } from "./presence-actions";
+import { getEpisodeEngagementSnapshot } from "@/lib/api/endpoints/episodes/episodes";
+import { authoritativeUpNext } from "./engagement-state";
+import { joinPresenceWithSnapshot } from "./presence-recovery";
 
 export interface StreamStatusEvent {
   episodeId: string | null;
@@ -30,16 +33,7 @@ interface PresenceState {
   /** undefined = the event did not carry the field (older server). */
   socketAutoEndsAt: string | null | undefined;
   socketEpisodeId: string | null | undefined;
-  /**
-   * The most recent queue item, for the global player's "up next" peek.
-   *
-   * Deliberately sourced from the socket that presence has ALREADY opened
-   * rather than from a fetch: there is no REST endpoint for the queue, so the
-   * only alternative would be opening a WebSocket on every route — precisely
-   * the regression FE#40 fixed. The consequence is that "up next" appears
-   * while you are listening and is simply absent when you are not, which is
-   * the honest trade rather than a gap.
-   */
+  /** Oldest publicly queued submission, recovered while listening. */
   upNext: UpNextPeek | null;
 }
 
@@ -90,6 +84,19 @@ export function useStreamPresence(
     let cancelled = false;
     let socket: Socket | null = null;
     let lease: SocketLease<Socket> | null = null;
+    let queueVersion = 0;
+    let joinVersion = 0;
+
+    async function refreshQueue() {
+      if (!episodeId) return;
+      const version = ++queueVersion;
+      try {
+        const snapshot = await getEpisodeEngagementSnapshot(episodeId);
+        if (!cancelled && version === queueVersion && snapshot.episodeId === episodeId) {
+          setState(prev => ({ ...prev, upNext: authoritativeUpNext(snapshot.upNext)[0] ?? null }));
+        }
+      } catch { /* A reconnect or later invalidation retries without fabricating a queue. */ }
+    }
 
     // Never render presence-derived state from a previous episode while the
     // new room is joining.
@@ -107,11 +114,16 @@ export function useStreamPresence(
       }));
     }
 
-    function onQueueUpNext(event: UpNextPeek) {
-      setState((prev) => ({ ...prev, upNext: event }));
+    function onQueueUpNext() {
+      void refreshQueue();
+    }
+    function onQueueChanged(event: { episodeId: string }) {
+      if (event.episodeId === episodeId) void refreshQueue();
     }
 
     function onDisconnect() {
+      queueVersion++;
+      joinVersion++;
       setState(EMPTY);
     }
 
@@ -120,9 +132,11 @@ export function useStreamPresence(
     // handshake cycle elsewhere) must re-emit `listening:join` or the
     // listener silently falls out of the live count until a full reload.
     async function joinPresence(target: string) {
+      const version = ++joinVersion;
       const identity = await getEpisodeBrowserIdentity(target);
-      if (!cancelled && socket?.connected && prevEpisodeId.current === target) {
-        socket.emit("listening:join", listeningJoinPayload(target, identity));
+      const isCurrent = () => !cancelled && version === joinVersion && !!socket?.connected && prevEpisodeId.current === target;
+      if (socket && isCurrent()) {
+        joinPresenceWithSnapshot(socket, listeningJoinPayload(target, identity), isCurrent, () => { void refreshQueue(); });
       }
     }
 
@@ -144,6 +158,7 @@ export function useStreamPresence(
 
         s.on("stream:status", onStreamStatus);
         s.on("queue:up-next", onQueueUpNext);
+        s.on("queue:changed", onQueueChanged);
         s.on("connect", onConnect);
         s.on("disconnect", onDisconnect);
 
@@ -169,6 +184,7 @@ export function useStreamPresence(
         }
         socket.off("stream:status", onStreamStatus);
         socket.off("queue:up-next", onQueueUpNext);
+        socket.off("queue:changed", onQueueChanged);
         socket.off("connect", onConnect);
         socket.off("disconnect", onDisconnect);
       }

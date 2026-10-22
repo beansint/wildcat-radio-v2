@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { EngagementErrorNotice } from "@/components/listen/engagement-error-notice";
 import { Label } from "@/components/ui/label";
+import type { SubmissionBudget } from "@/lib/engagement/api";
+import { quotaMessage } from "@/lib/engagement/queue-policy";
 
 interface EngagementSheetProps {
   open: boolean;
@@ -31,6 +33,8 @@ interface EngagementSheetProps {
   submitting: boolean;
   submitError: string | null;
   disabled: boolean;
+  restriction?: string | null;
+  budget?: SubmissionBudget;
 }
 
 const requestSchema = z.object({
@@ -68,6 +72,8 @@ export const EngagementSheet = memo(function EngagementSheet({
   submitting,
   submitError,
   disabled,
+  restriction,
+  budget,
 }: EngagementSheetProps) {
   const [lifetime] = useState(() => new AbortController());
   const gate = useEngagementGate();
@@ -96,8 +102,8 @@ export const EngagementSheet = memo(function EngagementSheet({
   }, [dedForm.formState.errors, qaForm.formState.errors, reqForm.formState.errors, tab]);
 
   async function submitPayload(payload: SubmitQueueItemDto, reset: () => void, success: string) {
-    if (disabled) {
-      setLocalError("No live episode right now.");
+    if (disabled || restriction || budget?.remaining === 0) {
+      setLocalError(restriction ?? (budget?.remaining === 0 ? "You have used this episode's submission allowance." : "No live episode right now."));
       return;
     }
     setLocalError(null);
@@ -148,6 +154,7 @@ export const EngagementSheet = memo(function EngagementSheet({
   }
 
   const alert = localError ?? submitError ?? activeError;
+  const cannotSubmit = submitting || disabled || !!restriction || budget?.remaining === 0;
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -179,6 +186,8 @@ export const EngagementSheet = memo(function EngagementSheet({
             </div>
           ) : (
             <>
+              <p className="mb-3 text-sm" data-testid="sheet-submission-budget">{budget ? quotaMessage(budget) : "Guests can send 2 submissions per episode; campus listeners can send 5. Requests, dedications, and questions share the allowance. Closed or handled items do not restore it."}</p>
+              {restriction && <p role="status" className="mb-3 rounded-xl bg-muted p-3 text-sm">{restriction} Existing submissions remain available in My submissions.</p>}
               <div className="wc-seg mb-4" role="tablist" aria-label="Message type">
                 <button
                   id="engagement-tab-req-btn"
@@ -238,7 +247,7 @@ export const EngagementSheet = memo(function EngagementSheet({
                       className="mb-3"
                       placeholder="e.g. Ere - Juan Karlos"
                       data-testid="engagement-request-song"
-                      disabled={submitting || disabled}
+                      disabled={cannotSubmit}
                       {...reqForm.register("song")}
                     />
                     <Label htmlFor="req-note">
@@ -249,14 +258,14 @@ export const EngagementSheet = memo(function EngagementSheet({
                       className="mb-4"
                       placeholder="Birthday greet sana"
                       data-testid="engagement-request-note"
-                      disabled={submitting || disabled}
+                      disabled={cannotSubmit}
                       {...reqForm.register("note")}
                     />
                     <Button
                       type="submit"
                       className="wc-btn-block"
                       data-testid="engagement-submit"
-                      disabled={submitting || disabled}
+                      disabled={cannotSubmit}
                     >
                       Send request
                     </Button>
@@ -274,7 +283,7 @@ export const EngagementSheet = memo(function EngagementSheet({
                       rows={2}
                       placeholder="Para sa BSIT-3A, padayon mga 'dong!"
                       data-testid="engagement-dedication-body"
-                      disabled={submitting || disabled}
+                      disabled={cannotSubmit}
                       {...dedForm.register("body")}
                     />
                     <Label htmlFor="ded-to">
@@ -285,14 +294,14 @@ export const EngagementSheet = memo(function EngagementSheet({
                       className="mb-4"
                       placeholder="BSIT-3A"
                       data-testid="engagement-dedication-to"
-                      disabled={submitting || disabled}
+                      disabled={cannotSubmit}
                       {...dedForm.register("to")}
                     />
                     <Button
                       type="submit"
                       className="wc-btn-block"
                       data-testid="engagement-submit"
-                      disabled={submitting || disabled}
+                      disabled={cannotSubmit}
                     >
                       Send dedication
                     </Button>
@@ -310,14 +319,14 @@ export const EngagementSheet = memo(function EngagementSheet({
                       rows={3}
                       placeholder="What's your favorite OPM album of all time?"
                       data-testid="engagement-qa-body"
-                      disabled={submitting || disabled}
+                      disabled={cannotSubmit}
                       {...qaForm.register("body")}
                     />
                     <Button
                       type="submit"
                       className="wc-btn-block"
                       data-testid="engagement-submit"
-                      disabled={submitting || disabled}
+                      disabled={cannotSubmit}
                     >
                       Ask the DJ
                     </Button>
@@ -326,7 +335,7 @@ export const EngagementSheet = memo(function EngagementSheet({
               )}
 
               <p className="wc-help mt-3">
-                The broadcast comes first. Your message goes privately to the DJ&apos;s queue. You&apos;ll get a receipt only when it&apos;s used on air.
+                Your message goes privately to the booth. Only queued items appear publicly in Up Next. My submissions shows its latest status even when receipts are turned off.
               </p>
             </>
           )}

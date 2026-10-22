@@ -106,7 +106,6 @@ describe("mergeEngagementSnapshot", () => {
     ]);
     expect(result.upNext.map((item) => item.id)).toEqual([
       "queue-snapshot",
-      "queue-live",
     ]);
     expect(result.hype).toEqual({...snapshot().hype,stale:false});
     expect(result.pinnedTopic).toEqual({
@@ -165,6 +164,14 @@ describe("mergeEngagementSnapshot", () => {
 
     expect(result).toBe(current);
   });
+});
+
+it("takes the authoritative oldest five, with deterministic ID ties, without resurrecting handled live entries", () => {
+  const snap = snapshot();
+  snap.upNext = Array.from({ length: 7 }, (_, i) => ({ ...snap.upNext[0], id: `q${7-i}`, createdAt: "2026-08-29T07:58:00.000Z" }));
+  const current = { ...emptyEngagementState("episode-a"), upNext: [{ id: "handled", type: "REQUEST", text: "Handled while loading" }] };
+  const result = mergeEngagementSnapshot(current, snap, { preserveLiveIds: new Set(["handled"]) });
+  expect(result.upNext.map(item => item.id)).toEqual(["q1", "q2", "q3", "q4", "q5"]);
 });
 
 it('hydrates authoritative measured bins instead of lifetime reaction totals', () => {

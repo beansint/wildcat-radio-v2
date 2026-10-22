@@ -98,6 +98,15 @@ export interface ManifestControl {
 }
 
 export async function mockManifest(page: Page, initial: ManifestBody | number): Promise<ManifestControl> {
+  // Additive episode reads must stay within these synthetic-episode fixtures.
+  await page.route('**/api/episodes/*/controls', route => json(route, {
+    episodeId: new URL(route.request().url()).pathname.split('/')[3],
+    chatPaused: false, submissionsPaused: false, staffChatFrozen: false, staffGuestsDisabled: false,
+  }));
+  await page.route('**/api/episodes/*/queue/mine', route => json(route, {
+    episodeId: new URL(route.request().url()).pathname.split('/')[3],
+    items: [], budget: { limit: 2, used: 0, remaining: 2 }, historyTruncated: false,
+  }));
   let current = initial;
   let failures = 0;
   let requests = 0;

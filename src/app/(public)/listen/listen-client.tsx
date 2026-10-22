@@ -12,6 +12,11 @@ import { MobileChatInput } from "@/components/listen/mobile-chat-input";
 import { EngagementSheet } from "@/components/listen/engagement-sheet";
 import { pushToast } from "@/components/listen/toast";
 import type { SheetTab } from "@/components/listen/engagement-tiles";
+import { MySubmissions } from "@/components/listen/my-submissions";
+import { useSubmissions } from "@/lib/engagement/use-submissions";
+import { useEpisodeControls } from "@/lib/engagement/use-episode-controls";
+import { listenerRestrictions } from "@/lib/engagement/queue-policy";
+import { getApiErrorMessage } from "@/lib/api/error-message";
 import {
   clearStationHandoff,
   consumeStationHandoff,
@@ -30,14 +35,18 @@ export function ListenClient() {
   const grace = useLiveGrace(manifestAvailability === "ready" ? status : null, episodeId);
   const isLive = grace.open;
   const engagementEpisodeId = grace.episodeId;
+  const authKey = session ? JSON.stringify([
+    session.session.id, session.user.id, session.user.emailVerified,
+    session.user.class, session.user.role,
+  ]) : null;
   const engagement = useEngagementRoom(
     engagementEpisodeId,
     pushToast,
-    session ? JSON.stringify([
-      session.session.id, session.user.id, session.user.emailVerified,
-      session.user.class, session.user.role,
-    ]) : null,
+    authKey,
   );
+  const controls = useEpisodeControls(engagementEpisodeId);
+  const restrictions = listenerRestrictions(controls.data, session?.user);
+  const submissions = useSubmissions(engagementEpisodeId, session?.user.id, authKey);
 
   useEffect(() => {
     const handoff = readStationHandoff(window.location.hash);
@@ -104,7 +113,8 @@ export function ListenClient() {
     <div className="flex-1 flex flex-col" style={{ background: "var(--muted)" }}>
       <main className="wc-container w-full py-4 grid gap-4 lg:grid-cols-[1.04fr_.96fr] lg:items-start">
         {/* Stage - left column (sticky on desktop) */}
-        <Stage
+        <div className="grid min-w-0 gap-4 lg:sticky lg:top-[72px]">
+          <Stage
           onOpenSheet={openSheet}
           pinnedTopic={engagement.pinnedTopic}
           hype={engagement.hype}
@@ -115,6 +125,18 @@ export function ListenClient() {
           isLive={isLive}
           signalInterrupted={grace.interrupted}
         />
+          {isLive && (restrictions.chat || restrictions.submissions || restrictions.voting) && <div className="wc-card wc-card-pad text-sm" role="status" data-testid="engagement-restrictions">
+            {[...new Set([restrictions.chat, restrictions.submissions, restrictions.voting].filter(Boolean))].map(message => <p key={message} className="mb-1">{message}</p>)}
+            <p className="wc-help">Playback and fixed reactions remain available.</p>
+          </div>}
+          {session && submissions.historyEpisodeId && <MySubmissions
+            data={submissions.data}
+            loading={submissions.isPending}
+            error={submissions.error ? getApiErrorMessage(submissions.error) : null}
+            onRetry={() => { void submissions.refetch(); }}
+            currentEpisode={!!engagementEpisodeId}
+          />}
+        </div>
 
         {/* Chat column - right column */}
         <ChatColumn
@@ -132,6 +154,8 @@ export function ListenClient() {
           pollsLoading={engagement.pollsLoading}
           pollsError={engagement.pollsError}
           isLive={isLive}
+          chatRestriction={restrictions.chat}
+          voteRestriction={restrictions.voting}
         />
       </main>
 
@@ -143,6 +167,7 @@ export function ListenClient() {
         onReact={reactFire}
         reacting={engagement.reacting}
         isLive={isLive}
+        chatRestriction={restrictions.chat}
       />
 
       {/* Engagement bottom sheet + overlay */}
@@ -157,6 +182,8 @@ export function ListenClient() {
         submitting={engagement.submitQueuePending}
         submitError={engagement.submitQueueError}
         disabled={!isLive}
+        restriction={restrictions.submissions}
+        budget={submissions.data?.budget}
       />
 
       {handoffState === "error" && (

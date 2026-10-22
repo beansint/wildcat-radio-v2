@@ -282,7 +282,7 @@ test.describe('engagement UI', () => {
     await unlockStudio(studio, request);
     await studio.getByText(requestText).waitFor({ state: 'visible', timeout: 15_000 });
     await actOnQueueItem(studio, requestText, 'Queue');
-    await expect(studio.getByText(/sent receipt/i)).toBeVisible({ timeout: 10_000 });
+    await expect(studio.getByText(/Receipt sent/i)).toBeVisible({ timeout: 10_000 });
     await expect(listener.getByText('Your request is up next.')).toBeVisible({ timeout: 10_000 });
     await expect(listener.getByTestId('engagement-up-next').getByText(requestText)).toBeVisible({ timeout: 15_000 });
 
@@ -301,7 +301,6 @@ test.describe('engagement UI', () => {
     const studio = await studioContext.newPage();
     const declinedText = `FE7 declined ${uniqueId()}`;
     const secondText = `FE7 second ${uniqueId()}`;
-    const overBudgetText = `FE7 over ${uniqueId()}`;
 
     await login(listener, listenerUser.email);
     await listener.goto('/listen');
@@ -319,8 +318,10 @@ test.describe('engagement UI', () => {
 
     await submitRequest(listener, secondText);
     await expect(listener.getByText(/Sent to the booth/i).first()).toBeVisible({ timeout: 10_000 });
-    await submitRequest(listener, overBudgetText);
-    await expect(listener.getByRole('alert').filter({ hasText: /Queue limit reached/i })).toBeVisible({ timeout: 10_000 });
+    await expect(listener.getByTestId('submission-budget')).toContainText('0 of 2', { timeout: 10_000 });
+    await listener.getByTestId('engagement-open-request').click();
+    await expect(listener.getByTestId('engagement-submit')).toBeDisabled();
+    await expect(listener.getByTestId('sheet-submission-budget')).toContainText('do not restore');
 
     await listenerContext.close();
     await studioContext.close();

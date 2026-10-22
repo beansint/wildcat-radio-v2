@@ -16,9 +16,10 @@ interface MobileChatInputProps {
   onReact: () => Promise<unknown>;
   reacting: boolean;
   isLive: boolean;
+  chatRestriction?: string | null;
 }
 
-export const MobileChatInput = memo(function MobileChatInput({ onOpenSheet, onSend, onReact, reacting, isLive }: MobileChatInputProps) {
+export const MobileChatInput = memo(function MobileChatInput({ onOpenSheet, onSend, onReact, reacting, isLive, chatRestriction }: MobileChatInputProps) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -33,7 +34,7 @@ export const MobileChatInput = memo(function MobileChatInput({ onOpenSheet, onSe
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const text = value.trim();
-    if (!text || sending) return;
+    if (!text || sending || chatRestriction) return;
     setError(null);
     setSending(true);
     try {
@@ -83,7 +84,7 @@ export const MobileChatInput = memo(function MobileChatInput({ onOpenSheet, onSe
             value={value}
             onChange={(e) => setValue(e.target.value)}
             data-testid="listen-chat-input"
-            disabled={sending}
+            disabled={sending || !!chatRestriction}
           />
           <Button
             type="button"
@@ -104,12 +105,13 @@ export const MobileChatInput = memo(function MobileChatInput({ onOpenSheet, onSe
             variant="maroon"
             size="icon"
             aria-label="Send"
-            disabled={sending}
+            disabled={sending || !!chatRestriction}
           >
             <Send className="w-5 h-5" aria-hidden="true" />
           </Button>
         </form>
       )}
+      {mounted && gate === "ok" && chatRestriction && <p role="status" className="wc-container pb-2 text-xs wc-muted">{chatRestriction}</p>}
       {mounted && gate === "ok" && error && (
         <EngagementErrorNotice error={error} className="wc-container pb-2" />
       )}

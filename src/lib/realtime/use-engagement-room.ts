@@ -29,7 +29,6 @@ import {
   type LiveChatMessage,
   type PinnedTopic,
   type QueueReceipt,
-  type UpNextItem,
 } from "./engagement-state";
 
 export type { HypeState, LiveChatMessage, PinnedTopic, QueueReceipt, UpNextItem } from "./engagement-state";
@@ -182,6 +181,7 @@ export function useEngagementRoom(
     function onQueueReceipt(event: QueueReceipt) {
       if (!receiptMatchesEpisode(event, episodeId)) return;
       updateState((current) => ({ ...current, receipts: [event, ...current.receipts] }));
+      void queryClient.invalidateQueries({ queryKey: ["my-submissions", episodeId] });
       if (event.status === "QUEUED") {
         pushToast?.("Your request is up next.");
       } else if (event.status === "READ") {
@@ -189,12 +189,13 @@ export function useEngagementRoom(
       }
     }
 
-    function onQueueUpNext(event: UpNextItem) {
-      markLiveEvent({ id: event.id });
-      updateState((current) => {
-        if (current.upNext.some((item) => item.id === event.id)) return current;
-        return { ...current, upNext: [event, ...current.upNext].slice(0, 5) };
-      });
+    function onQueueUpNext() {
+      // Acceptance order is not submission order, and an event cannot refill
+      // the fifth slot after a removal. Recover the complete public list.
+      void refetchSnapshot();
+    }
+    function onQueueChanged(event: { episodeId: string }) {
+      if (event.episodeId === episodeId) void refetchSnapshot();
     }
 
     function onPollUpdated(event: PollResponseDto) {
@@ -240,6 +241,7 @@ export function useEngagementRoom(
         s.on("chat:hidden", onChatHidden);
         s.on("queue:receipt", onQueueReceipt);
         s.on("queue:up-next", onQueueUpNext);
+        s.on("queue:changed", onQueueChanged);
         s.on("poll:updated", onPollUpdated);
         s.on("hype:tick", onHypeTick);
         s.on("topic:pinned", onTopicPinned);
@@ -295,6 +297,7 @@ export function useEngagementRoom(
         socket.off("chat:hidden", onChatHidden);
         socket.off("queue:receipt", onQueueReceipt);
         socket.off("queue:up-next", onQueueUpNext);
+        socket.off("queue:changed", onQueueChanged);
         socket.off("poll:updated", onPollUpdated);
         socket.off("hype:tick", onHypeTick);
         socket.off("topic:pinned", onTopicPinned);
@@ -317,8 +320,9 @@ export function useEngagementRoom(
       return { targetEpisodeId, result };
     },
     onSuccess: ({ targetEpisodeId, result }: { targetEpisodeId: string; result: QueueSubmissionResponseDto }) => {
+      void queryClient.invalidateQueries({ queryKey: ["my-submissions", targetEpisodeId] });
       if (targetEpisodeId === episodeId) {
-        pushToast?.(`Sent to the booth. ${result.remaining} left this episode.`);
+        pushToast?.(result.remaining == null ? "Sent to the booth." : `Sent to the booth. ${result.remaining} left this episode.`);
       }
     },
   });

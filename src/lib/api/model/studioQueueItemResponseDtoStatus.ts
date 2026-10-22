@@ -13,6 +13,7 @@ export const StudioQueueItemResponseDtoStatus = {
   PENDING: 'PENDING',
   QUEUED: 'QUEUED',
   READ: 'READ',
+  HANDLED: 'HANDLED',
   DECLINED: 'DECLINED',
   EXPIRED: 'EXPIRED',
   REMOVED: 'REMOVED',

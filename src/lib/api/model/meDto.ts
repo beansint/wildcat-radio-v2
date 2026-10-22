@@ -18,6 +18,8 @@ export interface MeDto {
   class: MeDtoClass;
   role: MeDtoRole;
   emailVerified: boolean;
+  /** Whether the anonymous one-time age sample was already contributed; the selected age is not stored on the profile */
+  ageBucketContributed: boolean;
   notifyEmail: boolean;
   notifyInApp: boolean;
   /**

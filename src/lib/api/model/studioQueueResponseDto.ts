@@ -16,4 +16,5 @@ export interface StudioQueueResponseDto {
      */
   showName: string | null;
   items: StudioQueueItemResponseDto[];
+  historyTruncated: boolean;
 }

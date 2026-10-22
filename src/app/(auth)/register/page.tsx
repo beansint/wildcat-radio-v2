@@ -14,7 +14,9 @@ import { ChevronLeft, Building2, CheckCheck } from 'lucide-react';
 import { z } from 'zod/v4';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { signUp } from '@/lib/auth/client';
+import { authCallbackUrl } from '@/lib/auth/account-flows';
+import { signUp, useSession } from '@/lib/auth/client';
+import { VerificationResend } from '@/components/auth/verification-resend';
 import { AuthBrandPane } from '@/components/auth/auth-brand-pane';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +25,7 @@ import { Label } from '@/components/ui/label';
 const registerSchema = z
   .object({
     email:    z.email('Please enter a valid email'),
-    handle:   z.string().min(2, 'Handle must be at least 2 characters').max(30, 'Handle too long').regex(/^[a-zA-Z0-9_]+$/, 'Handle can only contain letters, numbers, and underscores'),
+    handle:   z.string().min(3, 'Handle must be at least 3 characters').max(30, 'Handle too long').regex(/^[a-z0-9_]+$/, 'Use lowercase letters, numbers, and underscores'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     confirm:  z.string(),
     terms:    z.boolean().refine((v) => v, 'You must accept the terms'),
@@ -38,6 +40,7 @@ type RegisterValues = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [done,      setDone]      = useState(false);
+  const { data: session } = useSession();
 
   const { register, handleSubmit, formState: { isSubmitting } } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
@@ -56,7 +59,7 @@ export default function RegisterPage() {
           handle:      values.handle,
           class:       'GUEST' as const,
           role:        'LISTENER' as const,
-          callbackURL: '/',
+          callbackURL: authCallbackUrl('verification'),
         } as Parameters<typeof signUp.email>[0]);
         if (result.error) {
           setFormError(result.error.message ?? 'Registration failed. Please try again.');
@@ -98,9 +101,10 @@ export default function RegisterPage() {
               </div>
               <h1 className="text-2xl font-extrabold mb-2">Welcome, wildcat!</h1>
               <p className="wc-muted text-sm mb-4">
-                Your account is active. Check your inbox to verify your email — you can still browse and react while you wait.
+                Your registration request is complete. Check your inbox for verification. Email delivery is not confirmed; if nothing arrives, sign in and request a fresh link. You can browse and react while you wait.
               </p>
-              <Link href="/" className="wc-btn wc-btn-primary wc-btn-block">
+              <VerificationResend email={session?.user.email} />
+              <Link href="/" className="wc-btn wc-btn-primary wc-btn-block mt-4">
                 Go to the station
               </Link>
             </div>

@@ -1,77 +1,57 @@
-import { expect, test, request, type APIRequestContext } from '@playwright/test';
-import { API_BASE, WEB_BASE, assertLocalPlaywrightEnvironment, execBackendTsx } from './_fixtures';
+import { expect } from '@playwright/test';
+import { API_BASE } from './_fixtures';
+import { test, openProfile, setProfileConsent, saveProfile, profileData, activeProfileConsents } from './_profile-fixtures';
 
-let api: APIRequestContext;
-let userId = '';
-const email = `profile_${Date.now()}@cit.edu`;
-const password = 'Password123!';
-
-test.beforeAll(async () => {
-  assertLocalPlaywrightEnvironment(process.env);
-  api = await request.newContext({ baseURL: API_BASE, extraHTTPHeaders: { Origin: WEB_BASE } });
-  const signup = await api.post('/api/auth/sign-up/email', { data: { email, password, name: 'Profile fixture', handle: `profile_${Date.now()}` } });
-  expect(signup.ok()).toBeTruthy();
-  userId = (await signup.json()).user.id;
-  execBackendTsx(`import { PrismaService } from './src/prisma/prisma.service'; const p=new PrismaService(); async function main(){ await p.user.update({where:{id:${JSON.stringify(userId)}},data:{emailVerified:true,class:'CAMPUS'}}); await p.$disconnect(); } main().catch(e=>{console.error(e);process.exit(1)});`);
-});
-test.afterAll(async () => {
-  if (userId) execBackendTsx(`import { PrismaService } from './src/prisma/prisma.service'; const p=new PrismaService(); async function main(){ await p.consentRecord.deleteMany({where:{userId:${JSON.stringify(userId)}}}); await p.user.delete({where:{id:${JSON.stringify(userId)}}}); await p.$disconnect(); } main().catch(e=>{console.error(e);process.exit(1)});`);
-  await api.dispose();
-});
-test.beforeEach(async ({ page }) => {
-  expect((await api.patch('/api/users/me', { data: { yearLevel: 2, college: 'CCS — Computer Studies', gender: 'Woman', notifyEmail: false, notifyInApp: false } })).ok()).toBeTruthy();
-  await page.goto('/login');
-  await page.getByTestId('auth-email').fill(email);
-  await page.getByTestId('auth-password').fill(password);
-  await page.getByTestId('auth-submit').click();
-  await page.waitForURL(url => url.pathname === '/');
-  await page.goto('/profile');
+test.beforeEach(async ({ page, profileAccount }) => {
+  await openProfile(page, profileAccount);
   await expect(page.getByTestId('profile-year')).toContainText('2nd year');
+  await expect(page.getByRole('button', { name: 'Woman', exact: true })).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('AC-1: opt-out survives reload and demographics cannot write pending preference edits', async ({ page }) => {
+test('AC-1: opt-out survives reload and demographics cannot write pending preference edits', async ({ page, profileAccount }) => {
   await expect(page.getByTestId('notif-inapp')).not.toBeChecked();
   await page.getByTestId('notif-inapp').click();
   await page.getByRole('button', { name: 'Man', exact: true }).click();
-  await page.getByTestId('profile-consent').click();
-  const patch = page.waitForRequest(r => r.method() === 'PATCH' && r.url().endsWith('/api/users/me'));
-  await page.getByTestId('profile-save').click();
-  const body = (await patch).postDataJSON();
+  await setProfileConsent(page, true);
+  const body = await saveProfile(page);
   expect(body).not.toHaveProperty('notifyInApp');
   expect(body).not.toHaveProperty('notifyEmail');
-  await expect(page.getByTestId('profile-save')).toBeEnabled();
-  const stored = await (await api.get('/api/users/me')).json();
-  expect(stored).toMatchObject({ notifyEmail: false, notifyInApp: false, gender: 'Man' });
+  expect(body.gender).toBe('male');
+  expect(await profileData(profileAccount)).toMatchObject({ notifyEmail: false, notifyInApp: false, gender: 'male' });
   await page.reload();
   await expect(page.getByTestId('notif-inapp')).not.toBeChecked();
   await expect(page.getByRole('button', { name: 'Man', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('profile-consent')).toBeChecked();
 });
 
-test('AC-2: cleared demographics are persisted as explicit null and stay cleared after reload', async ({ page }) => {
-  await page.getByTestId('profile-year').click();
-  await page.getByRole('option', { name: 'Select year', exact: true }).click();
-  await page.getByTestId('profile-college').click();
-  await page.getByRole('option', { name: 'Select college', exact: true }).click();
-  await page.getByRole('button', { name: 'Woman', exact: true }).click();
-  await page.getByTestId('profile-consent').click();
-  await page.getByTestId('profile-save').click();
+test('AC-2: clear works without consent, persists nulls, and stays cleared after reload', async ({ page, profileAccount }) => {
+  await expect(page.getByTestId('profile-consent')).not.toBeChecked();
+  await page.getByRole('button', { name: 'Clear optional fields', exact: true }).click();
+  // Clear prepares the form; persistence is explicit through Save.
+  expect(await profileData(profileAccount)).toMatchObject({ yearLevel: '2', college: 'CCS — Computer Studies', gender: 'female' });
   await expect(page.getByTestId('profile-save')).toBeEnabled();
-  expect(await (await api.get('/api/users/me')).json()).toMatchObject({ yearLevel: null, college: null, gender: null, notifyInApp: false, notifyEmail: false });
+  const body = await saveProfile(page);
+  expect(body).toMatchObject({ yearLevel: null, college: null, gender: null });
+  expect(body).not.toHaveProperty('demographicsConsent');
+  expect(await profileData(profileAccount)).toMatchObject({ yearLevel: null, college: null, gender: null, notifyInApp: false, notifyEmail: false });
+  expect((await activeProfileConsents(profileAccount)).length).toBe(0);
   await page.reload();
   await expect(page.getByTestId('profile-year')).toContainText('Select year');
   await expect(page.getByTestId('profile-college')).toContainText('Select college');
   await expect(page.getByRole('button', { name: 'Woman', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('profile-consent')).not.toBeChecked();
 });
 
-test('AC-3: keyboard preference save writes only supported preference and preserves demographics', async ({ page }) => {
+test('AC-3: keyboard preference save writes only supported preference and preserves demographics', async ({ page, profileAccount }) => {
   await page.getByTestId('notif-inapp').focus();
   await page.keyboard.press('Space');
-  const patch = page.waitForRequest(r => r.method() === 'PATCH' && r.url().endsWith('/api/users/me'));
-  await expect(page.getByTestId('profile-notification-save')).toBeVisible();
+  const pending = page.waitForResponse(response => response.url() === `${API_BASE}/api/users/me` && response.request().method() === 'PATCH');
   await page.getByTestId('profile-notification-save').click();
-  expect((await patch).postDataJSON()).toEqual({ notifyInApp: true });
+  const response = await pending;
+  expect(response.ok()).toBe(true);
+  expect(response.request().postDataJSON()).toEqual({ notifyInApp: true });
   await expect(page.getByTestId('profile-notification-saved')).toBeVisible();
-  expect(await (await api.get('/api/users/me')).json()).toMatchObject({ yearLevel: '2', college: 'CCS — Computer Studies', gender: 'Woman', notifyInApp: true, notifyEmail: false });
+  expect(await profileData(profileAccount)).toMatchObject({ yearLevel: '2', college: 'CCS — Computer Studies', gender: 'female', notifyInApp: true, notifyEmail: false });
   await page.reload();
   await expect(page.getByTestId('notif-inapp')).toBeChecked();
   await expect(page.getByTestId('notif-email')).toHaveCount(0);

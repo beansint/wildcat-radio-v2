@@ -32,6 +32,7 @@ import {
 import type { ConsentRecordDto } from "@/lib/api/model";
 import { API_BASE_URL } from "@/lib/api/fetcher";
 import { getApiErrorMessage } from "@/lib/api/error-message";
+import { hasDemographicsConsent } from "@/lib/auth/account-flows";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -48,15 +49,6 @@ import {
 const DPO_EMAIL = "privacy@wildcatradio.example";
 const ERASE_CONFIRMATION = "DELETE";
 
-/** The latest grant wins, matching the server's rule. */
-function isConsenting(consents: ConsentRecordDto[] | undefined): boolean {
-  if (!consents) return false;
-  const demographics = consents
-    .filter((c) => c.scope === "DEMOGRAPHICS")
-    .sort((a, b) => new Date(b.grantedAt).getTime() - new Date(a.grantedAt).getTime());
-  return demographics[0] !== undefined && demographics[0].withdrawnAt === null;
-}
-
 export default function PrivacyCentrePage() {
   const queryClient = useQueryClient();
   const consentsQuery = useListMyConsents<ConsentRecordDto[]>();
@@ -72,7 +64,7 @@ export default function PrivacyCentrePage() {
   const [eraseError, setEraseError] = useState<string | null>(null);
   const eraseTriggerRef = useRef<HTMLButtonElement>(null);
 
-  const consenting = isConsenting(consentsQuery.data);
+  const consenting = hasDemographicsConsent(consentsQuery.data);
   // A failed read means we do NOT know the state. Rendering the switch as off
   // would tell a listener who HAS consented that their data is not being
   // counted — a privacy centre stating the wrong processing status is worse

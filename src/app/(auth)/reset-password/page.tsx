@@ -71,11 +71,11 @@ function ResetForm() {
     },
   );
 
-  if (!token) {
+  if (!token || searchParams.get('error')) {
     return (
       <div className="wc-auth-formcard text-center py-6">
         <h1 className="text-2xl font-extrabold mb-2">Invalid link</h1>
-        <p className="wc-muted text-sm mb-4">Use the link from your reset email.</p>
+        <p className="wc-muted text-sm mb-4">This reset link is missing, expired, or invalid. Request a fresh link; links expire after one hour.</p>
         <Link href="/forgot-password" className="wc-btn wc-btn-outline wc-btn-block">
           Request a new link
         </Link>
@@ -91,7 +91,7 @@ function ResetForm() {
           <CheckCheck className="w-7 h-7" aria-hidden="true" />
         </div>
         <h1 className="text-2xl font-extrabold mb-2">Password updated!</h1>
-        <p className="wc-muted text-sm">Redirecting you to sign in…</p>
+        <p className="wc-muted text-sm">Your previous sessions have ended. Redirecting you to sign in…</p>
       </div>
     );
   }

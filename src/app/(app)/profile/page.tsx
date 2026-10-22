@@ -1,16 +1,12 @@
 "use client";
 
 /**
- * /profile — 1:1 from docs/frontend-design-basis-prototype/listener/profile.html
- *
- * - Profile card: avatar, @handle, class chip, Active pill
- * - Verification banner when !emailVerified
- * - About you: year level + college selects (CAMPUS = full opacity, GUEST = muted)
- * - Age range + gender as segmented pick buttons (aria-pressed)
- * - Demographics consent checkbox gates About-you Save
- * - On Save: PATCH /users/me, POST /users/me/consent {granted:true}, POST /analytics/age-bucket
- * - Notifications card: wc-switch toggles
- * - Quick links: standing (stub), notifications, sign out
+ * /profile — account basics and an optional audience survey.
+ * Verification and moderation standing are separate; handles remain editable.
+ * Survey values and intentional consent changes share one profile PATCH;
+ * clearing fields never requires consent. Anonymous age contribution is a
+ * separate one-time request with explicit partial-failure feedback.
+ * Notification preferences save independently from survey edits.
  */
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -23,11 +19,14 @@ import {
   LogOut,
   ChevronRight,
   AlertTriangle,
-  RefreshCw,
-  Check,
 } from 'lucide-react';
 import { useSession, signOut, type SessionUser } from '@/lib/auth/client';
 import { customFetch } from '@/lib/api/fetcher';
+import { ProfileBasics } from '@/components/auth/profile-basics';
+import { VerificationResend } from '@/components/auth/verification-resend';
+import { hasDemographicsConsent, normalizeGender } from '@/lib/auth/account-flows';
+import { useListMyConsents, getListMyConsentsQueryKey } from '@/lib/api/endpoints/compliance/compliance';
+import type { ConsentRecordDto } from '@/lib/api/model';
 import {
   useUsersControllerGetMe,
   usersControllerUpdateMe,
@@ -48,7 +47,7 @@ import {
 /* ------------------------------------------------------------------ types */
 
 type AgeBucket = '18-20' | '21-23' | '24+' | 'prefer-not-to-say';
-type Gender    = 'Woman' | 'Man' | 'Non-binary' | 'Prefer not to say';
+type Gender = 'female' | 'male' | 'nonbinary' | 'other' | 'prefer-not-to-say';
 
 const AGE_BUCKETS: { label: string; value: AgeBucket }[] = [
   { label: '18–20', value: '18-20' },
@@ -57,7 +56,7 @@ const AGE_BUCKETS: { label: string; value: AgeBucket }[] = [
   { label: 'Prefer not to say', value: 'prefer-not-to-say' },
 ];
 
-const GENDERS: Gender[] = ['Woman', 'Man', 'Non-binary', 'Prefer not to say'];
+const GENDERS: { value: Gender; label: string }[] = [{ value: 'female', label: 'Woman' }, { value: 'male', label: 'Man' }, { value: 'nonbinary', label: 'Non-binary' }, { value: 'other', label: 'Other' }, { value: 'prefer-not-to-say', label: 'Prefer not to say' }];
 
 const COLLEGES = [
   'CCS — Computer Studies',
@@ -78,6 +77,7 @@ export default function ProfilePage() {
 
   // Fetch the full user profile (editable projection)
   const { data: profile, isLoading, isError, error, refetch } = useUsersControllerGetMe({ query: { retry: false } });
+  const consentsQuery = useListMyConsents<ConsentRecordDto[]>();
 
   /* ---- about-you form state ---- */
   const [hydratedId, setHydratedId] = useState<string | null>(null);
@@ -95,8 +95,7 @@ export default function ProfilePage() {
   const [saving,          setSaving]          = useState(false);
   const [saveError,       setSaveError]       = useState<string | null>(null);
   const [ageBucketFired,  setAgeBucketFired]  = useState(false);
-  const [resendingVerify, setResendingVerify] = useState(false);
-  const [verifySent,      setVerifySent]      = useState(false);
+  const [surveySaved, setSurveySaved] = useState(false);
 
   // Hydrate form from profile on load (valid one-shot sync from server state — not cascading)
   useEffect(() => {
@@ -105,50 +104,56 @@ export default function ProfilePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- valid form hydration from server state
     setYearLevel(profile.yearLevel ?? '');
     setCollege(profile.college ?? '');
-    setGender((profile.gender ?? '') as Gender | '');
+    setGender(normalizeGender(profile.gender) as Gender | '');
+    setAgeBucketFired(profile.ageBucketContributed);
     setNotifyInApp(profile.notifyInApp);
     setHydratedId(profile.id);
   }, [profile]);
+  useEffect(() => {
+    if (!consentsQuery.data) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate the persisted privacy choice
+    setConsent(hasDemographicsConsent(consentsQuery.data));
+  }, [consentsQuery.data]);
 
   const isCampus = (profile?.class ?? sessionUser?.class) === 'CAMPUS';
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaveError(null);
+    setSurveySaved(false);
     setSaving(true);
 
     try {
-      // 1. PATCH /users/me
+      // Profile and consent commit together; withdrawal never requires a grant.
       await usersControllerUpdateMe({
         yearLevel: yearLevel ? Number(yearLevel) : null,
         college: college || null,
         gender: gender || null,
+        ...(consent !== hasDemographicsConsent(consentsQuery.data) ? {
+          demographicsConsent: consent,
+          expectedDemographicsConsent: hasDemographicsConsent(consentsQuery.data),
+        } : {}),
       });
-
-      // 2. POST consent (if checked)
-      if (consent) {
-        await customFetch('/api/users/me/consent', {
-          method: 'POST',
-          body: JSON.stringify({ scope: 'DEMOGRAPHICS', granted: true }),
-        });
-      }
+      await queryClient.invalidateQueries({ queryKey: getListMyConsentsQueryKey() });
 
       // 3. POST age-bucket (once per user; disable re-fire after success)
-      if (ageBucket && !ageBucketFired) {
+      if (consent && ageBucket && !ageBucketFired) {
         try {
           await customFetch('/api/analytics/age-bucket', {
             method: 'POST',
             body: JSON.stringify({ bucket: ageBucket }),
           });
           setAgeBucketFired(true);
-        } catch {
-          // idempotent — already recorded; ignore
-          setAgeBucketFired(true);
+        } catch (error) {
+          await queryClient.invalidateQueries({ queryKey: getUsersControllerGetMeQueryKey() });
+          setSaveError(`Your profile and consent were saved, but the age sample could not be confirmed. ${error instanceof Error ? error.message : 'Please try again.'}`);
+          return;
         }
       }
 
       // Invalidate getMe query so nav/session reflects changes
       await queryClient.invalidateQueries({ queryKey: getUsersControllerGetMeQueryKey() });
+      setSurveySaved(true);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Save failed. Please try again.');
     } finally {
@@ -174,22 +179,6 @@ export default function ProfilePage() {
   async function handleSignOut() {
     await signOut();
     router.replace('/');
-  }
-
-  async function handleResendVerify() {
-    setResendingVerify(true);
-    try {
-      // Better Auth resend verification — no-op if already verified
-      await customFetch('/api/auth/send-verification-email', {
-        method: 'POST',
-        body: JSON.stringify({ email: sessionUser?.email }),
-      });
-      setVerifySent(true);
-    } catch {
-      setVerifySent(true); // show success regardless to avoid enumeration
-    } finally {
-      setResendingVerify(false);
-    }
   }
 
   const emailVerified = profile?.emailVerified ?? sessionUser?.emailVerified ?? true;
@@ -233,28 +222,13 @@ export default function ProfilePage() {
           className="wc-card wc-card-pad flex items-start gap-3 mb-4"
           style={{ background: 'color-mix(in srgb,var(--amber) 12%,var(--card))', borderColor: 'color-mix(in srgb,var(--amber) 40%,var(--border))' }}
           data-testid="profile-verify-banner"
-          role="alert"
         >
           <AlertTriangle className="w-5 h-5 flex-none mt-0.5" style={{ color: 'var(--amber)' }} aria-hidden="true" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm">Verify your email to join the chat</p>
             <p className="wc-help mt-0">Check your inbox for the verification link.</p>
           </div>
-          {verifySent ? (
-            <span className="text-xs font-semibold" style={{ color: 'var(--success)' }}>Sent!</span>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleResendVerify}
-              disabled={resendingVerify}
-              className="flex-none"
-            >
-              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
-              Resend
-            </Button>
-          )}
+          <VerificationResend email={profile?.email ?? sessionUser?.email} />
         </div>
       )}
 
@@ -271,10 +245,11 @@ export default function ProfilePage() {
           </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className="wc-chip-ghost">{userClass}</span>
-            <span className="wc-pill wc-pill-ok"><Check className="w-3.5 h-3.5" aria-hidden="true" />Active</span>
           </div>
         </div>
       </div>
+
+      <ProfileBasics handle={handle} email={profile.email} emailVerified={emailVerified} userClass={userClass} />
 
       {/* ── ABOUT YOU ── */}
       <form className="wc-card wc-card-pad mb-4" onSubmit={handleSave}>
@@ -282,7 +257,7 @@ export default function ProfilePage() {
           About you <span className="wc-muted font-normal text-sm">(optional)</span>
         </h2>
         <p className="wc-help mb-4">
-          Helps the DJs read the room. Aggregate-only — your identity is never published.
+          Optional audience survey. Details stay on your profile and are counted only with your consent. Your identity is never published in reports.
         </p>
 
         {saveError && (
@@ -292,7 +267,8 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className={`grid sm:grid-cols-2 gap-4 mb-4 transition-opacity ${isCampus ? '' : 'opacity-50'}`}>
+        {!isCampus && <p className="wc-help mb-3">Year level and college are for verified campus accounts. You can leave or clear these optional details.</p>}
+        <div className={`grid sm:grid-cols-2 gap-4 mb-4 ${isCampus ? '' : 'hidden'}`}>
           <div>
             <Label htmlFor="yearLevel">Year level</Label>
             {/* Radix Select forbids an empty-string SelectItem, so use a sentinel
@@ -347,17 +323,19 @@ export default function ProfilePage() {
                 aria-pressed={ageBucket === value}
                 onClick={() => setAgeBucket(ageBucket === value ? '' : value)}
                 data-testid="profile-age"
+                disabled={ageBucketFired}
               >
                 {label}
               </Button>
             ))}
           </div>
+          <p className="wc-help">{ageBucketFired ? 'Your one-time anonymous age sample has already been recorded.' : 'Age is an anonymous one-time sample, not a saved profile field. After contribution, it cannot be linked back to you, changed, or withdrawn.'}</p>
         </div>
 
         <div className="mb-4">
           <span className="wc-label">Gender</span>
           <div className="flex flex-wrap gap-2">
-            {GENDERS.map((g) => (
+            {GENDERS.map(({ value: g, label }) => (
               <Button
                 key={g}
                 type="button"
@@ -367,7 +345,7 @@ export default function ProfilePage() {
                 onClick={() => setGender(gender === g ? '' : g)}
                 data-testid="profile-gender"
               >
-                {g}
+                {label}
               </Button>
             ))}
           </div>
@@ -377,26 +355,29 @@ export default function ProfilePage() {
         <label className="flex items-start gap-2 text-sm wc-muted mb-4">
           <Checkbox
             checked={consent}
+            disabled={consentsQuery.isLoading || consentsQuery.isError}
             onCheckedChange={(v) => setConsent(v === true)}
             data-testid="profile-consent"
             className="mt-1 flex-none"
           />
           <span>
-            I agree to share this information anonymously to help the station understand its audience.
-            Aggregate-only — your identity is never published.
+            Count my optional details in anonymous audience reports. Uncheck and save to withdraw consent; you can also clear the fields below.
           </span>
         </label>
 
         <Button
           type="submit"
           variant="default"
-          disabled={saving || !consent}
+          disabled={saving || consentsQuery.isLoading || consentsQuery.isError}
           data-testid="profile-save"
         >
           <Save className="w-4 h-4" aria-hidden="true" />
           {saving ? 'Saving…' : 'Save'}
         </Button>
-        <p className="wc-help">Aggregate-only — your identity is never published.</p>
+        <Button type="button" variant="outline" className="ml-2" disabled={saving} onClick={() => { setYearLevel(''); setCollege(''); setGender(''); setAgeBucket(''); setConsent(false); setSurveySaved(false); }}>Clear optional fields</Button>
+        {consentsQuery.isError && <p role="alert" className="wc-help text-destructive">Could not load your consent. <Button type="button" variant="outline" size="sm" onClick={() => void consentsQuery.refetch()}>Try again</Button></p>}
+        {surveySaved && <p role="status" className="wc-help">Optional details saved. {consent ? 'Consent is active.' : 'Consent is withdrawn.'}</p>}
+        <p className="wc-help">Clear prepares the form; Save applies it. <Link href="/my-data" className="underline">Manage your data and consent history</Link>.</p>
       </form>
 
       {/* ── NOTIFICATIONS ── */}

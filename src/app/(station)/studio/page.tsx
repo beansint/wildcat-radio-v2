@@ -4,32 +4,23 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
-  Check,
   Flame,
-  Heart,
-  HelpCircle,
-  Inbox,
   LogOut,
-  Megaphone,
   MessageCircle,
-  Music,
   Pin,
   Radio,
   RefreshCw,
   Send,
   WifiOff,
-  X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import {
-  actOnQueueItem,
   clearStationSession,
   closePoll,
   createPoll,
   getStationSession,
-  getStudioQueue,
   postBoothChat,
   setPinnedTopic,
   getGetStudioTodayQueryKey,
@@ -39,8 +30,6 @@ import { getApiErrorMessage } from "@/lib/api/error-message";
 import type {
   ChatMessageResponseDto,
   PollResponseDto,
-  QueueActDtoAction,
-  StudioQueueItemResponseDtoType,
   StudioTodayDto,
 } from "@/lib/api/model";
 import { acquireSocket, type SocketLease } from "@/lib/realtime/socket";
@@ -72,6 +61,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SubmissionInbox } from "@/components/studio/submission-inbox";
+import { StudioEngagementControls } from "@/components/studio/engagement-controls";
+import { ChatFrame, NewMessagesJump } from "@/components/listen/chat-frame";
+import { actOnSubmission, getConsoleQueue, type QueueAction } from "@/lib/engagement/api";
+import { queueActionMessage } from "@/lib/engagement/queue-policy";
 import { episodeTransition, openShowName } from "@/lib/studio/show-transition";
 
 /** How long the hand-over announcement stays up (FE#132 F4). */
@@ -103,15 +97,6 @@ const chatSchema = z.object({
 type PollForm = z.input<typeof pollSchema>;
 type PinForm = z.infer<typeof pinSchema>;
 type ChatForm = z.infer<typeof chatSchema>;
-
-const TYPE_META: Record<
-  StudioQueueItemResponseDtoType,
-  { icon: typeof Music; iconClass: string; label: string }
-> = {
-  REQUEST: { icon: Music, iconClass: "wc-ti-req", label: "Request" },
-  DEDICATION: { icon: Heart, iconClass: "wc-ti-ded", label: "Dedication" },
-  QUESTION: { icon: HelpCircle, iconClass: "wc-ti-qa", label: "Q&A" },
-};
 
 /** First truthy message wins — keeps each form to a single role="alert" region. */
 function firstError(...messages: Array<string | null | undefined>) {
@@ -152,7 +137,6 @@ export default function StudioPage() {
   // dialog the attendance table does. (Toasts go through the app-wide host in
   // `StreamProvider`; see `components/listen/toast.tsx`.)
   const [subDialogOpen, setSubDialogOpen] = useState(false);
-  const feedRef = useRef<HTMLDivElement | null>(null);
 
   // Cookie-backed session check. `GET /studio/session` always resolves 200 with
   // `{ active }` — `active: true` means the httpOnly `wc_station` cookie is
@@ -228,7 +212,7 @@ export default function StudioPage() {
     queryKey: ["studio-queue", today?.episode?.id ?? null],
     enabled: unlocked && !!today?.episode && today.episode.id !== endedEpisodeId,
     refetchInterval: 5_000,
-    queryFn: () => getStudioQueue(),
+    queryFn: () => getConsoleQueue(),
   });
 
   const episodeId = unlocked && today?.episode?.id !== endedEpisodeId ? (today?.episode?.id ?? null) : null;
@@ -454,20 +438,11 @@ export default function StudioPage() {
     };
   }, [episodeId, addChatMessage]);
 
-  // Also depends on `mode`: the chat feed (and `feedRef`) unmounts while
-  // Attendance is shown, so this effect doesn't run for messages that
-  // arrive off-screen. Re-running it when switching back to Console
-  // catches the feed up to the latest message instead of leaving it
-  // wherever it happened to be mounted last.
-  useEffect(() => {
-    feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight });
-  }, [messages, mode]);
-
   const actMutation = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: QueueActDtoAction }) =>
-      actOnQueueItem(id, { action }),
+    mutationFn: ({ id, action }: { id: string; action: QueueAction }) =>
+      actOnSubmission(id, action),
     onSuccess: async (result) => {
-      setStatus(result.receipt ? `Marked ${result.status.toLowerCase()} and sent receipt.` : "Declined silently.");
+      setStatus(queueActionMessage(result));
       await queryClient.invalidateQueries({ queryKey: ["studio-queue"] });
     },
     onError: (error) => setStatus(getApiErrorMessage(error)),
@@ -649,7 +624,7 @@ export default function StudioPage() {
               </Button>
               <Button type="button" variant="ghost" size="sm" data-testid="studio-lock-kiosk" onClick={() => setLockOpen(true)}>
                 <LogOut className="h-4 w-4" aria-hidden="true" />
-                Lock kiosk
+                Lock this browser
               </Button>
             </div>
           </header>
@@ -666,16 +641,8 @@ export default function StudioPage() {
             </div>
           )}
 
+          {episodeId && <StudioEngagementControls key={episodeId} episodeId={episodeId} />}
           <div className="wc-card-pad">
-            <div className="mb-3 flex items-center gap-2">
-              <Inbox className="h-5 w-5 text-gold" aria-hidden="true" />
-              <h2 className="font-extrabold">Inbox</h2>
-              <span className="wc-chip text-[.7rem] py-0.5">{queue?.items.length ?? 0}</span>
-              <span className="ml-auto text-xs wc-muted">
-                Decline is silent · receipts only on positive outcomes
-              </span>
-            </div>
-
             {queueQuery.error && <FormAlert message={getApiErrorMessage(queueQuery.error)} />}
             {status && (
               <div role="status" className="mb-3 mt-3 rounded-md bg-muted p-3 text-sm font-semibold first:mt-0">
@@ -683,70 +650,13 @@ export default function StudioPage() {
               </div>
             )}
 
-            <div className="wc-stack" data-testid="studio-queue">
-              {queueQuery.isLoading ? (
-                <div className="text-sm wc-muted">Loading queue…</div>
-              ) : queue?.items.length ? (
-                queue.items.map((item) => {
-                  const meta = TYPE_META[item.type];
-                  const Icon = meta.icon;
-                  return (
-                    <article key={item.id} className="wc-card wc-card-pad">
-                      <div className="flex items-start gap-2">
-                        <span className={`wc-typeicon ${meta.iconClass}`}>
-                          <Icon aria-hidden="true" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="mb-1 flex flex-wrap items-center gap-2">
-                            <span className="text-xs font-bold uppercase wc-muted">{meta.label}</span>
-                            <span className="text-xs font-semibold wc-muted">{item.status}</span>
-                          </div>
-                          <p className="text-sm">
-                            {item.text} · <span style={{ color: "var(--gold)" }}>@{item.submitter.handle}</span>
-                          </p>
-                          {item.recipient && <p className="mt-1 text-xs wc-muted">For {item.recipient}</p>}
-                        </div>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => actMutation.mutate({ id: item.id, action: "QUEUE" })}
-                          disabled={actMutation.isPending || item.status !== "PENDING"}
-                        >
-                          <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                          Queue
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => actMutation.mutate({ id: item.id, action: "READ" })}
-                          disabled={actMutation.isPending || item.status !== "PENDING"}
-                        >
-                          <Megaphone className="h-3.5 w-3.5" aria-hidden="true" />
-                          Read
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => actMutation.mutate({ id: item.id, action: "DECLINE" })}
-                          disabled={actMutation.isPending || item.status !== "PENDING"}
-                        >
-                          <X className="h-3.5 w-3.5" aria-hidden="true" />
-                          Decline
-                        </Button>
-                      </div>
-                    </article>
-                  );
-                })
-              ) : (
-                <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm wc-muted">
-                  When the inbox is empty, you&apos;re all caught up — listeners&apos; messages land here privately.
-                </div>
-              )}
-            </div>
+            <SubmissionInbox
+              key={episodeId ?? "idle"}
+              queue={queue}
+              loading={queueQuery.isLoading}
+              pending={actMutation.isPending}
+              onAct={(id, action) => actMutation.mutate({ id, action })}
+            />
           </div>
         </section>
 
@@ -945,7 +855,6 @@ export default function StudioPage() {
         <aside className="min-w-0 lg:sticky lg:top-4 lg:self-start">
           <ChatCard
             messages={messages}
-            feedRef={feedRef}
             chatForm={chatForm}
             chatAlert={chatAlert}
             onSubmit={(values) => boothChatMutation.mutate(values)}
@@ -962,9 +871,9 @@ export default function StudioPage() {
       <AlertDialog open={lockOpen} onOpenChange={setLockOpen}>
         <AlertDialogContent data-testid="studio-lock-dialog">
           <AlertDialogHeader>
-            <AlertDialogTitle>Lock this kiosk?</AlertDialogTitle>
+            <AlertDialogTitle>Lock this browser?</AlertDialogTitle>
             <AlertDialogDescription>
-              The show keeps running. DJs will need the WildCat Studio app to open this screen again.
+              Playback and the show continue. This clears access only in this browser. Open the dashboard from the WildCat Studio app to regain access.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -977,7 +886,7 @@ export default function StudioPage() {
                 clearSession();
               }}
             >
-              {clearSessionMutation.isPending ? "Locking…" : "Lock kiosk"}
+              {clearSessionMutation.isPending ? "Locking…" : "Lock this browser"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1001,7 +910,6 @@ export default function StudioPage() {
 
 function ChatCard({
   messages,
-  feedRef,
   chatForm,
   chatAlert,
   onSubmit,
@@ -1009,7 +917,6 @@ function ChatCard({
   showName,
 }: {
   messages: ChatMessageResponseDto[];
-  feedRef: RefObject<HTMLDivElement | null>;
   chatForm: ReturnType<typeof useForm<ChatForm>>;
   chatAlert: string | null;
   onSubmit: (values: ChatForm) => void;
@@ -1017,24 +924,25 @@ function ChatCard({
   showName: string | null;
 }) {
   const boothLabel = showName ?? "Booth";
+  const messageIds = useMemo(() => messages.map(message => message.id), [messages]);
   return (
-    <section className="wc-card wc-card-pad flex max-h-[70vh] flex-col">
-      <h2 className="mb-3 flex items-center gap-2 font-extrabold">
+    <ChatFrame title="Booth chat" messageIds={messageIds} heading={<h2 className="flex items-center gap-2 font-extrabold">
         <MessageCircle className="h-4 w-4 text-gold" aria-hidden="true" />
         Chat
-      </h2>
-      <div ref={feedRef} className="wc-chatfeed hide-scrollbar flex-1 overflow-y-auto" style={{ minHeight: 240 }}>
+      </h2>}>
+      {({ feedRef, onScroll, unread, jumpToLatest, focused }) => <>
+      <div ref={feedRef} onScroll={onScroll} tabIndex={-1} aria-live={unread ? "off" : "polite"} data-testid="studio-chat-feed" className="wc-chatfeed hide-scrollbar min-h-0 flex-1 overflow-y-auto p-3" style={focused ? undefined : { minHeight: 240, maxHeight: "60dvh" }}>
         {messages.length === 0 ? (
           <p className="text-sm wc-muted">No messages yet — listener chat will appear here live.</p>
         ) : (
           messages.map((message) =>
             message.asBooth ? (
-              <div key={message.id} className="wc-msg booth">
+              <div key={message.id} className="wc-msg booth" data-chat-message-id={message.id}>
                 <div className="who">🎙 {boothLabel}</div>
                 <div className="body">{message.content}</div>
               </div>
             ) : (
-              <div key={message.id} className="wc-msg">
+              <div key={message.id} className="wc-msg" data-chat-message-id={message.id}>
                 <div className="who">
                   <span className="name">@{message.author?.handle ?? "listener"}</span>
                 </div>
@@ -1045,8 +953,9 @@ function ChatCard({
         )}
       </div>
 
+      <NewMessagesJump unread={unread} onJump={jumpToLatest} />
       <form
-        className="mt-3 border-t border-border pt-3"
+        className="shrink-0 border-t border-border p-3 pb-[max(.75rem,env(safe-area-inset-bottom))]"
         noValidate
         onSubmit={chatForm.handleSubmit(onSubmit)}
       >
@@ -1073,6 +982,7 @@ function ChatCard({
           <FormAlert message={chatAlert} />
         </div>
       </form>
-    </section>
+      </>}
+    </ChatFrame>
   );
 }

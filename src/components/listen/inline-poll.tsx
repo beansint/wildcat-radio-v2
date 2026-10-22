@@ -43,7 +43,7 @@ export function InlinePoll({
 
   return (
     <div
-      className="wc-card wc-card-pad my-1"
+      className="wc-card wc-card-pad my-1 shrink-0"
       style={{ borderColor: "var(--maroon)" }}
       data-testid="engagement-poll"
     >

@@ -76,7 +76,7 @@ export const Stage = memo(function Stage({
           : "There is no listener stream available right now.";
 
   return (
-    <section className="wc-grad-maroon wc-watermark text-white rounded-2xl relative overflow-hidden shadow-xl lg:sticky lg:top-[72px]">
+    <section className="wc-grad-maroon wc-watermark text-white rounded-2xl relative overflow-hidden shadow-xl">
       <div className="p-5 md:p-6">
 
         {/* Live badge + listener count */}
@@ -186,7 +186,7 @@ export const Stage = memo(function Stage({
             </div>
             <div className="grid gap-2">
               {upNext.map((item) => (
-                <div key={item.id} className="text-sm">
+                <div key={item.id} className="text-sm" data-testid="public-up-next-item">
                   <span className="font-extrabold text-gold">{item.type.toLowerCase()}</span>{" "}
                   <span>{item.text}</span>
                   {item.recipient && <span className="text-white/65"> · for {item.recipient}</span>}

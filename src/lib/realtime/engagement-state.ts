@@ -34,6 +34,12 @@ export interface UpNextItem {
   text: string;
   recipient?: string | null;
   by?: string | null;
+  createdAt?: string;
+}
+
+/** Both public surfaces consume a complete snapshot, never acceptance order. */
+export function authoritativeUpNext<T extends { id: string; createdAt: string }>(items: readonly T[]): T[] {
+  return [...items].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)).slice(0, 5);
 }
 
 export interface PinnedTopic {
@@ -141,18 +147,14 @@ export function mergeEngagementSnapshot(
       removedIds,
     ),
     livePolls: mergeById(snapshot.polls, current.livePolls, preserveLiveIds, removedIds),
-    upNext: mergeById(
-      snapshot.upNext.map((item) => ({
+    upNext: authoritativeUpNext(snapshot.upNext).map((item) => ({
         id: item.id,
         type: item.type,
         text: item.text,
         recipient: item.recipient,
         by: item.by,
+        createdAt: item.createdAt,
       })),
-      current.upNext,
-      preserveLiveIds,
-      removedIds,
-    ),
     pinnedTopic: activePin((options.preservePin ?? options.preserveLiveScalars) ? current.pinnedTopic : snapshotPin),
     hype: (options.preserveHype ?? options.preserveLiveScalars) ? current.hype : snapshotHype,
   };

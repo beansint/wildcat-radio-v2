@@ -31,3 +31,12 @@ Final first-scope evidence:
 - Coordinator independently captured actual-stack A→B RED (Bob UI chat persisted Alice) and confirmed repaired author Bob, both sessions valid, and uninterrupted audio. Its full strict-guard report and combined-cache run are recorded in the coordinator's evidence, not claimed as this branch's mocked coverage.
 
 Follow-up scope authorized by coordinator: remove the remaining private-history 10-second interval with owner-safe quiet invalidation and bounded disconnected/error recovery. This was discovered during final campus-budget reconciliation and is a separate commit after the evidence above.
+
+Private-history follow-up RED/GREEN:
+
+- Original healthy-minute test made five reads where one initial read was expected. After removing the interval and using quiet invalidation, it stays at the settled initial count and renders CLOSED without a receipt/toast.
+- A connected socket without private admission initially stopped all recovery (two reads remained two); repaired recovery continues with bounded jitter until the backend's matching private hint arrives, then becomes quiet. A reconnect discards that proof and resumes bounded recovery until readmitted.
+- A private hint arriving before the session/owner view mounted was lost (an extra HTTP recovery read appeared). Per-connection admission caching now retains that proof without retaining it across disconnects/identity rotation.
+- New targeted browser suite: 5/5 passed, including failed HTTP read recovery and an old A response settling after B signs in. Fresh touched lint/typecheck and socket unit suite 6/6 passed. Final project checks are appended after completion.
+- Healthy turnover RED exposed per-episode readiness losing valid user-room proof (seven reads instead of five); a per-connection WeakSet fixes it. OFF_AIR initial `episodeId:null` admission before the owner loads also has a RED/GREEN regression. Null refreshes the currently scoped history, while string action hints remain episode-filtered.
+- Final private-history suite after the null contract: 5/5 passed (9.7 seconds), including reconnect proof reset. Final fresh touched lint/typecheck and optimized production build passed. The project-wide `pnpm test` rerun after adding private history passed all 425 tests / 53 files, zero lint errors and the same six unrelated baseline warnings.

@@ -10,4 +10,8 @@ The provider exposes its successful manifest observation count through StreamCon
 
 The separate backportable socket identity fix keeps handshake ownership outside remounted pages. It observes settled Better Auth session/user/role data, rotates an existing transport on changes, and creates no idle transport. Audio and the status provider remain persistent.
 
-No deployment, production load, provider credentials, broker or Redis changes are included. Existing private submission history cadence and Studio attendance reads are outside this issue.
+Private submission history also has no healthy periodic HTTP read. The quiet `queue:mine-changed {episodeId}` event invalidates the owner-scoped persisted history, including CLOSED outcomes and receipt opt-outs, without a toast. The initial hint has `episodeId:null`, including while OFF_AIR; it establishes private-channel readiness only after backend user-room admission and session revalidation, and refreshes whichever owner history is active. Action hints carry their episode ID and only refresh matching history. A tiny per-socket WeakSet preserves an early admission hint until the owner view mounts and resets on every connection boundary. User-room readiness persists across healthy episode turnover. Until readiness is proven, or while a history read fails, bounded jittered recovery remains active even on a connected transport. Ended history uses an initial/final read, focus recovery and quiet invalidation. Owner/episode cleanup cancels old reads.
+
+Deploy backend #210 before the web where possible. An older server cannot establish the new private readiness signal; the web continues bounded fallback instead of falsely assuming healthy delivery.
+
+No deployment, production load, provider credentials, broker or Redis changes are included. Studio attendance cadence remains outside this issue.

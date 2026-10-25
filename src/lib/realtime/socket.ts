@@ -84,16 +84,29 @@ export class SocketLeaseManager<T extends Disconnectable> {
   }
 }
 
+const privateAdmissions = new WeakSet<Socket>();
+
+/** Admission may arrive before the identity-scoped history view mounts. */
+export function hasPrivateAdmission(socket: Socket): boolean {
+  return privateAdmissions.has(socket);
+}
+
 async function createSocket(): Promise<Socket> {
   if (typeof window === "undefined") {
     throw new Error("acquireSocket() must only be called in the browser");
   }
   const { io } = await import("socket.io-client");
-  return io(resolveSocketUrl(process.env.NEXT_PUBLIC_API_URL), {
+  const socket = io(resolveSocketUrl(process.env.NEXT_PUBLIC_API_URL), {
     transports: ["websocket"],
     withCredentials: true,
     autoConnect: true,
   });
+  socket.on("connect", () => privateAdmissions.delete(socket));
+  socket.on("disconnect", () => privateAdmissions.delete(socket));
+  socket.on("queue:mine-changed", (event: {episodeId?: string | null}) => {
+    if (event?.episodeId === null || typeof event?.episodeId === "string") privateAdmissions.add(socket);
+  });
+  return socket;
 }
 
 const socketLeases = new SocketLeaseManager(createSocket);

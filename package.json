@@ -25,7 +25,7 @@
     "clsx": "^2.1.1",
     "hls.js": "^1.6.16",
     "lucide-react": "^1.18.0",
-    "next": "16.3.8",
+    "next": "16.4.1",
     "radix-ui": "^1.6.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -33,7 +33,7 @@
     "recharts": "^3.10.1",
     "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.6.0",
-    "zod": "^4.4.3"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@playwright/test": "1.60.0",
@@ -41,20 +41,20 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^4.1.12",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
     "orval": "^8.39.0",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.4.0",
     "typescript": "^5",
-    "vitest": "^4.1.11",
+    "vitest": "^4.1.12",
     "vite": "7.3.7"
   },
   "pnpm": {
     "overrides": {
       "ws": "^8.21.1",
-      "fast-uri": "~3.1.7",
+      "fast-uri": "3.1.9",
       "js-yaml": "^4.3.2",
       "postcss": "^8.5.18",
       "socket.io-parser": "^4.2.7",
@@ -66,11 +66,12 @@
       "brace-expansion@>=2.0.0 <2.1.6": "^2.1.6",
       "brace-expansion@>=4.0.0 <5.0.11": "^5.0.11",
       "@next/eslint-plugin-next>fast-glob": "npm:tinyglobby@0.2.17",
-      "better-auth>vitest": "4.1.11",
+      "better-auth>vitest": "4.1.12",
       "baseline-browser-mapping@<2.11.0": "^2.11.27",
       "source-map-js@<1.2.2": "^1.2.2",
       "vite@>=7.0.0 <7.3.7": "7.3.7",
-      "markdown-it@<14.3.3": "14.3.3"
+      "markdown-it@<14.3.3": "14.3.3",
+      "undici@>=7.0.0 <7.30.1": "7.30.1"
     },
     "patchedDependencies": {
       "@next/eslint-plugin-next@16.3.6": "patches/@next__eslint-plugin-next@16.3.6.patch"

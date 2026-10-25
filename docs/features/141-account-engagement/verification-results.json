@@ -1,0 +1,1427 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-22T20:57:37.679Z",
+  "source": {
+    "backend": "607841a02f52886048f94d80db30c7bd538c1436",
+    "frontend": "4624d01adcf06b6b2d2e60f7c374ed766f2a3d3b",
+    "frontendProductCommit": "4624d01",
+    "browserRecoveryChanges": "test fixtures/assertions only; same running product source",
+    "next": "16.4.1",
+    "vitest": "4.1.12",
+    "stationOffsetMinutes": 0,
+    "backendUnitOffset": "production default"
+  },
+  "boundaries": {
+    "database": "owned loopback PostgreSQL 17 test databases",
+    "email": "actual generated links; Resend HTTP boundary captured; live credentials deferred by user",
+    "media": "real local AAC/HLS and local S3 protocol fixtures",
+    "remoteMutations": false,
+    "productionDeployment": false
+  },
+  "backendVerify": {
+    "log": "backend-verify.log",
+    "apiUnits": {
+      "suites": 67,
+      "passed": 722
+    },
+    "studioUnits": {
+      "files": 32,
+      "passed": 255
+    },
+    "releaseScripts": {
+      "passed": 2
+    },
+    "build": "passed",
+    "typecheck": "passed"
+  },
+  "api": {
+    "report": "api-round-2/result.json",
+    "initial": {
+      "passed": 844,
+      "failed": 11,
+      "skipped": 1
+    },
+    "isolatedRecovery": {
+      "report": "api-http-recheck.json",
+      "passed": 11,
+      "failed": 0
+    },
+    "consolidated": {
+      "passed": 855,
+      "pending": 1
+    },
+    "files": [
+      {
+        "file": "apps/api/test/account-email.e2e-spec.ts",
+        "counts": {
+          "passed": 8
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/account-engagement-http.e2e-spec.ts",
+        "counts": {
+          "passed": 11
+        },
+        "status": "passed",
+        "isolatedRecheck": true
+      },
+      {
+        "file": "apps/api/test/account-engagement.e2e-spec.ts",
+        "counts": {
+          "passed": 19
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/active-engagement.e2e-spec.ts",
+        "counts": {
+          "passed": 19
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/analytics-pipeline.e2e-spec.ts",
+        "counts": {
+          "passed": 26
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/analytics-read.e2e-spec.ts",
+        "counts": {
+          "passed": 26
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/announcement-audit.e2e-spec.ts",
+        "counts": {
+          "passed": 16
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/announcement-expiry.e2e-spec.ts",
+        "counts": {
+          "passed": 8
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/announcement-owner.e2e-spec.ts",
+        "counts": {
+          "passed": 9
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/announcements.e2e-spec.ts",
+        "counts": {
+          "passed": 47
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/appeal-atomicity.e2e-spec.ts",
+        "counts": {
+          "passed": 9
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/appeal-provenance.e2e-spec.ts",
+        "counts": {
+          "passed": 19
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/archived-photos.e2e-spec.ts",
+        "counts": {
+          "passed": 6
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/attendance-hours.e2e-spec.ts",
+        "counts": {
+          "passed": 9
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/attendance-intervals.e2e-spec.ts",
+        "counts": {
+          "passed": 19
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/attendance.e2e-spec.ts",
+        "counts": {
+          "passed": 11
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/attendee-roster.e2e-spec.ts",
+        "counts": {
+          "passed": 3
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/auth-handles.e2e-spec.ts",
+        "counts": {
+          "passed": 16
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/broadcast-engagement-integrity.e2e-spec.ts",
+        "counts": {
+          "passed": 4
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/campus-trust-migration.e2e-spec.ts",
+        "counts": {
+          "passed": 2
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/compliance.e2e-spec.ts",
+        "counts": {
+          "passed": 18
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/engagement-admission.e2e-spec.ts",
+        "counts": {
+          "passed": 13
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/engagement.e2e-spec.ts",
+        "counts": {
+          "passed": 14
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/first-live-show.e2e-spec.ts",
+        "counts": {
+          "passed": 13
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/identity.e2e-spec.ts",
+        "counts": {
+          "passed": 16
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/live-path-hardening.e2e-spec.ts",
+        "counts": {
+          "passed": 26
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/live-schedule-handover.e2e-spec.ts",
+        "counts": {
+          "passed": 21
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/m5-public-lists.e2e-spec.ts",
+        "counts": {
+          "passed": 34
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/moderation-appeals.e2e-spec.ts",
+        "counts": {
+          "passed": 20
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/moderation-enforcement.e2e-spec.ts",
+        "counts": {
+          "passed": 10
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/moderation-filter-enforcement.e2e-spec.ts",
+        "counts": {
+          "passed": 4
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/moderation-filter.e2e-spec.ts",
+        "counts": {
+          "passed": 13
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/moderation-log-endpoints.e2e-spec.ts",
+        "counts": {
+          "passed": 19
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/moderation-queue.e2e-spec.ts",
+        "counts": {
+          "passed": 5
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/moderation-room-controls.e2e-spec.ts",
+        "counts": {
+          "passed": 16
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/moderation-self-dealing.e2e-spec.ts",
+        "counts": {
+          "passed": 9
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/moderation-strike-list.e2e-spec.ts",
+        "counts": {
+          "passed": 7
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/moderation-strike.e2e-spec.ts",
+        "counts": {
+          "passed": 10
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/notifications-api.e2e-spec.ts",
+        "counts": {
+          "passed": 21
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/pending-withdrawal.e2e-spec.ts",
+        "counts": {
+          "passed": 13
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/photo-idempotency.e2e-spec.ts",
+        "counts": {
+          "passed": 7
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/photo-maintenance.e2e-spec.ts",
+        "counts": {
+          "passed": 20
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/poll-lifecycle.e2e-spec.ts",
+        "counts": {
+          "passed": 16
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/presence-integrity.e2e-spec.ts",
+        "counts": {
+          "passed": 11
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/profile-contract.e2e-spec.ts",
+        "counts": {
+          "passed": 16
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/progressive-trust.e2e-spec.ts",
+        "counts": {
+          "passed": 12
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/public-feature.e2e-spec.ts",
+        "counts": {
+          "passed": 6
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/public-surface.e2e-spec.ts",
+        "counts": {
+          "passed": 15
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/publisher-lease.e2e-spec.ts",
+        "counts": {
+          "passed": 6
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/r2-publication.e2e-spec.ts",
+        "counts": {
+          "pending": 1
+        },
+        "status": "skipped",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/rate-limit.e2e-spec.ts",
+        "counts": {
+          "passed": 2
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/reinstatement-atomicity.e2e-spec.ts",
+        "counts": {
+          "passed": 8
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/report-ownership.e2e-spec.ts",
+        "counts": {
+          "passed": 16
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/roster.e2e-spec.ts",
+        "counts": {
+          "passed": 5
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/schedule-race.e2e-spec.ts",
+        "counts": {
+          "passed": 4
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/settings.e2e-spec.ts",
+        "counts": {
+          "passed": 11
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/show-transitions.e2e-spec.ts",
+        "counts": {
+          "passed": 18
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/shows.e2e-spec.ts",
+        "counts": {
+          "passed": 8
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/socket-auth.e2e-spec.ts",
+        "counts": {
+          "passed": 13
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/staff-review.e2e-spec.ts",
+        "counts": {
+          "passed": 37
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/stream-integrity.e2e-spec.ts",
+        "counts": {
+          "passed": 11
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/stream-socket.e2e-spec.ts",
+        "counts": {
+          "passed": 6
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/strike-atomicity.e2e-spec.ts",
+        "counts": {
+          "passed": 7
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/studio-roster.e2e-spec.ts",
+        "counts": {
+          "passed": 4
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      },
+      {
+        "file": "apps/api/test/user-admin.e2e-spec.ts",
+        "counts": {
+          "passed": 7
+        },
+        "status": "passed",
+        "isolatedRecheck": false
+      }
+    ],
+    "externalGate": "One r2-publication test requires real external Cloudflare R2; local S3 is not that proof."
+  },
+  "frontend": {
+    "units": {
+      "files": 52,
+      "passed": 412,
+      "log": "frontend-security-final-coverage.log"
+    },
+    "lint": {
+      "result": "passed",
+      "existingWarnings": 6,
+      "log": "frontend-patched-lint.log"
+    },
+    "typecheck": {
+      "result": "passed",
+      "log": "frontend-patched-types.log"
+    },
+    "build": {
+      "result": "passed",
+      "log": "frontend-security-final-build.log"
+    },
+    "audit": {
+      "report": "frontend-final-audit.json",
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0
+      }
+    },
+    "browsers": [
+      {
+        "report": "browser-patched-1.json",
+        "startTime": "2026-10-22T20:27:45.222Z",
+        "durationMs": 996357.604,
+        "stats": {
+          "startTime": "2026-10-22T20:27:45.222Z",
+          "duration": 996357.604,
+          "expected": 323,
+          "skipped": 4,
+          "unexpected": 4,
+          "flaky": 0
+        },
+        "total": 331,
+        "retried": 0,
+        "files": [
+          {
+            "file": "account-engagement.spec.ts",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "account-verification.spec.ts",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "admin-escalations.spec.ts",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "admin-staff-review.spec.ts",
+            "passed": 23,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "announcement-gallery.spec.ts",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "announcement-linebreaks.spec.ts",
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "announcement-publish-permission.spec.ts",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "auth-login-logout.spec.ts",
+            "passed": 4,
+            "failed": 1,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "auth-register.spec.ts",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "broadcast-integrity-ui.spec.ts",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "chat-report.spec.ts",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "engagement.spec.ts",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "landing-now-next.spec.ts",
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "legal-compliance.spec.ts",
+            "passed": 14,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "listen-gate.spec.ts",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "listener-state.spec.ts",
+            "passed": 5,
+            "failed": 1,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "live-path-kiosk.spec.ts",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "live-path-listener.spec.ts",
+            "passed": 7,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "live-schedule-handover.spec.ts",
+            "passed": 8,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "mobile-composer-layout.spec.ts",
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "mobile-nav-schedule.spec.ts",
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "mod-access.spec.ts",
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "mod-analytics.spec.ts",
+            "passed": 11,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "mod-announcements.spec.ts",
+            "passed": 23,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "mod-logs.spec.ts",
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "mod-org-schedule-attendance.spec.ts",
+            "passed": 12,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "mod-queue.spec.ts",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "mod-settings.spec.ts",
+            "passed": 22,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "mod-users.spec.ts",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "moderation-queue-error.spec.ts",
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "notifications-inbox.spec.ts",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "player-bar.spec.ts",
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "player-live-states.spec.ts",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "player-metadata-outage.spec.ts",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "profile-edit.spec.ts",
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "profile-preferences.spec.ts",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "profile-standing.spec.ts",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "public-announcement-pagination.spec.ts",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "public-content.spec.ts",
+            "passed": 26,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "public-schedule.spec.ts",
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "schedule-broadcast-regressions.spec.ts",
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "seo-surface.spec.ts",
+            "passed": 12,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "shell-polish.spec.ts",
+            "passed": 5,
+            "failed": 1,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "show-transitions.spec.ts",
+            "passed": 2,
+            "failed": 1,
+            "skipped": 4,
+            "interrupted": 0
+          },
+          {
+            "file": "staff-announcement-pagination.spec.ts",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "staff-entry.spec.ts",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "stream-playback.spec.ts",
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "stream-socket-gating.spec.ts",
+            "passed": 7,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "studio-attendance.spec.ts",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "top-nav-mobile.spec.ts",
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "verification-refresh.spec.ts",
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          }
+        ],
+        "clean": false
+      },
+      {
+        "report": "browser-recovery.json",
+        "startTime": "2026-10-22T20:48:54.437Z",
+        "durationMs": 183190.496,
+        "stats": {
+          "startTime": "2026-10-22T20:48:54.437Z",
+          "duration": 183190.496,
+          "expected": 22,
+          "skipped": 1,
+          "unexpected": 1,
+          "flaky": 0
+        },
+        "total": 24,
+        "retried": 0,
+        "files": [
+          {
+            "file": "auth-login-logout.spec.ts",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "listener-state.spec.ts",
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "shell-polish.spec.ts",
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          },
+          {
+            "file": "show-transitions.spec.ts",
+            "passed": 5,
+            "failed": 1,
+            "skipped": 1,
+            "interrupted": 0
+          }
+        ],
+        "clean": false
+      },
+      {
+        "report": "browser-transition-recovery.json",
+        "startTime": "2026-10-22T20:56:24.527Z",
+        "durationMs": 67028.473,
+        "stats": {
+          "startTime": "2026-10-22T20:56:24.527Z",
+          "duration": 67028.473,
+          "expected": 7,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "total": 7,
+        "retried": 0,
+        "files": [
+          {
+            "file": "show-transitions.spec.ts",
+            "passed": 7,
+            "failed": 0,
+            "skipped": 0,
+            "interrupted": 0
+          }
+        ],
+        "clean": true
+      }
+    ],
+    "browserConsolidated": {
+      "passed": 331,
+      "failed": 0,
+      "skipped": 0,
+      "interrupted": 0
+    },
+    "browserFiles": [
+      {
+        "file": "account-engagement.spec.ts",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "account-verification.spec.ts",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "admin-escalations.spec.ts",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "admin-staff-review.spec.ts",
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "announcement-gallery.spec.ts",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "announcement-linebreaks.spec.ts",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "announcement-publish-permission.spec.ts",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "auth-login-logout.spec.ts",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "auth-register.spec.ts",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "broadcast-integrity-ui.spec.ts",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "chat-report.spec.ts",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "engagement.spec.ts",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "landing-now-next.spec.ts",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "legal-compliance.spec.ts",
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "listen-gate.spec.ts",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "listener-state.spec.ts",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "live-path-kiosk.spec.ts",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "live-path-listener.spec.ts",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "live-schedule-handover.spec.ts",
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "mobile-composer-layout.spec.ts",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "mobile-nav-schedule.spec.ts",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "mod-access.spec.ts",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "mod-analytics.spec.ts",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "mod-announcements.spec.ts",
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "mod-logs.spec.ts",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "mod-org-schedule-attendance.spec.ts",
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "mod-queue.spec.ts",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "mod-settings.spec.ts",
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "mod-users.spec.ts",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "moderation-queue-error.spec.ts",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "notifications-inbox.spec.ts",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "player-bar.spec.ts",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "player-live-states.spec.ts",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "player-metadata-outage.spec.ts",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "profile-edit.spec.ts",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "profile-preferences.spec.ts",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "profile-standing.spec.ts",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "public-announcement-pagination.spec.ts",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "public-content.spec.ts",
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "public-schedule.spec.ts",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "schedule-broadcast-regressions.spec.ts",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "seo-surface.spec.ts",
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "shell-polish.spec.ts",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "show-transitions.spec.ts",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "staff-announcement-pagination.spec.ts",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "staff-entry.spec.ts",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "stream-playback.spec.ts",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "stream-socket-gating.spec.ts",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "studio-attendance.spec.ts",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "top-nav-mobile.spec.ts",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      },
+      {
+        "file": "verification-refresh.spec.ts",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "interrupted": 0
+      }
+    ],
+    "policy": "Owner removed repeated full suites and CI waiting from development handoff on 2026-10-23; full diagnostics plus focused recovery reported separately."
+  },
+  "supersededRuns": [
+    "API round 1: two stale fixtures repaired; API round 2: one setup timeout recovered in isolation.",
+    "Initial focused browser runs retained for regression and fixture diagnostics.",
+    "The Next 16.3.8 full run was stopped after CI exposed security advisories and is not counted as an acceptance pass."
+  ],
+  "localAcceptancePassed": true
+}

@@ -11,6 +11,9 @@ export interface QueueSubmissionResponseDto {
   /** Queue item id (cuid) */
   id: string;
   status: QueueSubmissionResponseDtoStatus;
-  /** Remaining queue submissions available to this listener for the episode */
-  remaining: number;
+  /**
+     * Remaining queue submissions; null for unlimited staff
+     * @nullable
+     */
+  remaining: number | null;
 }

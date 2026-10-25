@@ -11,6 +11,23 @@ const LIVE_MANIFEST = {
   episodeId: "listener-state-episode-a",
 };
 
+test.beforeEach(async ({ page }) => {
+  // These IDs belong only to this file's synthetic manifests. The actual
+  // realtime lifecycle case uses server-issued IDs and keeps real API reads.
+  await page.route('**/api/episodes/listener-state-episode-*/controls', route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      episodeId: new URL(route.request().url()).pathname.split('/')[3],
+      chatPaused: false, submissionsPaused: false, staffChatFrozen: false, staffGuestsDisabled: false,
+    }) }),
+  );
+  await page.route('**/api/episodes/listener-state-episode-*/queue/mine', route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      episodeId: new URL(route.request().url()).pathname.split('/')[3],
+      items: [], budget: { limit: 2, used: 0, remaining: 2 }, historyTruncated: false,
+    }) }),
+  );
+});
+
 async function manifest(page: Page, body: unknown, status = 200) {
   await page.route("**/api/stream/manifest", (route) =>
     route.fulfill({

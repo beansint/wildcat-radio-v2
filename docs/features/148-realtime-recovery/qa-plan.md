@@ -1,0 +1,11 @@
+# QA plan
+
+Use only loopback hosts and the disposable `wildcat_realtime_210_test` database. Ports 3230/3231 are the paired gateway fixture and web. The paired API harness uses real compiled controllers, gateways and scheduler with synthetic manifest/auth reads; it is not PostgreSQL lifecycle evidence. Backend #210 separately owns PG/proxy/campus-capacity verification. The coordinator runs the combined account/cache/realtime stack and real cross-account chat-author test.
+
+- Unit: `pnpm exec vitest run src/lib/realtime/socket.spec.ts src/lib/realtime/presence-recovery.spec.ts`; test retained/in-flight socket identity, idle gating, failed admission, ack-before-snapshot and scope cancellation.
+- Mocked browser contract: `pnpm exec playwright test e2e/realtime-recovery.spec.ts e2e/live-path-kiosk.spec.ts e2e/live-path-listener.spec.ts e2e/player-metadata-outage.spec.ts`. Cover off-air-to-live, turnover, healthy HTTP silence, silent transport, old HTTP completion, controls invalidation/error retry, same-transport admission, identical frozen-clock resume, late Studio action, partial status reordering and real PCM/HLS decoder recovery fixtures.
+- Paired gateway/scheduler: set `WILDCAT_REALTIME_HARNESS=1`; run `pnpm exec playwright test e2e/realtime-paired.spec.ts`. Assert real gateway push propagation, audible presence/pause, idle count zero and 35 seconds without routine manifest/controls reads.
+- Real stack: `e2e/stream-socket-gating.spec.ts` uses real local broadcast fixtures; it expects one status transport on marketing pages and no audience joins before playback. Run the same frozen-clock resume contract with #147's persistent outer player cache and inner identity client.
+- Final checks: `pnpm test`, `pnpm build`, `git diff --check`. Review golden/edge screenshots in `evidence/`.
+
+Playwright requires explicit `DATABASE_URL`, `PLAYWRIGHT_DATABASE_NAME`, `PLAYWRIGHT_BASE_URL`, `PLAYWRIGHT_API_URL`, `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SITE_URL`. Match frontend/API origins, and set `NEXT_PUBLIC_STATION_UTC_OFFSET_MINUTES=480` for kiosk fixtures. No remote auth/media/provider traffic is needed.

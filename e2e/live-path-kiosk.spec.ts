@@ -96,6 +96,38 @@ async function kiosk(page: Page, options: KioskOptions = {}) {
 }
 
 test.describe('live-path kiosk', () => {
+  test('RT-3: an older partial status cannot override the authoritative console manifest', async ({page}) => {
+    const k = await kiosk(page);
+    await page.goto('/studio');
+    await expect(page.getByTestId('studio-kiosk-onair')).toHaveText('On air · Morning Signal');
+    await expect.poll(() => k.socket.connections()).toBeGreaterThan(0);
+    k.socket.emit('stream:status', {status: 'OFF_AIR', episodeId: null, reason: 'PUBLICATION_STALE', listeners: 0});
+    await page.waitForTimeout(100);
+    await expect(page.getByTestId('studio-kiosk-onair')).toHaveText('On air · Morning Signal');
+  });
+
+  test('RT-3: a late poll action from the previous episode cannot populate the new console', async ({page}) => {
+    const k = await kiosk(page);
+    let release: (() => void) | undefined;
+    await page.route('**/api/studio/polls', async route => {
+      await new Promise<void>(resolve => { release = resolve; });
+      await json(route, {id: 'late-old', episodeId: EPISODE, question: 'Old episode poll', options: [], totalVotes: 0, visibility: 'PUBLIC', isActive: true});
+    });
+    await page.goto('/studio');
+    await page.getByTestId('studio-seg-console').click();
+    await page.getByLabel('Question', {exact:true}).fill('Old episode poll');
+    await page.getByRole('button', {name: 'Launch poll'}).click();
+    await expect.poll(() => !!release).toBe(true);
+    const next = openEpisodeToday();
+    next.episode = {...next.episode as object, id: 'next-episode'};
+    k.setToday(next);
+    k.socket.emit('episode:started', {episodeId: 'next-episode'});
+    await expect.poll(() => k.socket.received().some(event => event.event === 'episode:join' && (event.payload as {episodeId: string}).episodeId === 'next-episode')).toBe(true);
+    release?.();
+    await expect(page.getByRole('button', {name: 'Launch poll'})).toBeEnabled();
+    await expect(page.getByTestId('studio-poll-late-old')).toHaveCount(0);
+  });
+
   test('W-E5: a stale encoder reads "Encoder offline" with a ticking auto-end countdown, never "On air"', async ({ page }) => {
     const guard = attachConsoleGuard(page);
     const k = await kiosk(page, {
@@ -121,9 +153,9 @@ test.describe('live-path kiosk', () => {
     await page.clock.fastForward(MIN);
     await expect(header).toHaveText(/auto-ends in 3:0\d/);
 
-    // A newer `stream:status` from the socket (encoder back) flips it straight to LIVE.
+    // A full authoritative manifest (encoder back) flips it straight to LIVE.
     await expect.poll(() => k.socket.connections()).toBeGreaterThan(0);
-    k.socket.emit('stream:status', { episodeId: EPISODE, status: 'LIVE', reason: null, listeners: 3, autoEndsAt: null });
+    k.socket.emit('stream:manifest', manifestBody({episodeId: EPISODE, showName: 'Morning Signal'}));
     await expect(header).toHaveAttribute('data-kind', 'live');
     await expect(header).toHaveText('On air · Morning Signal');
     await expect(card).toHaveText('On air now');

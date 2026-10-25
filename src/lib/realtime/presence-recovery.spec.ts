@@ -1,16 +1,47 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { joinPresenceWithSnapshot, type PresenceJoinTransport } from "./presence-recovery";
 import { authoritativeUpNext } from "./engagement-state";
 
 function admission() {
-  let acknowledge: (error: Error | null, decision?: { ok: boolean }) => void = () => {};
+  const acknowledgements: Array<(error: Error | null, decision?: { ok: boolean }) => void> = [];
   const transport: PresenceJoinTransport = {
-    timeout: () => ({ emit: (_event, _payload, callback) => { acknowledge = callback; } }),
+    timeout: () => ({ emit: (_event, _payload, callback) => { acknowledgements.push(callback); } }),
   };
-  return { transport, respond: (error: Error | null, decision?: { ok: boolean }) => acknowledge(error, decision) };
+  return { transport, respond: (error: Error | null, decision?: { ok: boolean }) => acknowledgements.shift()?.(error, decision) };
 }
 
 describe("player presence admission recovery", () => {
+  afterEach(() => vi.useRealTimers());
+  it("retries a refused admission on the same connected transport and recovers only after acknowledgement", () => {
+    vi.useFakeTimers();
+    const room = admission();
+    let visible = false;
+    joinPresenceWithSnapshot(room.transport, { episodeId: "episode" }, () => true, () => { visible = true; });
+    room.respond(null, { ok: false });
+    expect(visible).toBe(false);
+    vi.advanceTimersByTime(3_000);
+    room.respond(null, { ok: true });
+    expect(visible).toBe(true);
+  });
+
+  it("retries a timed-out episode admission and cancels retries after scope changes", () => {
+    vi.useFakeTimers();
+    const room = admission();
+    let current = true;
+    let recovered = 0;
+    const cancel = joinPresenceWithSnapshot(room.transport, {episodeId: "episode"}, () => current,
+      () => { recovered++; }, "episode:join");
+    room.respond(new Error("ack lost"));
+    vi.advanceTimersByTime(1_300);
+    room.respond(null, {ok: true});
+    expect(recovered).toBe(1);
+    current = false;
+    cancel();
+    vi.advanceTimersByTime(120_000);
+    room.respond(null, {ok: true});
+    expect(recovered).toBe(1);
+  });
+
   it("shows the authoritative head after an item is handled while room admission is pending", () => {
     const room = admission();
     const removed = { id: "removed", createdAt: "2026-10-23T00:00:00Z" };

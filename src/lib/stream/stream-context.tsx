@@ -10,16 +10,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useGetStreamManifest } from "@/lib/api/endpoints/stream/stream";
+import { useStreamManifest } from "./use-stream-manifest";
 import { useStreamPresence, type UpNextPeek } from "@/lib/realtime/use-stream-presence";
 import { useSocketIdentity } from "@/lib/realtime/use-socket-identity";
 import { ToastHost, pushToast } from "@/components/listen/toast";
 import type { GetStreamManifest200Reason } from "@/lib/api/model";
 import { PlayAttemptTracker } from "./play-attempt";
 import {
-  MANIFEST_POLL_RETRIES,
   MANIFEST_STALE_AFTER_MS,
-  manifestRetryDelay,
   resolveManifestAvailability,
   type ManifestAvailability,
 } from "./manifest-health";
@@ -42,7 +40,7 @@ export type PlayerPhase = "idle" | "connecting" | "playing" | "reconnecting";
 export type { ManifestAvailability };
 
 export interface StreamState {
-  /** Status resolved from socket (preferred) or manifest poll */
+  /** Status from the latest authoritative manifest */
   status: StreamStatus;
   /** #127 — why the stream is not LIVE (manifest / `stream:status`), null when LIVE or unknown. */
   reason: GetStreamManifest200Reason | null;
@@ -57,6 +55,8 @@ export interface StreamState {
   /** Listener count from socket (null if no socket data yet) */
   listeners: number | null;
   manifestAvailability: ManifestAvailability;
+  /** Successful authoritative observations, independent of the page's cache. */
+  manifestObservation: number;
   isPlaying: boolean;
   /** Finer-grained than `isPlaying` — drives the buffering/reconnecting UI. */
   phase: PlayerPhase;
@@ -111,13 +111,8 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     errorUpdateCount,
     isPending,
     isError,
-  } = useGetStreamManifest({
-    query: {
-      refetchInterval: 15_000,
-      retry: MANIFEST_POLL_RETRIES,
-      retryDelay: manifestRetryDelay,
-    },
-  });
+    observation: manifestObservation,
+  } = useStreamManifest();
 
   // Failed polls since the last success: React Query counts errors in total,
   // so remember the count at each success (adjust-state-during-render pattern).
@@ -163,7 +158,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const manifestStatus: StreamStatus = manifestUsable ? (manifest?.status ?? "OFF_AIR") : "OFF_AIR";
   const manifestUrl: string | null = manifestUsable ? (manifest?.url ?? null) : null;
   // FE#47 — `manifest?.dj ?? []` produced a NEW array identity on every render.
-  // The manifest query polls every 15s, so that alone re-rendered every
+  // Repeated unchanged manifests alone used to re-render every
   // consumer (including `GlobalPlayer`, which is in the root layout and
   // therefore on every route) even when the DJ list had not changed.
   const rawDjs = manifestUsable ? manifest?.dj : undefined;
@@ -209,20 +204,10 @@ export function StreamProvider({ children }: { children: ReactNode }) {
    */
   const suppressPauseRef = useRef(false);
 
-  const { listeners, socketStatus, socketReason, socketAutoEndsAt, socketEpisodeId, upNext } =
-    useStreamPresence(episodeId, isPlaying);
-
-  const socketMatchesCurrentStream =
-    socketEpisodeId === null || socketEpisodeId === episodeId;
-  const useSocket = manifestStatus !== "OFF_AIR" && socketMatchesCurrentStream && socketStatus !== null;
-  const status: StreamStatus = useSocket ? socketStatus : manifestStatus;
-  const reason: GetStreamManifest200Reason | null = useSocket
-    ? socketReason
-    : manifestUsable ? (manifest?.reason ?? null) : null;
-  const autoEndsAt: string | null =
-    useSocket && socketAutoEndsAt !== undefined
-      ? socketAutoEndsAt
-      : manifestUsable ? (manifest?.autoEndsAt ?? null) : null;
+  const { listeners, upNext } = useStreamPresence(episodeId, isPlaying);
+  const status: StreamStatus = manifestStatus;
+  const reason: GetStreamManifest200Reason | null = manifestUsable ? (manifest?.reason ?? null) : null;
+  const autoEndsAt = manifestUsable ? (manifest?.autoEndsAt ?? null) : null;
 
   const destroyHls = useCallback(() => {
     if (hlsRef.current) {
@@ -495,7 +480,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   }, [status, djs, showName, isPlaying, play, pause]);
 
   // FE#47 — the value object previously had a NEW identity on every provider
-  // render, so each 15s manifest poll (and every phase blip) re-rendered every
+  // render, so each manifest update (and every phase blip) re-rendered every
   // consumer even when nothing they read had changed. Memoized so identity
   // only moves when a field actually does; leaf components add `memo()` on top.
   const value = useMemo<StreamState>(
@@ -510,6 +495,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       showName,
       listeners,
       manifestAvailability,
+      manifestObservation,
       isPlaying,
       phase,
       upNext,
@@ -528,6 +514,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       showName,
       listeners,
       manifestAvailability,
+      manifestObservation,
       isPlaying,
       phase,
       upNext,

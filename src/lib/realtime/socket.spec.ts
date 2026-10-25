@@ -14,6 +14,45 @@ function deferred<T>() {
 }
 
 describe("SocketLeaseManager", () => {
+  it("refreshes the retained transport identity after an account subtree remount", async () => {
+    let cookieOwner = "alice";
+    let handshakeOwner = "alice";
+    const socket = {disconnect() {}, connect() { handshakeOwner = cookieOwner; }};
+    const manager = new SocketLeaseManager(async () => socket);
+    manager.setIdentity("alice-session");
+    const status = await manager.acquire();
+    const oldPage = await manager.acquire();
+    oldPage.release();
+    cookieOwner = "bob";
+    manager.setIdentity("bob-session");
+    const newPage = await manager.acquire();
+    expect(newPage.socket).toBe(status.socket);
+    expect(handshakeOwner).toBe("bob");
+    newPage.release(); status.release();
+  });
+
+  it("records idle identity without opening a socket and refreshes an in-flight creation once", async () => {
+    let handshake = "alice";
+    let cookie = "alice";
+    let connects = 0;
+    const socket = {disconnect() {}, connect() { connects++; handshake = cookie; }};
+    const pending = deferred<typeof socket>();
+    let creations = 0;
+    const manager = new SocketLeaseManager(() => { creations++; return pending.promise; });
+    manager.setIdentity("alice-session");
+    expect(creations).toBe(0);
+    const acquiring = manager.acquire();
+    cookie = "bob";
+    manager.setIdentity("bob-session");
+    pending.resolve(socket);
+    const lease = await acquiring;
+    expect(handshake).toBe("bob");
+    expect(connects).toBe(1);
+    manager.setIdentity("bob-session");
+    expect(connects).toBe(1);
+    lease.release();
+  });
+
   it("disconnects only after the final owner releases", async () => {
     const socket: FakeSocket = { disconnect: vi.fn<() => void>() };
     const manager = new SocketLeaseManager(async () => socket);

@@ -3,6 +3,7 @@ import { resolveSocketUrl } from "./socket-url";
 
 interface Disconnectable {
   disconnect(): void;
+  connect?(): unknown;
 }
 
 export interface SocketLease<T> {
@@ -18,8 +19,20 @@ export class SocketLeaseManager<T extends Disconnectable> {
   private socket: T | null = null;
   private connecting: Promise<T> | null = null;
   private owners = 0;
+  private identity: string | undefined;
 
   constructor(private readonly create: () => Promise<T>) {}
+
+  setIdentity(identity: string): void {
+    // The persistent status owner outlives identity-scoped pages. Refresh the
+    // cookie handshake here so page remounts cannot reset the identity detector.
+    const changed = this.identity !== undefined && this.identity !== identity;
+    this.identity = identity;
+    if (changed && this.socket) {
+      this.socket.disconnect();
+      this.socket.connect?.();
+    }
+  }
 
   async acquire(): Promise<SocketLease<T>> {
     this.owners += 1;
@@ -47,10 +60,12 @@ export class SocketLeaseManager<T extends Disconnectable> {
     if (this.socket) return Promise.resolve(this.socket);
     if (this.connecting) return this.connecting;
 
+    const createdFor = this.identity;
     this.connecting = this.create().then(
       (socket) => {
         this.socket = socket;
         this.connecting = null;
+        if (createdFor !== this.identity) { socket.disconnect(); socket.connect?.(); }
         this.disconnectIfIdle();
         return socket;
       },
@@ -85,4 +100,8 @@ const socketLeases = new SocketLeaseManager(createSocket);
 
 export function acquireSocket(): Promise<SocketLease<Socket>> {
   return socketLeases.acquire();
+}
+
+export function synchronizeSocketIdentity(identity: string): void {
+  socketLeases.setIdentity(identity);
 }

@@ -13,6 +13,8 @@ Issue #147 repairs the ownership boundary of cached browser data. The previous r
 
 Keep the public StreamProvider/player under a persistent client. Own the page QueryClient and keyed page subtree by user/session/role; retire the old client on transition and copy only explicitly public data with its original freshness. Notify sibling tabs through Better Auth's existing channel on successful email sign-in/signup. Abort private export requests when their owning page unmounts.
 
+The persistent player also observes resolved session ownership after hydration. The shared socket manager refreshes an existing handshake when that owner changes, including a change during lazy connection creation. This observer creates no idle connection. Page remounts therefore cannot retain the previous owner's authenticated socket while audio keeps playing.
+
 Server authorization remains authoritative. This change does not roll back already admitted mutations or implement the separately tracked initial standing error UI. Realtime owner/episode completion recovery is paired with #148.
 
 See [qa-plan.md](./qa-plan.md) and [verification evidence](./qa.md).

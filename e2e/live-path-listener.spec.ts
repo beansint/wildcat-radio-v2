@@ -52,7 +52,7 @@ async function listener(page: Page) {
 test.describe('live-path listener', () => {
   test('W-E1: one failed manifest poll keeps LIVE, play and the chat composer', async ({ page }) => {
     const guard = attachConsoleGuard(page);
-    await listener(page);
+    const socket = await listener(page);
     const manifest = await mockManifest(page, manifestBody());
     await page.goto('/listen');
 
@@ -73,8 +73,9 @@ test.describe('live-path listener', () => {
     await expect(input).toBeEnabled();
 
     manifest.set(manifestBody());
-    await page.clock.fastForward(15_100);
-    await expect.poll(() => manifest.requests()).toBeGreaterThan(4);
+    socket.emit("stream:manifest", manifestBody());
+    await page.clock.fastForward(100);
+    await expect(page.getByTestId("player-status")).toHaveText("LIVE");
     await expect(page.getByTestId('player-status')).toHaveText('LIVE');
     await expect(input).toHaveValue('draft through a blip');
 
@@ -99,7 +100,7 @@ test.describe('live-path listener', () => {
 
   test('W-E2: a 20 s ROTATION blip keeps the draft, the open sheet, and says "Signal interrupted"', async ({ page }) => {
     const guard = attachConsoleGuard(page);
-    await listener(page);
+    const socket = await listener(page);
     const manifest = await mockManifest(page, manifestBody());
     await page.goto('/listen');
 
@@ -112,7 +113,8 @@ test.describe('live-path listener', () => {
     await page.getByTestId('engagement-request-song').fill('half-typed request');
 
     manifest.set(manifestBody({ status: 'STATION_ROTATION', reason: 'SOURCE_STALE', dj: [] }));
-    await page.clock.fastForward(15_100);
+    socket.emit('stream:manifest', manifestBody({ status: 'STATION_ROTATION', reason: 'SOURCE_STALE', dj: [] }));
+    await page.clock.fastForward(100);
     await expect(page.getByTestId('player-status')).toHaveText('STATION_ROTATION');
     const chip = page.getByTestId('listen-signal-interrupted');
     await expect(chip).toHaveText(/Signal interrupted/);
@@ -127,7 +129,8 @@ test.describe('live-path listener', () => {
     await expect(page.getByText('Chat is available during a live episode')).toHaveCount(0);
 
     manifest.set(manifestBody());
-    await page.clock.fastForward(15_100);
+    socket.emit("stream:manifest", manifestBody());
+    await page.clock.fastForward(100);
     await expect(page.getByTestId('player-status')).toHaveText('LIVE');
     await expect(chip).toHaveCount(0);
     await expect(sheet).toBeVisible();
@@ -139,13 +142,14 @@ test.describe('live-path listener', () => {
   });
 
   test('W-E2b: non-LIVE for over 60 s closes chat; OFF_AIR closes it at once', async ({ page }) => {
-    await listener(page);
+    const socket = await listener(page);
     const manifest = await mockManifest(page, manifestBody());
     await page.goto('/listen');
     await expect(chatInput(page)).toBeEnabled();
 
     manifest.set(manifestBody({ status: 'STATION_ROTATION', reason: 'SOURCE_STALE', dj: [] }));
-    await page.clock.fastForward(15_100);
+    socket.emit('stream:manifest', manifestBody({ status: 'STATION_ROTATION', reason: 'SOURCE_STALE', dj: [] }));
+    await page.clock.fastForward(100);
     await expect(page.getByTestId('listen-signal-interrupted')).toBeVisible();
     await page.clock.fastForward(61_000);
     await expect(chatInput(page)).toHaveCount(0);
@@ -153,10 +157,12 @@ test.describe('live-path listener', () => {
     await expect(page.getByText('Chat is available during a live episode')).toBeVisible();
 
     manifest.set(manifestBody());
-    await page.clock.fastForward(15_100);
+    socket.emit("stream:manifest", manifestBody());
+    await page.clock.fastForward(100);
     await expect(chatInput(page)).toBeEnabled();
     manifest.set(manifestBody({ status: 'OFF_AIR', reason: 'PUBLICATION_STALE', url: null, dj: [], episodeId: null }));
-    await page.clock.fastForward(15_100);
+    socket.emit('stream:manifest', manifestBody({ status: 'OFF_AIR', reason: 'PUBLICATION_STALE', url: null, dj: [], episodeId: null }));
+    await page.clock.fastForward(100);
     await expect(page.getByTestId('player-status')).toHaveText('OFF_AIR');
     await expect(chatInput(page)).toHaveCount(0);
     await expect(page.getByTestId('listen-signal-interrupted')).toHaveCount(0);

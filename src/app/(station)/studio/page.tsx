@@ -13,7 +13,7 @@ import {
   Send,
   WifiOff,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -33,9 +33,9 @@ import type {
   StudioTodayDto,
 } from "@/lib/api/model";
 import { acquireSocket, type SocketLease } from "@/lib/realtime/socket";
-import type { StreamStatusEvent } from "@/lib/realtime/use-stream-presence";
 import { getEpisodeEngagementSnapshot } from "@/lib/api/endpoints/episodes/episodes";
 import { useStream } from "@/lib/stream/stream-context";
+import { joinPresenceWithSnapshot } from "@/lib/realtime/presence-recovery";
 import { activePin, measuredBarHeights, SnapshotRecovery } from "@/lib/realtime/snapshot-recovery";
 import type { HypeState, PinnedTopic } from "@/lib/realtime/engagement-state";
 import { isAuthFailure, mergeSnapshotChat, mergeSnapshotPolls } from "@/lib/studio/console-snapshot";
@@ -216,6 +216,12 @@ export default function StudioPage() {
   });
 
   const episodeId = unlocked && today?.episode?.id !== endedEpisodeId ? (today?.episode?.id ?? null) : null;
+  const actionScope = useMemo(() => ({episodeId, unlocked}), [episodeId, unlocked]);
+  const activeScope = useRef<typeof actionScope | null>(actionScope);
+  useLayoutEffect(() => {
+    activeScope.current = actionScope;
+    return () => { activeScope.current = null; };
+  }, [actionScope]);
 
   // FE#132 F3 — the API announces every show start/end; refresh at once
   // instead of waiting up to 15 s for the next poll.
@@ -261,22 +267,7 @@ export default function StudioPage() {
     reason: stream.reason,
     autoEndsAt: stream.autoEndsAt,
   };
-  const manifestKey = `${manifestBroadcast.status}|${manifestBroadcast.reason}|${manifestBroadcast.autoEndsAt}`;
-  const [socketBroadcast, setSocketBroadcast] = useState<{
-    manifestKey: string;
-    episodeId: string | null;
-    value: KioskBroadcastStatus;
-  } | null>(null);
-  const broadcast: KioskBroadcastStatus =
-    socketBroadcast &&
-    socketBroadcast.manifestKey === manifestKey &&
-    (socketBroadcast.episodeId === null || socketBroadcast.episodeId === episodeId)
-      ? socketBroadcast.value
-      : manifestBroadcast;
-  const manifestKeyRef = useRef(manifestKey);
-  useEffect(() => {
-    manifestKeyRef.current = manifestKey;
-  }, [manifestKey]);
+  const broadcast: KioskBroadcastStatus = manifestBroadcast;
   const queue = episodeId && queueQuery.data?.episodeId === episodeId ? queueQuery.data : undefined;
   const showName = queue?.showName ?? null;
   // Today's board names the show; the queue does too once it loads (and is
@@ -329,6 +320,7 @@ export default function StudioPage() {
     let socket: Socket | null = null;
     let lease: SocketLease<Socket> | null = null;
     let joinEpisode: (() => void) | null = null;
+    let cancelJoin: (() => void) | undefined;
     const recovery = new SnapshotRecovery();
     function onPollUpdated(poll: PollResponseDto) {
       if (cancelled) return;
@@ -353,14 +345,6 @@ export default function StudioPage() {
       recovery.mark({id: event.id});
       addChatMessage(event);
     }
-    function onStreamStatus(event: StreamStatusEvent) {
-      if (cancelled) return;
-      setSocketBroadcast({
-        manifestKey: manifestKeyRef.current,
-        episodeId: event.episodeId ?? null,
-        value: { status: event.status, reason: event.reason ?? null, autoEndsAt: event.autoEndsAt ?? null },
-      });
-    }
     // #127 — the console used to start empty after a reload or a socket
     // reconnect: only events emitted while connected ever reached it. Load the
     // episode's engagement snapshot on join and again on every reconnect.
@@ -382,7 +366,7 @@ export default function StudioPage() {
       recovery.mark({id: event.id, removed: true});
       setMessages(prev => prev.filter(message => message.id !== event.id));
     }
-    function onDisconnect() { recovery.cancel(); setHype(prev => ({...prev, stale: true})); }
+    function onDisconnect() { cancelJoin?.(); recovery.cancel(); setHype(prev => ({...prev, stale: true})); }
     const expire = () => {
       setPin(prev => activePin(prev));
       setHype(prev => prev.capturedAt && Date.now() - Date.parse(prev.capturedAt) > 15_000 ? {...prev, stale: true} : prev);
@@ -401,13 +385,13 @@ export default function StudioPage() {
         socket = nextLease.socket;
         const s = nextLease.socket;
         joinEpisode = () => {
-          s.emit("episode:join", { episodeId });
-          void loadSnapshot();
+          cancelJoin?.();
+          cancelJoin = joinPresenceWithSnapshot(s, {episodeId},
+            () => !cancelled && s.connected, () => { void loadSnapshot(); }, "episode:join");
         };
         s.on("connect", joinEpisode);
         s.on("disconnect", onDisconnect);
         s.on("chat:hidden", onChatHidden);
-        s.on("stream:status", onStreamStatus);
         s.on("poll:updated", onPollUpdated);
         s.on("hype:tick", onHypeTick);
         s.on("topic:pinned", onTopicPinned);
@@ -420,6 +404,7 @@ export default function StudioPage() {
     return () => {
       cancelled = true;
       recovery.cancel();
+      cancelJoin?.();
       window.clearInterval(timer);
       window.removeEventListener("focus", resume);
       document.removeEventListener("visibilitychange", resume);
@@ -432,23 +417,25 @@ export default function StudioPage() {
         socket.off("hype:tick", onHypeTick);
         socket.off("topic:pinned", onTopicPinned);
         socket.off("chat:new", onChatNew);
-        socket.off("stream:status", onStreamStatus);
       }
       lease?.release();
     };
   }, [episodeId, addChatMessage]);
 
   const actMutation = useMutation({
+    onMutate: () => actionScope,
     mutationFn: ({ id, action }: { id: string; action: QueueAction }) =>
       actOnSubmission(id, action),
-    onSuccess: async (result) => {
+    onSuccess: async (result, _variables, scope) => {
+      if (scope !== activeScope.current) return;
       setStatus(queueActionMessage(result));
       await queryClient.invalidateQueries({ queryKey: ["studio-queue"] });
     },
-    onError: (error) => setStatus(getApiErrorMessage(error)),
+    onError: (error, _variables, scope) => { if (scope === activeScope.current) setStatus(getApiErrorMessage(error)); },
   });
 
   const pollMutation = useMutation({
+    onMutate: () => actionScope,
     mutationFn: (values: PollForm) => {
       const parsed = pollSchema.parse(values);
       return createPoll({
@@ -457,41 +444,48 @@ export default function StudioPage() {
         visibility: parsed.visibility,
       });
     },
-    onSuccess: (poll) => {
+    onSuccess: (poll, _variables, scope) => {
+      if (scope !== activeScope.current) return;
       setPolls((prev) => [poll, ...prev.filter((item) => item.id !== poll.id)]);
       pollForm.reset({ question: "", options: "OPM throwbacks\nLo-fi chill", visibility: "PUBLIC" });
       setStatus("Poll launched.");
     },
-    onError: (error) => setStatus(getApiErrorMessage(error)),
+    onError: (error, _variables, scope) => { if (scope === activeScope.current) setStatus(getApiErrorMessage(error)); },
   });
 
   const closePollMutation = useMutation({
+    onMutate: () => actionScope,
     mutationFn: (id: string) => closePoll(id),
-    onSuccess: (poll) => {
+    onSuccess: (poll, _variables, scope) => {
+      if (scope !== activeScope.current) return;
       setPolls((prev) => prev.map((item) => (item.id === poll.id ? poll : item)));
       setStatus("Poll closed.");
     },
-    onError: (error) => setStatus(getApiErrorMessage(error)),
+    onError: (error, _variables, scope) => { if (scope === activeScope.current) setStatus(getApiErrorMessage(error)); },
   });
 
   const pinMutation = useMutation({
+    onMutate: () => actionScope,
     mutationFn: (values: PinForm) => setPinnedTopic(values),
-    onSuccess: (topic) => {
+    onSuccess: (topic, _variables, scope) => {
+      if (scope !== activeScope.current) return;
       setPin(activePin(topic));
       pinForm.reset({ text: "", expiresAtEpisodeEnd: topic.expiresAtEpisodeEnd });
       setStatus("Pinned topic updated.");
     },
-    onError: (error) => setStatus(getApiErrorMessage(error)),
+    onError: (error, _variables, scope) => { if (scope === activeScope.current) setStatus(getApiErrorMessage(error)); },
   });
 
   const boothChatMutation = useMutation({
+    onMutate: () => actionScope,
     mutationFn: (values: ChatForm) => postBoothChat(values),
-    onSuccess: (message) => {
+    onSuccess: (message, _variables, scope) => {
+      if (scope !== activeScope.current) return;
       addChatMessage(message);
       chatForm.reset({ content: "" });
       setStatus("Booth chat posted.");
     },
-    onError: (error) => setStatus(getApiErrorMessage(error)),
+    onError: (error, _variables, scope) => { if (scope === activeScope.current) setStatus(getApiErrorMessage(error)); },
   });
 
   function clearSession() {

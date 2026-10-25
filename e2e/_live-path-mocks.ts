@@ -25,10 +25,11 @@ export interface SocketMock {
   received(): Array<{ event: string; payload: unknown }>;
 }
 
-export async function mockSocket(page: Page): Promise<SocketMock> {
+export async function mockSocket(page: Page, options: {rejectEpisodeJoins?: number} = {}): Promise<SocketMock> {
   const open = new Set<WebSocketRoute>();
   const received: Array<{ event: string; payload: unknown }> = [];
   let connections = 0;
+  let rejections = options.rejectEpisodeJoins ?? 0;
   await page.routeWebSocket('**/socket.io/**', (ws) => {
     open.add(ws);
     ws.onClose(() => open.delete(ws));
@@ -41,10 +42,14 @@ export async function mockSocket(page: Page): Promise<SocketMock> {
         ws.send(`40${JSON.stringify({ sid: `sio${connections}` })}`);
         return;
       }
-      const match = text.match(/^42\d*(\[[\s\S]*)$/);
+      const match = text.match(/^42(\d*)(\[[\s\S]*)$/);
       if (match) {
-        const [event, payload] = JSON.parse(match[1]) as [string, unknown];
+        const [event, payload] = JSON.parse(match[2]) as [string, unknown];
         received.push({ event, payload });
+        if (match[1] && (event === 'episode:join' || event === 'listening:join')) {
+          const ok = event !== 'episode:join' || rejections-- <= 0;
+          ws.send(`43${match[1]}${JSON.stringify([{ok}])}`);
+        }
       }
     });
   });
@@ -85,6 +90,7 @@ export function manifestBody(overrides: Partial<ManifestBody> = {}): ManifestBod
     episodeId: 'live-path-episode',
     showId: 'live-path-show',
     showName: 'Signal Test Hour',
+    autoEndsAt: null,
     ...overrides,
   };
 }

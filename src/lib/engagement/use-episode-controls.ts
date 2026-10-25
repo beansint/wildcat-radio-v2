@@ -12,15 +12,31 @@ export function useEpisodeControls(episodeId: string | null) {
   const client = useQueryClient();
   const query = useQuery({
     queryKey: controlsQueryKey(episodeId),
-    queryFn: () => getEngagementControls(episodeId!),
+    queryFn: ({signal}) => getEngagementControls(episodeId!, {signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)])}),
     enabled: !!episodeId,
-    refetchInterval: 15_000,
   });
   useEffect(() => {
     if (!episodeId) return;
     let disposed = false;
     let lease: SocketLease<Socket> | undefined;
-    const refresh = () => { void client.invalidateQueries({ queryKey: controlsQueryKey(episodeId) }); };
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempt = 0;
+    const refresh = () => {
+      if (disposed) return;
+      void client.invalidateQueries({ queryKey: controlsQueryKey(episodeId) }).then(() => {
+        if (!disposed && client.getQueryState(controlsQueryKey(episodeId))?.status === "error") fallback();
+      });
+    };
+    const fallback = () => {
+      clearTimeout(timer);
+      if (disposed) return;
+      timer = setTimeout(async () => {
+        if (disposed || (lease?.socket.connected && client.getQueryState(controlsQueryKey(episodeId))?.status === "success")) return;
+        await client.refetchQueries({queryKey: controlsQueryKey(episodeId)});
+        if (!disposed && (!lease?.socket.connected || client.getQueryState(controlsQueryKey(episodeId))?.status === "error")) fallback();
+      }, Math.min(15_000 * 2 ** Math.min(attempt++, 2), 60_000) * (0.8 + Math.random() * 0.4));
+    };
+    const connected = () => { clearTimeout(timer); attempt = 0; refresh(); };
     const onControls = (event: EngagementControls) => {
       if (event.episodeId !== episodeId) return;
       // Events may arrive out of commit order across episode end/resume.
@@ -34,12 +50,16 @@ export function useEpisodeControls(episodeId: string | null) {
       if (disposed) { next.release(); return; }
       lease = next;
       next.socket.on("engagement:controls", onControls);
-      next.socket.on("connect", refresh);
-    }).catch(() => { /* HTTP polling recovers an unavailable socket. */ });
+      next.socket.on("connect", connected);
+      next.socket.on("disconnect", fallback);
+      if (next.socket.connected) connected(); else fallback();
+    }).catch(fallback);
     return () => {
       disposed = true;
+      clearTimeout(timer);
       lease?.socket.off("engagement:controls", onControls);
-      lease?.socket.off("connect", refresh);
+      lease?.socket.off("connect", connected);
+      lease?.socket.off("disconnect", fallback);
       lease?.release();
     };
   }, [episodeId, client]);

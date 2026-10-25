@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   listPolls,
   react,
@@ -19,6 +19,7 @@ import type {
   SubmitQueueItemDto,
 } from "@/lib/api/model";
 import { acquireSocket, type SocketLease } from "./socket";
+import { joinPresenceWithSnapshot } from "./presence-recovery";
 import { activePin, SnapshotRecovery } from "./snapshot-recovery";
 import { SEND_TIMEOUT, SOCKET_UNAVAILABLE } from "./engagement-error";
 import {
@@ -75,6 +76,12 @@ export function useEngagementRoom(
   authSessionKey?: string | null,
 ) {
   const queryClient = useQueryClient();
+  const actionScope = useMemo(() => ({episodeId, owner: authSessionKey ?? null}), [episodeId, authSessionKey]);
+  const activeScope = useRef<typeof actionScope | null>(actionScope);
+  useLayoutEffect(() => {
+    activeScope.current = actionScope;
+    return () => { activeScope.current = null; };
+  }, [actionScope]);
   const [storedState, setStoredState] = useState(() => emptyEngagementState(episodeId));
   const state = useMemo(
     () =>
@@ -85,6 +92,7 @@ export function useEngagementRoom(
   );
   const updateState = useCallback(
     (update: (current: typeof state) => typeof state) => {
+      if (activeScope.current !== actionScope) return;
       setStoredState((previous) =>
         update(
           previous.episodeId === episodeId
@@ -93,14 +101,10 @@ export function useEngagementRoom(
         ),
       );
     },
-    [episodeId],
+    [episodeId, actionScope],
   );
   const { messages, livePolls, selectedOptions, receipts, upNext, pinnedTopic, hype } = state;
 
-  // Tracks the last authSessionKey we actually cycled the socket for, so we
-  // only force a disconnect/reconnect when the session identity truly
-  // transitions (not on every effect re-run / episodeId change).
-  const prevAuthSessionKeyRef = useRef<string | null | undefined>(undefined);
   // Holds the `connect` handler currently attached to the socket, so the
   // effect cleanup (which fires before the async acquireSocket().then() might
   // have resolved) can detach the *right* handler instance.
@@ -161,6 +165,7 @@ export function useEngagementRoom(
     let socket: Socket | null = null;
     let lease: SocketLease<Socket> | null = null;
     let joinVersion = 0;
+    let cancelJoin: (() => void) | undefined;
 
     function onChatNew(event: ChatEvent) {
       markLiveEvent({ id: event.id });
@@ -222,6 +227,7 @@ export function useEngagementRoom(
 
     function onDisconnect() {
       joinVersion += 1;
+      cancelJoin?.();
       socketConnectedRef.current = false;
       recoveryRef.current.cancel();
       updateState(current => ({...current, hype: {...current.hype, stale: true}}));
@@ -247,15 +253,13 @@ export function useEngagementRoom(
         s.on("topic:pinned", onTopicPinned);
 
         const joinEpisode = () => {
-          socketConnectedRef.current = true;
           const version = ++joinVersion;
           // Subscribe before reading history, so a commit between the initial
           // snapshot and room admission is included in this recovery read.
-          s.timeout(5_000).emit("episode:join", { episodeId }, (error: Error | null, decision?: { ok: boolean }) => {
-            if (cancelled || version !== joinVersion || !s.connected) return;
-            if (error || !decision?.ok) { onDisconnect(); return; }
-            void refetchSnapshot();
-          });
+          cancelJoin?.();
+          cancelJoin = joinPresenceWithSnapshot(s, {episodeId},
+            () => !cancelled && version === joinVersion && s.connected,
+            () => { socketConnectedRef.current = true; void refetchSnapshot(); }, "episode:join");
         };
         // Persistent (not `once`) so episode room membership is restored after
         // ANY reconnect — including one triggered by the auth-session cycling
@@ -263,24 +267,10 @@ export function useEngagementRoom(
         s.on("connect", joinEpisode);
         joinEpisodeRef.current = joinEpisode;
 
-        // Only force a disconnect/reconnect when the auth session identity has
-        // actually transitioned on an already-live socket. Re-running this
-        // effect for unrelated reasons (e.g. episodeId changing) must not
-        // gratuitously cycle the shared socket, since that also knocks out
-        // stream-presence room membership until it self-heals on `connect`.
-        const sessionChanged =
-          prevAuthSessionKeyRef.current !== undefined &&
-          prevAuthSessionKeyRef.current !== (authSessionKey ?? null);
-        prevAuthSessionKeyRef.current = authSessionKey ?? null;
-
-        if (s.connected && sessionChanged) {
-          s.disconnect();
-          s.connect();
-        } else if (s.connected) {
-          joinEpisode();
-        } else {
-          s.connect();
-        }
+        // The persistent provider refreshes the shared cookie handshake on
+        // identity changes, even when this whole page was remounted.
+        if (s.connected) joinEpisode();
+        else s.connect();
       })
       .catch(() => {
         // The HTTP query surfaces unavailable engagement state. Avoid an
@@ -289,6 +279,7 @@ export function useEngagementRoom(
 
     return () => {
       cancelled = true;
+      cancelJoin?.();
       if (socket) {
         socket.emit("episode:leave", { episodeId });
         if (joinEpisodeRef.current) socket.off("connect", joinEpisodeRef.current);
@@ -309,6 +300,7 @@ export function useEngagementRoom(
   }, [authSessionKey, episodeId, markLiveEvent, pushToast, queryClient, refetchSnapshot, updateState]);
 
   const submitQueueMutation = useMutation({
+    onMutate: () => actionScope,
     mutationFn: async ({
       targetEpisodeId,
       payload,
@@ -319,7 +311,8 @@ export function useEngagementRoom(
       const result = await submitQueueItem(targetEpisodeId, payload);
       return { targetEpisodeId, result };
     },
-    onSuccess: ({ targetEpisodeId, result }: { targetEpisodeId: string; result: QueueSubmissionResponseDto }) => {
+    onSuccess: ({ targetEpisodeId, result }: { targetEpisodeId: string; result: QueueSubmissionResponseDto }, _variables, scope) => {
+      if (scope !== activeScope.current) return;
       void queryClient.invalidateQueries({ queryKey: ["my-submissions", targetEpisodeId] });
       if (targetEpisodeId === episodeId) {
         pushToast?.(result.remaining == null ? "Sent to the booth." : `Sent to the booth. ${result.remaining} left this episode.`);
@@ -328,6 +321,7 @@ export function useEngagementRoom(
   });
 
   const voteMutation = useMutation({
+    onMutate: () => actionScope,
     mutationFn: async ({
       targetEpisodeId,
       pollId,
@@ -340,7 +334,8 @@ export function useEngagementRoom(
       const result = await votePoll(pollId, { optionId });
       return { targetEpisodeId, pollId, optionId, result };
     },
-    onSuccess: ({ targetEpisodeId, pollId, optionId, result }) => {
+    onSuccess: ({ targetEpisodeId, pollId, optionId, result }, _variables, scope) => {
+      if (scope !== activeScope.current) return;
       setStoredState((current) =>
         current.episodeId === targetEpisodeId
           ? {
@@ -354,6 +349,7 @@ export function useEngagementRoom(
   });
 
   const reactionMutation = useMutation({
+    onMutate: () => actionScope,
     mutationFn: async ({
       targetEpisodeId,
       emoji,
@@ -371,27 +367,36 @@ export function useEngagementRoom(
       if (!episodeId) return Promise.reject(new Error("No live episode right now."));
       return submitQueueMutation
         .mutateAsync({ targetEpisodeId: episodeId, payload })
-        .then(({ result }) => result);
+        .then(({ result }) => {
+          if (activeScope.current !== actionScope) throw new Error("This episode or account changed. Please try again.");
+          return result;
+        });
     },
-    [episodeId, submitQueueMutation],
+    [episodeId, submitQueueMutation, actionScope],
   );
   const vote = useCallback(
     ({ pollId, optionId }: { pollId: string; optionId: string }) => {
       if (!episodeId) return Promise.reject(new Error("No live episode right now."));
       return voteMutation
         .mutateAsync({ targetEpisodeId: episodeId, pollId, optionId })
-        .then(({ result }) => result);
+        .then(({ result }) => {
+          if (activeScope.current !== actionScope) throw new Error("This episode or account changed. Please try again.");
+          return result;
+        });
     },
-    [episodeId, voteMutation],
+    [episodeId, voteMutation, actionScope],
   );
   const sendReaction = useCallback(
     (emoji: CreateReactionDtoEmoji) => {
       if (!episodeId) return Promise.reject(new Error("No live episode right now."));
       return reactionMutation
         .mutateAsync({ targetEpisodeId: episodeId, emoji })
-        .then(({ result }) => result);
+        .then(({ result }) => {
+          if (activeScope.current !== actionScope) throw new Error("This episode or account changed. Please try again.");
+          return result;
+        });
     },
-    [episodeId, reactionMutation],
+    [episodeId, reactionMutation, actionScope],
   );
 
   const sendChat = useCallback(
@@ -403,11 +408,13 @@ export function useEngagementRoom(
         throw new Error(SOCKET_UNAVAILABLE);
       });
       try {
+        if (activeScope.current !== actionScope) throw new Error(SOCKET_UNAVAILABLE);
         await new Promise<void>((resolve, reject) => {
           lease.socket.timeout(5_000).emit(
             "chat:message",
             { episodeId, content },
             (error: Error | null, response?: { ok?: boolean; error?: string }) => {
+              if (activeScope.current !== actionScope) { reject(new Error(SOCKET_UNAVAILABLE)); return; }
               if (error) {
                 reject(new Error(SEND_TIMEOUT));
                 return;
@@ -424,7 +431,7 @@ export function useEngagementRoom(
         lease.release();
       }
     },
-    [episodeId],
+    [episodeId, actionScope],
   );
 
   return useMemo(
@@ -440,22 +447,22 @@ export function useEngagementRoom(
       pollsError: pollsQuery.error ? getApiErrorMessage(pollsQuery.error) : null,
       submitQueue,
       submitQueuePending:
-        submitQueueMutation.variables?.targetEpisodeId === episodeId && submitQueueMutation.isPending,
-      submitQueueError: submitQueueMutation.variables?.targetEpisodeId === episodeId && submitQueueMutation.error
+        submitQueueMutation.context === actionScope && submitQueueMutation.variables?.targetEpisodeId === episodeId && submitQueueMutation.isPending,
+      submitQueueError: submitQueueMutation.context === actionScope && submitQueueMutation.variables?.targetEpisodeId === episodeId && submitQueueMutation.error
         ? getApiErrorMessage(submitQueueMutation.error)
         : null,
       vote,
       votePending:
-        voteMutation.variables?.targetEpisodeId === episodeId && voteMutation.isPending,
+        voteMutation.context === actionScope && voteMutation.variables?.targetEpisodeId === episodeId && voteMutation.isPending,
       voteError:
-        voteMutation.variables?.targetEpisodeId === episodeId && voteMutation.error
+        voteMutation.context === actionScope && voteMutation.variables?.targetEpisodeId === episodeId && voteMutation.error
           ? getApiErrorMessage(voteMutation.error)
           : null,
       react: sendReaction,
       reacting:
-        reactionMutation.variables?.targetEpisodeId === episodeId && reactionMutation.isPending,
+        reactionMutation.context === actionScope && reactionMutation.variables?.targetEpisodeId === episodeId && reactionMutation.isPending,
       reactionError:
-        reactionMutation.variables?.targetEpisodeId === episodeId && reactionMutation.error
+        reactionMutation.context === actionScope && reactionMutation.variables?.targetEpisodeId === episodeId && reactionMutation.error
           ? getApiErrorMessage(reactionMutation.error)
           : null,
       sendChat,
@@ -469,12 +476,14 @@ export function useEngagementRoom(
     }),
     [
       episodeId,
+      actionScope,
       hype,
       messages,
       pinnedTopic,
       polls,
       pollsQuery.error,
       pollsQuery.isLoading,
+      reactionMutation.context,
       reactionMutation.error,
       reactionMutation.isPending,
       reactionMutation.variables?.targetEpisodeId,
@@ -483,10 +492,12 @@ export function useEngagementRoom(
       sendReaction,
       sendChat,
       submitQueue,
+      submitQueueMutation.context,
       submitQueueMutation.error,
       submitQueueMutation.isPending,
       submitQueueMutation.variables?.targetEpisodeId,
       upNext,
+      voteMutation.context,
       voteMutation.error,
       voteMutation.isPending,
       voteMutation.variables?.targetEpisodeId,

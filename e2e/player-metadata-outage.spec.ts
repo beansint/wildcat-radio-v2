@@ -47,7 +47,7 @@ test('AC-1: brief status outage keeps the last good status and sounding audio', 
   await expect(page.getByTestId('player-status')).toHaveText('STATION_ROTATION');
   await expect.poll(() => paused(page)).toBe(false);
   await expect.poll(() => time(page)).toBeGreaterThan(before);
-  respond('ready'); await page.clock.fastForward(15_100);
+  respond('ready'); await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(page.getByTestId('player-status')).toHaveText('STATION_ROTATION');
   await expect.poll(() => paused(page)).toBe(false);
   await expect.poll(() => time(page)).toBeGreaterThan(before);
@@ -73,7 +73,7 @@ test('AC-3: initial failure does not invent a playable source and recovery requi
   await expect.poll(async () => { await page.clock.fastForward(1_000); return page.getByTestId('player-status').textContent(); }, { timeout: 30_000 }).toBe('UNAVAILABLE');
   await expect(page.getByTestId('player-play')).toBeDisabled();
   await expect.poll(() => paused(page)).toBe(true);
-  respond('ready'); await page.clock.fastForward(15_100);
+  respond('ready'); await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(page.getByTestId('player-play')).toBeEnabled(); await expect.poll(() => paused(page)).toBe(true);
   await page.getByTestId('player-play').focus(); await page.keyboard.press('Enter');
   await expect.poll(() => paused(page)).toBe(false);
@@ -81,7 +81,7 @@ test('AC-3: initial failure does not invent a playable source and recovery requi
 
 test('AC-4: fresh off-air evidence stops playback immediately', async ({ page }) => {
   const respond = await fixture(page); await start(page);
-  respond('off-air'); await page.clock.fastForward(15_100);
+  respond('off-air'); await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(page.getByTestId('player-status')).toHaveText('OFF_AIR');
   await expect.poll(() => paused(page)).toBe(true);
   await expect(page.getByTestId('player-play')).toBeDisabled();
@@ -102,6 +102,6 @@ test('AC-5: retained LIVE audio cannot authorize reactions or claim fresh Live d
   await expect(page.getByTestId('player-react')).toHaveCount(0);
   await expect(page.locator('.wc-badge-live, .wc-player-mini-live')).toHaveCount(0);
   expect(writes).toBe(0);
-  respond('ready'); await page.clock.fastForward(15_100);
+  respond('ready'); await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(page.getByTestId('player-react')).toBeVisible();
 });

@@ -26,13 +26,13 @@ import {
 export function ListenClient() {
   const router = useRouter();
   const [handoffState, setHandoffState] = useState<"idle" | "consuming" | "error">("idle");
-  const { listeners, episodeId, status, manifestAvailability } = useStream();
+  const { listeners, episodeId, status, manifestAvailability, manifestObservation } = useStream();
   const { data: session } = useSession();
   // #127 — a LIVE→ROTATION blip (BUTT↔harbor reconnect) or a status-service
   // outage must not close chat: the live episode keeps chat & engagement open
   // through a grace window (see lib/stream/live-grace.ts). Unknown status is
   // passed as null — a blip, not the end of the show.
-  const grace = useLiveGrace(manifestAvailability === "ready" ? status : null, episodeId);
+  const grace = useLiveGrace(manifestAvailability === "ready" ? status : null, episodeId, manifestObservation);
   const isLive = grace.open;
   const engagementEpisodeId = grace.episodeId;
   const authKey = session ? JSON.stringify([

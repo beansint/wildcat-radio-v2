@@ -50,11 +50,8 @@ const EMPTY: PresenceState = {
  * Joins the Socket.IO presence room while `active && episodeId` is truthy.
  * Listens for `stream:status` events to surface live listener counts.
  *
- * FE#40: the socket connection itself is gated on `active` (real listen
- * intent), not just the room-join emits — no `active`, no WebSocket. The
- * connection is opened lazily (dynamic import, see `./socket`) and torn
- * down again as soon as the listener goes idle, so anonymous/marketing
- * routes never open a socket before the user presses play.
+ * The provider owns a shared status subscription even while idle; this hook
+ * adds audience membership only once audio is actually playing.
  *
  * @param episodeId  Current episode ID from the stream manifest (or null for station rotation / off-air)
  * @param active     Whether the listener is currently joined (e.g. player is playing)
@@ -86,6 +83,7 @@ export function useStreamPresence(
     let lease: SocketLease<Socket> | null = null;
     let queueVersion = 0;
     let joinVersion = 0;
+    let cancelJoin: (() => void) | undefined;
 
     async function refreshQueue() {
       if (!episodeId) return;
@@ -124,6 +122,7 @@ export function useStreamPresence(
     function onDisconnect() {
       queueVersion++;
       joinVersion++;
+      cancelJoin?.();
       setState(EMPTY);
     }
 
@@ -136,7 +135,8 @@ export function useStreamPresence(
       const identity = await getEpisodeBrowserIdentity(target);
       const isCurrent = () => !cancelled && version === joinVersion && !!socket?.connected && prevEpisodeId.current === target;
       if (socket && isCurrent()) {
-        joinPresenceWithSnapshot(socket, listeningJoinPayload(target, identity), isCurrent, () => { void refreshQueue(); });
+        cancelJoin?.();
+        cancelJoin = joinPresenceWithSnapshot(socket, listeningJoinPayload(target, identity), isCurrent, () => { void refreshQueue(); });
       }
     }
 
@@ -178,6 +178,7 @@ export function useStreamPresence(
 
     return () => {
       cancelled = true;
+      cancelJoin?.();
       if (socket) {
         if (prevEpisodeId.current) {
           socket.emit("listening:leave", { episodeId: prevEpisodeId.current });

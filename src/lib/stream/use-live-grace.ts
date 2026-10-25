@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { acquireSocket, type SocketLease } from "@/lib/realtime/socket";
-import { getStreamManifest } from "@/lib/api/endpoints/stream/stream";
 import type { Socket } from "socket.io-client";
 import {
   LIVE_GRACE_MS,
@@ -23,74 +22,44 @@ const CLOSED: LiveGraceView = { episodeId: null, open: false, interrupted: false
  *
  * `status: null` means "unknown" (status service unavailable) — a blip, not an end.
  */
-export function useLiveGrace(status: LiveStatus | null, episodeId: string | null): LiveGraceView {
+export function useLiveGrace(status: LiveStatus | null, episodeId: string | null, manifestObservation: number): LiveGraceView {
   const [memory, setMemory] = useState<LiveGraceMemory | null>(null);
   const [endedEpisodeId, setEndedEpisodeId] = useState<string | null>(null);
-  const lifecycleVersion = useRef(0);
-  const reconcileRef = useRef<() => void>(() => {});
+  const observed = useRef(manifestObservation);
+  const endedAtObservation = useRef<number | null>(null);
+  useLayoutEffect(() => { observed.current = manifestObservation; }, [manifestObservation]);
   useEffect(() => {
     let cancelled = false;
     let lease: SocketLease<Socket> | undefined;
     const ended = (event: { episodeId: string }) => {
-      lifecycleVersion.current += 1;
+      endedAtObservation.current = observed.current;
       setEndedEpisodeId(event.episodeId);
     };
     const started = (event: { episodeId: string }) => {
-      lifecycleVersion.current += 1;
       setEndedEpisodeId(current => current === event.episodeId ? null : current);
     };
-    const connected = () => reconcileRef.current();
     void acquireSocket().then(next => {
       if (cancelled) { next.release(); return; }
       lease = next;
       next.socket.on('episode:ended', ended);
       next.socket.on('episode:started', started);
-      next.socket.on('connect', connected);
-      if (!next.socket.connected) next.socket.connect();
-    }).catch(() => { /* Existing status polling/grace remains the fallback. */ });
+    }).catch(() => { /* Provider recovery retains the last truthful state. */ });
     return () => {
       cancelled = true;
       lease?.socket.off('episode:ended', ended);
       lease?.socket.off('episode:started', started);
-      lease?.socket.off('connect', connected);
       lease?.release();
     };
   }, []);
 
   useEffect(() => {
-    if (!endedEpisodeId) return;
-    let active = true;
-    let controller: AbortController | undefined;
-    const reconcile = async () => {
-      if (document.hidden) return;
-      controller?.abort();
-      const request = new AbortController();
-      controller = request;
-      const version = lifecycleVersion.current;
-      try {
-        // Fetch after the end, never trust the player's cached LIVE observation.
-        const manifest = await getStreamManifest({ signal: request.signal, cache: 'no-store' });
-        if (active && !request.signal.aborted && version === lifecycleVersion.current
-          && manifest.status === 'LIVE' && manifest.episodeId === endedEpisodeId) {
-          setEndedEpisodeId(current => current === endedEpisodeId ? null : current);
-        }
-      } catch { /* Keep the terminal marker until a fresh observation succeeds. */ }
-    };
-    const resume = () => { void reconcile(); };
-    reconcileRef.current = resume;
-    resume();
-    const timer = window.setInterval(resume, 15_000);
-    window.addEventListener('focus', resume);
-    document.addEventListener('visibilitychange', resume);
-    return () => {
-      active = false;
-      controller?.abort();
-      reconcileRef.current = () => {};
-      window.clearInterval(timer);
-      window.removeEventListener('focus', resume);
-      document.removeEventListener('visibilitychange', resume);
-    };
-  }, [endedEpisodeId]);
+    if (status !== "LIVE" || !endedEpisodeId || episodeId !== endedEpisodeId
+      || manifestObservation === endedAtObservation.current) return;
+    // The observation comes through StreamContext, including when the page
+    // has a different identity-scoped QueryClient from the persistent player.
+    const timer = window.setTimeout(() => setEndedEpisodeId(null), 0);
+    return () => window.clearTimeout(timer);
+  }, [status, episodeId, endedEpisodeId, manifestObservation]);
 
   useEffect(() => {
     const observation = { status, episodeId, endedEpisodeId };

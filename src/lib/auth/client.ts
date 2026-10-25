@@ -7,6 +7,7 @@
  * (class, role, handle) in the session type without importing server types.
  */
 import { createAuthClient } from 'better-auth/react';
+import { getGlobalBroadcastChannel } from 'better-auth/client';
 import { inferAdditionalFields } from 'better-auth/client/plugins';
 import { API_ORIGIN } from '@/lib/api-origin';
 
@@ -30,7 +31,19 @@ export interface SessionUser {
 
 export const authClient = createAuthClient({
   baseURL: API_ORIGIN,
-  fetchOptions: { credentials: 'include' as RequestCredentials },
+  fetchOptions: {
+    credentials: 'include' as RequestCredentials,
+    onSuccess: ({ request }) => {
+      // Better Auth broadcasts sign-out/update-user, but 1.6 does not broadcast sign-in.
+      // Reuse its session channel so every tab resolves the new cookie owner.
+      const path = new URL(request.url).pathname;
+      if (path === '/api/auth/sign-in/email' || path === '/api/auth/sign-up/email') {
+        getGlobalBroadcastChannel().post({
+          event: 'session', data: { trigger: 'getSession' }, clientId: crypto.randomUUID(),
+        });
+      }
+    },
+  },
   plugins: [
     inferAdditionalFields({
       user: {

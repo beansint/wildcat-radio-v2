@@ -33,6 +33,7 @@ import type { ConsentRecordDto } from "@/lib/api/model";
 import { API_BASE_URL } from "@/lib/api/fetcher";
 import { getApiErrorMessage } from "@/lib/api/error-message";
 import { hasDemographicsConsent } from "@/lib/auth/account-flows";
+import { useRequestSignal } from "@/lib/auth/use-request-signal";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -51,6 +52,7 @@ const ERASE_CONFIRMATION = "DELETE";
 
 export default function PrivacyCentrePage() {
   const queryClient = useQueryClient();
+  const getRequestSignal = useRequestSignal();
   const consentsQuery = useListMyConsents<ConsentRecordDto[]>();
   const [busy, setBusy] = useState<"consent" | "export" | "erase" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +94,7 @@ export default function PrivacyCentrePage() {
   }
 
   async function handleExport() {
+    const signal = getRequestSignal();
     setBusy("export");
     setError(null);
     setStatus(null);
@@ -103,12 +106,14 @@ export default function PrivacyCentrePage() {
       //
       // The error body is read out the way `customFetch` does, so a failure
       // shows the server's reason rather than a bare status code.
-      const res = await fetch(`${API_BASE_URL}/api/me/data/export`, { credentials: "include" });
+      const res = await fetch(`${API_BASE_URL}/api/me/data/export`, { credentials: "include", signal });
       if (!res.ok) {
         const detail = await res.text().catch(() => "");
         throw new Error(`${res.status} ${res.statusText}${detail ? `: ${detail}` : ""}`);
       }
-      const blob = new Blob([JSON.stringify(await res.json(), null, 2)], {
+      const data = await res.json();
+      signal?.throwIfAborted();
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
         type: "application/json",
       });
       const href = URL.createObjectURL(blob);

@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
-import { GlobalPlayer } from "@/components/global-player";
 import { QueryProvider } from "@/components/query-provider";
 import { SITE_URL } from "@/lib/content/site-url";
 
@@ -66,7 +65,6 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <QueryProvider>
           {children}
-          <GlobalPlayer />
         </QueryProvider>
       </body>
     </html>

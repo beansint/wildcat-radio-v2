@@ -149,4 +149,3 @@ test('RT-3 controls: a failed read recovers while the transport stays connected'
   await expect(page.getByText('Listener chat is paused by the booth for this episode.').first()).toBeVisible();
   expect(socket.connections()).toBe(connections);
 });
-

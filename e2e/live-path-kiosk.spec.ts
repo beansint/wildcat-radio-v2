@@ -106,11 +106,13 @@ test.describe('live-path kiosk', () => {
     await expect(page.getByTestId('studio-kiosk-onair')).toHaveText('On air · Morning Signal');
   });
 
-  test('RT-3: a late poll action from the previous episode cannot populate the new console', async ({page}) => {
+  for (const fails of [false, true]) {
+  test(`RT-3: a late poll action ${fails ? 'error' : 'result'} cannot populate the new console`, async ({page}) => {
     const k = await kiosk(page);
     let release: (() => void) | undefined;
     await page.route('**/api/studio/polls', async route => {
       await new Promise<void>(resolve => { release = resolve; });
+      if (fails) { await json(route, {message: 'OLD_EPISODE_ACTION_FAILED'}, 503); return; }
       await json(route, {id: 'late-old', episodeId: EPISODE, question: 'Old episode poll', options: [], totalVotes: 0, visibility: 'PUBLIC', isActive: true});
     });
     await page.goto('/studio');
@@ -126,7 +128,9 @@ test.describe('live-path kiosk', () => {
     release?.();
     await expect(page.getByRole('button', {name: 'Launch poll'})).toBeEnabled();
     await expect(page.getByTestId('studio-poll-late-old')).toHaveCount(0);
+    await expect(page.getByText(/OLD_EPISODE_ACTION_FAILED/)).toHaveCount(0);
   });
+  }
 
   test('W-E5: a stale encoder reads "Encoder offline" with a ticking auto-end countdown, never "On air"', async ({ page }) => {
     const guard = attachConsoleGuard(page);

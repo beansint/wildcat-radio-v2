@@ -1,8 +1,11 @@
 'use client';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { Fragment, useEffect, useState } from 'react';
 import { StreamProvider } from '@/lib/stream/stream-context';
+import { GlobalPlayer } from '@/components/global-player';
+import { useSession } from '@/lib/auth/client';
+import { createIdentityQueryClient, retireIdentityQueryClient } from '@/lib/auth/identity-query-client';
 
 /**
  * FE#48 — `new QueryClient()` shipped with no `defaultOptions`, so every query
@@ -19,23 +22,32 @@ import { StreamProvider } from '@/lib/stream/stream-context';
  * queries that genuinely want retries can still opt in.
  */
 export function QueryProvider({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            // Public content changes on a human timescale; a 30s window kills
-            // the duplicate fetch on every remount without going stale.
-            staleTime: 30_000,
-            refetchOnWindowFocus: false,
-            retry: false,
-          },
-        },
-      }),
-  );
+  const [queryClient] = useState(() => createIdentityQueryClient());
   return (
     <QueryClientProvider client={queryClient}>
-      <StreamProvider>{children}</StreamProvider>
+      <StreamProvider>
+        <IdentityQueries>{children}</IdentityQueries>
+        {/* The audio element and its provider must survive identity changes. */}
+        <GlobalPlayer />
+      </StreamProvider>
+    </QueryClientProvider>
+  );
+}
+
+function IdentityQueries({ children }: { children: React.ReactNode }) {
+  const { data } = useSession();
+  // Session id also isolates a later login by the same user. Role changes discard staff data.
+  const scope = JSON.stringify([data?.user.id ?? null, data?.session.id ?? null, data?.user.role ?? null]);
+  const [state, setState] = useState(() => ({ scope, client: createIdentityQueryClient() }));
+  if (state.scope !== scope) {
+    // Adjust during render so React retries before committing any old owner's subtree.
+    setState({ scope, client: createIdentityQueryClient(state.client) });
+  }
+  useEffect(() => () => retireIdentityQueryClient(state.client), [state.client]);
+  return (
+    <QueryClientProvider client={state.client}>
+      {/* Reset private forms, selections and receipts as well as query/mutation state. */}
+      <Fragment key={state.scope}>{children}</Fragment>
     </QueryClientProvider>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { useRequestSignal } from "@/lib/auth/use-request-signal";
+
 /**
  * `/mod/analytics` — the M6 curation dashboard, 1:1-adapted from
  * docs/frontend-design-basis-prototype/mod/analytics.html.
@@ -59,6 +61,7 @@ const PERIOD_TABS = [
 ];
 
 export default function AnalyticsPage() {
+  const getRequestSignal = useRequestSignal();
   const [period, setPeriod] = useState<PeriodKey>("p30");
   const today = useMemo(() => toIsoDate(new Date()), []);
   const [customFrom, setCustomFrom] = useState(() => toIsoDate(new Date(Date.now() - 30 * 86_400_000)));
@@ -107,13 +110,15 @@ export default function AnalyticsPage() {
     setExportStatus(null);
     try {
       const url = `${API_BASE_URL}/api/analytics/media-kit/export?format=${format}&from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`;
-      const res = await fetch(url, { credentials: "include" });
+      const signal = getRequestSignal();
+      const res = await fetch(url, { credentials: "include", signal });
       if (!res.ok) throw new Error(`Export failed (${res.status})`);
 
       // Anchor-and-revoke rather than navigating: the request needs the session
       // cookie and the response is an attachment, so a plain link would lose
       // credentials on a cross-origin API.
       const blob = await res.blob();
+      signal?.throwIfAborted();
       const href = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = href;

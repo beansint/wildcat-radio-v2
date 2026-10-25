@@ -12,18 +12,26 @@ import { audioPlaying } from './_live-path-mocks';
 // Actual HTTP/auth/PG/Socket.IO throughout. Media is local ffmpeg AAC/HLS.
 const accounts: ProfileAccount[] = [];
 const contexts: APIRequestContext[] = [];
-const diagnostics: { label: string; page: Page; guard: ConsoleGuard; pageErrors: string[]; media: string[]; sockets: { openedAt: number; closedAt?: number }[] }[] = [];
+type ObservedSocket = { openedAt: number; namespaceConnectSentAt?: number; namespaceConnectedAt?: number; closedAt?: number };
+const cancelledHandshakeWarning = `[warning] WebSocket connection to '${new URL(API_BASE).origin.replace(/^http/, 'ws')}/socket.io/?EIO=4&transport=websocket' failed: WebSocket is closed before the connection is established.`;
+const diagnostics: { label: string; page: Page; guard: ConsoleGuard; pageErrors: string[]; media: string[]; sockets: ObservedSocket[] }[] = [];
 let live: Awaited<ReturnType<typeof startChatBroadcast>> | undefined;
 let mediaOrigin: string | undefined;
 
 function observe(page: Page, label: string) {
-  const entry = { label, page, guard: attachConsoleGuard(page), pageErrors: [] as string[], media: [] as string[], sockets: [] as { openedAt: number; closedAt?: number }[] };
+  const entry = { label, page, guard: attachConsoleGuard(page), pageErrors: [] as string[], media: [] as string[], sockets: [] as ObservedSocket[] };
   page.on('request', r => { if (mediaOrigin && r.url().startsWith(`${mediaOrigin}/`)) entry.media.push(r.url()); });
   page.on('pageerror', error => entry.pageErrors.push(error.message));
   page.on('websocket', socket => {
-    if (!socket.url().includes('/socket.io/')) return;
-    const event = { openedAt: Date.now() } as { openedAt: number; closedAt?: number };
+    if (!socket.url().startsWith(`${new URL(API_BASE).origin.replace(/^http/, 'ws')}/socket.io/`)) return;
+    const event: ObservedSocket = { openedAt: Date.now() };
     entry.sockets.push(event);
+    socket.on('framesent', frame => {
+      if (/^40(?:\{|$)/.test(frame.payload.toString())) event.namespaceConnectSentAt ??= Date.now();
+    });
+    socket.on('framereceived', frame => {
+      if (/^40(?:\{|$)/.test(frame.payload.toString())) event.namespaceConnectedAt ??= Date.now();
+    });
     socket.on('close', () => { event.closedAt = Date.now(); });
   });
   diagnostics.push(entry);
@@ -56,23 +64,21 @@ async function signIn(page: Page, subject: ProfileAccount) {
 }
 
 async function report(info: TestInfo) {
-  const entries = await Promise.all(diagnostics.map(async d => ({ label: d.label, errors: d.guard.errors(), badResponses: d.guard.badResponses(), pageErrors: d.pageErrors, sockets: d.sockets, media: d.media,
-    audio: await d.page.getByTestId('player-audio').evaluate((a: HTMLAudioElement) => ({ src: a.currentSrc, paused: a.paused, time: a.currentTime, ready: a.readyState, error: a.error?.message })).catch(() => null),
-  })));
+  const entries = await Promise.all(diagnostics.map(async d => {
+    const audio = await d.page.getByTestId('player-audio').evaluate((a: HTMLAudioElement) => ({ src: a.currentSrc, paused: a.paused, time: a.currentTime, ready: a.readyState, error: a.error?.message })).catch(() => null);
+    return { label: d.label, errors: d.guard.errors(), badResponses: d.guard.badResponses(), pageErrors: d.pageErrors, sockets: d.sockets, media: d.media, audio };
+  }));
   const file = info.outputPath('browser-diagnostics.json');
   writeFileSync(file, JSON.stringify(entries, null, 2));
   await info.attach('browser-diagnostics', { path: file, contentType: 'application/json' });
-  for (const entry of diagnostics) {
+  for (const entry of entries) {
     expect(entry.pageErrors, `${entry.label} browser runtime errors`).toEqual([]);
-    // Owner rotation deliberately cancels an obsolete in-flight handshake.
-    // Retain it in diagnostics; allow only this exact warning after a real
-    // original-tab socket replacement, never API failures or other warnings.
-    const cancelledHandshake = `[warning] WebSocket connection to '${API_BASE.replace(/^http/, 'ws').replace(/\/$/, '')}/socket.io/?EIO=4&transport=websocket' failed: WebSocket is closed before the connection is established.`;
-    const rotated = entry.label === 'original-chat-tab' && entry.sockets.length >= 2 && entry.sockets.some(socket => socket.closedAt !== undefined);
-    const allowed = entry.guard.errors().filter(error => rotated && error === cancelledHandshake);
-    expect(allowed.length, 'At most one deliberate handshake cancellation').toBeLessThanOrEqual(1);
-    expect(entry.guard.errors().filter(error => !allowed.includes(error)), `${entry.label} unexpected browser diagnostics`).toEqual([]);
-    expect(entry.guard.badResponses(), `${entry.label} unexpected HTTP failures`).toEqual([]);
+    // Full navigation/owner transitions intentionally cancel pending browser
+    // handshakes. Keep this exact API-origin warning in the report; all other
+    // diagnostics fail. The test asserts the successful namespace transition,
+    // audio continuity and persisted actor directly instead of warning counts.
+    expect(entry.errors.filter(error => error !== cancelledHandshakeWarning), `${entry.label} unexpected browser diagnostics`).toEqual([]);
+    expect(entry.badResponses, `${entry.label} unexpected HTTP failures`).toEqual([]);
   }
 }
 
@@ -257,12 +263,14 @@ test('combined identity regression: a persistent playing socket sends Bob chat a
   await input.press('Enter');
   await expect(page.getByTestId('engagement-chat-feed').getByText(aliceMessage, { exact: true })).toBeVisible();
   expect(localDb<{ userId: string }>(`return p.chatMessage.findFirstOrThrow({where:{episodeId:${JSON.stringify(live.episodeId)},content:${JSON.stringify(aliceMessage)}},select:{userId:true}});`).userId).toBe(alice.id);
-  const before = observed.sockets.length;
+  const namespaceConnections = () => observed.sockets.filter(socket => socket.namespaceConnectedAt !== undefined).length;
+  const before = namespaceConnections();
   const sibling = await context.newPage();
   observe(sibling, 'sibling-login-tab');
   await signIn(sibling, bob);
   await page.bringToFront();
   await expect(page.getByTestId('account-menu-trigger')).toHaveAttribute('aria-label', new RegExp(bob.handle));
+  await expect.poll(namespaceConnections, { message: 'Bob switch establishes exactly one fresh Socket.IO namespace connection' }).toBe(before + 1);
   await expect(page.getByTestId('player-audio')).toHaveAttribute('data-combined-original', 'true');
   await expect.poll(() => audioPlaying(page)).toBe(true);
   const bobSession = await playwright.request.newContext({ storageState: await context.storageState() });
@@ -276,8 +284,9 @@ test('combined identity regression: a persistent playing socket sends Bob chat a
   await expect(page.getByTestId('engagement-chat-feed').getByText(bobMessage, { exact: true })).toBeVisible();
   const persisted = localDb<{ userId: string; content: string }>(`return p.chatMessage.findFirstOrThrow({where:{episodeId:${JSON.stringify(live.episodeId)},content:${JSON.stringify(bobMessage)}},select:{userId:true,content:true}});`);
   const attributionFile = info.outputPath('identity-attribution.json');
-  writeFileSync(attributionFile, JSON.stringify({ aliceId: alice.id, bobId: bob.id, persisted, aliceSessionStillValid: true, bobSessionStillValid: true, originalTabSocketOpensBeforeSwitch: before, originalTabSocketOpensAfterSwitch: observed.sockets.length }, null, 2));
+  writeFileSync(attributionFile, JSON.stringify({ aliceId: alice.id, bobId: bob.id, persisted, aliceSessionStillValid: true, bobSessionStillValid: true, originalTabNamespaceConnectionsBeforeSwitch: before, originalTabNamespaceConnectionsAfterSwitch: namespaceConnections() }, null, 2));
   await info.attach('identity-attribution', { path: attributionFile, contentType: 'application/json' });
   await page.screenshot({ path: info.outputPath('bob-chat-original-playing-tab.png'), fullPage: true });
   expect(persisted.userId, 'Bob UI must never publish through Alice’s still-valid socket identity').toBe(bob.id);
+  expect(namespaceConnections(), 'Settled account switch adds exactly one successful namespace handshake').toBe(before + 1);
 });

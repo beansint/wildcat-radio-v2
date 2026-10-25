@@ -28,7 +28,7 @@ export function TogglesTab({ values, setValue }: TogglesTabProps) {
         id="settings-chat-freeze"
         testId={settingTestId("toggle.chatFreeze")}
         label="Freeze chat"
-        help="Stops all new chat messages station-wide."
+        help="Pauses listener chat and new submissions station-wide. Staff, polls and fixed reactions remain available."
         checked={values["toggle.chatFreeze"] as boolean}
         onChange={(checked) => setValue("toggle.chatFreeze", checked)}
       />
@@ -38,7 +38,7 @@ export function TogglesTab({ values, setValue }: TogglesTabProps) {
         testId={settingTestId("toggle.slowModeSeconds")}
         label="Slow mode"
         unit="seconds"
-        help="Minimum time between a listener's chat messages."
+        help="Minimum time between a listener's chat messages, and separately between submissions. Staff are exempt."
         value={values["toggle.slowModeSeconds"] as string}
         onChange={(value) => setValue("toggle.slowModeSeconds", value)}
       />
@@ -47,7 +47,7 @@ export function TogglesTab({ values, setValue }: TogglesTabProps) {
         id="settings-guest-killswitch"
         testId={settingTestId("killswitch.guests")}
         label="Guest killswitch"
-        help="Blocks all guest (unauthenticated) listener actions."
+        help="Pauses chat, submissions and voting for registered guest listeners. Campus listeners, staff and fixed reactions remain available."
         checked={values["killswitch.guests"] as boolean}
         onChange={(checked) => setValue("killswitch.guests", checked)}
       />

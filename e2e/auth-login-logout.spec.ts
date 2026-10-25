@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { API_BASE, WEB_BASE } from './_fixtures';
+import { appAlerts } from './_console';
 
 // FE#55 — was a hardcoded `http://localhost:3000` (and `:3001` for the API), both
 // stale: the stack runs on 3011/3010. Relative `goto()`s were silently hitting a
@@ -42,7 +43,7 @@ test('AC-2 edge E-1: wrong password shows error', async ({ page }) => {
   await page.getByTestId('auth-password').fill('WrongPassword999!');
   await page.getByTestId('auth-submit').click();
 
-  await expect(page.getByRole('alert')).toBeVisible({ timeout: 8_000 });
+  await expect(appAlerts(page)).toBeVisible({ timeout: 8_000 });
 });
 
 // Edge E-5: auth guard preserves ?next= redirect
@@ -53,13 +54,13 @@ test('AC-2 edge E-5: visiting /profile unauth redirects to /login?next=/profile'
   await expect(page).toHaveURL(/\/login\?next=%2Fprofile/, { timeout: 8_000 });
 });
 
-// Edge E-3: invalid verify-email token shows error + resend button
+// Edge E-3: an invalid token cannot identify a signed-out account for resend.
 test('AC-2 edge E-3: invalid verify-email token shows error state', async ({ page }) => {
   await page.goto(`${BASE}/verify-email?token=invalid-token-xyz`);
 
-  // Should show error state with resend button
   await expect(page.getByRole('heading', { name: /expired|invalid/i })).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByRole('button', { name: /resend/i })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /resend/i })).toHaveCount(0);
 });
 
 // Edge E-4: invalid reset token shows error
@@ -73,5 +74,5 @@ test('AC-2 edge E-4: invalid reset token shows error state', async ({ page }) =>
   await page.locator('#rp-confirm').fill('NewPassword123!');
   await page.locator('[type="submit"]').click();
 
-  await expect(page.getByRole('alert')).toBeVisible({ timeout: 8_000 });
+  await expect(appAlerts(page)).toBeVisible({ timeout: 8_000 });
 });

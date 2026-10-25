@@ -9,6 +9,7 @@ import { ChevronLeft, MailCheck } from 'lucide-react';
 import { z } from 'zod/v4';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { authCallbackUrl } from '@/lib/auth/account-flows';
 import { authClient } from '@/lib/auth/client';
 import { AuthBrandPane } from '@/components/auth/auth-brand-pane';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,7 @@ export default function ForgotPasswordPage() {
         // Anti-enumeration: Better Auth resolves successfully for unknown emails, so
         // "check your inbox" is shown regardless. We only surface genuine transport
         // failures (rate-limit / server error) — never "account doesn't exist".
-        const { error } = await authClient.requestPasswordReset({ email: values.email, redirectTo: '/reset-password' });
+        const { error } = await authClient.requestPasswordReset({ email: values.email, redirectTo: authCallbackUrl('reset') });
         if (error) {
           setFormError(error.message ?? 'Something went wrong. Please try again.');
           return;
@@ -76,7 +77,7 @@ export default function ForgotPasswordPage() {
               </div>
               <h1 className="text-2xl font-extrabold mb-2">Check your inbox</h1>
               <p className="wc-muted text-sm">
-                If that email has an account, we&apos;ve sent a reset link. Check your spam folder too.
+                If this address is eligible, a reset email will be attempted. Delivery can take a few minutes. Check spam, then try again after a minute if nothing arrives.
               </p>
             </div>
           ) : (

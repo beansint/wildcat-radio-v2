@@ -1,0 +1,58 @@
+{
+  "recordedDate": "2026-10-23",
+  "scope": "Post-merge P2 review fixes for backend #204 and frontend #142; focused verification only",
+  "productCommits": {
+    "backend": "5e5c63900bfb3856209245eb456f668781f8bc48",
+    "frontend": "76a12b01a22c1f318288293a5e171dded0d9125f"
+  },
+  "regressions": {
+    "anonymousResend": {
+      "before": "HTTP 200 instead of required 401",
+      "after": "Identical 401 AUTH_REQUIRED for repeated known/missing addresses, no queued mail; signed-in 429 and signup callback preserved"
+    },
+    "snapshotRequests": {
+      "before": "Four functional regressions failed with extracted uncoordinated request behavior; prior handler trace produced 132 reads/12 throttled for 11 listeners and 3 acceptances",
+      "after": "50ms coalescing, in-flight follow-up, no completed result cache, shared 61s throttle delay with at most two retries; same campus scenario produces 33 reads"
+    }
+  },
+  "checks": {
+    "accountEmailIntegration": {
+      "passed": 10,
+      "failed": 0,
+      "newRegressions": 2,
+      "database": "owned loopback PostgreSQL 17, port 55432, wildcat_account_auth_20261023_test",
+      "emailTransport": "captured in memory; no provider emails",
+      "log": "review-auth-green.log"
+    },
+    "frontendFocused": {
+      "passed": 30,
+      "failed": 0,
+      "files": 4,
+      "newCoordinatorCases": 9,
+      "log": "review-snapshot-green.log"
+    },
+    "finalFixtureRecheck": {
+      "passed": 9,
+      "failed": 0,
+      "log": "review-snapshot-final.log"
+    },
+    "apiBuild": {
+      "result": "passed",
+      "log": "review-api-build.log"
+    },
+    "frontendTypecheck": {
+      "result": "passed",
+      "log": "review-web-types.log"
+    },
+    "changedFileLint": {
+      "result": "passed",
+      "log": "review-web-lint.log"
+    }
+  },
+  "limitations": [
+    "Throttle/load regressions use fake clocks and model independent browsers; no new full browser run.",
+    "Original full-suite evidence remains historical and was not rerun or reclassified.",
+    "Live Resend setup remains deferred; no production migration or deployment."
+  ],
+  "handoffPolicy": "Owner explicitly requested merge into dev after focused local verification without full suites or CI waiting."
+}

@@ -7,6 +7,10 @@
  */
 
 export interface UpdateMeDto {
+  /** Atomically grant or withdraw optional demographics consent with this update */
+  demographicsConsent?: boolean;
+  /** Required when changing demographicsConsent; the state loaded by the form, to reject stale re-grants */
+  expectedDemographicsConsent?: boolean;
   handle?: string;
   /** @nullable */
   avatarUrl?: string | null;

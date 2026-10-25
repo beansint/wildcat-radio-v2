@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useGetStreamManifest } from "@/lib/api/endpoints/stream/stream";
 import { useStreamPresence, type UpNextPeek } from "@/lib/realtime/use-stream-presence";
+import { useSocketIdentity } from "@/lib/realtime/use-socket-identity";
 import { ToastHost, pushToast } from "@/components/listen/toast";
 import type { GetStreamManifest200Reason } from "@/lib/api/model";
 import { PlayAttemptTracker } from "./play-attempt";
@@ -97,6 +98,7 @@ const HLS_CONFIG = {
 };
 
 export function StreamProvider({ children }: { children: ReactNode }) {
+  useSocketIdentity();
   const [phase, setPhase] = useState<PlayerPhase>("idle");
   const [expiredManifestAt, setExpiredManifestAt] = useState<number | null>(null);
   // #127 — a single failed poll used to flip every surface to "unavailable"

@@ -496,15 +496,15 @@ export default function StudioPage() {
     pollForm.formState.errors.question?.message,
     pollForm.formState.errors.options?.message,
     pollForm.formState.errors.visibility?.message,
-    pollMutation.error ? getApiErrorMessage(pollMutation.error) : null,
+    pollMutation.context === actionScope && pollMutation.error ? getApiErrorMessage(pollMutation.error) : null,
   );
   const pinAlert = firstError(
     pinForm.formState.errors.text?.message,
-    pinMutation.error ? getApiErrorMessage(pinMutation.error) : null,
+    pinMutation.context === actionScope && pinMutation.error ? getApiErrorMessage(pinMutation.error) : null,
   );
   const chatAlert = firstError(
     chatForm.formState.errors.content?.message,
-    boothChatMutation.error ? getApiErrorMessage(boothChatMutation.error) : null,
+    boothChatMutation.context === actionScope && boothChatMutation.error ? getApiErrorMessage(boothChatMutation.error) : null,
   );
 
   if (sessionQuery.isPending) {
@@ -648,7 +648,7 @@ export default function StudioPage() {
               key={episodeId ?? "idle"}
               queue={queue}
               loading={queueQuery.isLoading}
-              pending={actMutation.isPending}
+              pending={actMutation.context === actionScope && actMutation.isPending}
               onAct={(id, action) => actMutation.mutate({ id, action })}
             />
           </div>
@@ -691,7 +691,7 @@ export default function StudioPage() {
                 </div>
               </fieldset>
               <FormAlert message={pollAlert} />
-              <Button type="submit" disabled={pollMutation.isPending}>
+              <Button type="submit" disabled={pollMutation.context === actionScope && pollMutation.isPending}>
                 Launch poll
               </Button>
             </form>
@@ -739,7 +739,7 @@ export default function StudioPage() {
                         variant="outline"
                         className="mt-3" data-testid="studio-poll-close"
                         onClick={() => closePollMutation.mutate(poll.id)}
-                        disabled={closePollMutation.isPending}
+                        disabled={closePollMutation.context === actionScope && closePollMutation.isPending}
                       >
                         Close poll
                       </Button>
@@ -797,7 +797,7 @@ export default function StudioPage() {
               </div>
               <FormAlert message={pinAlert} />
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" data-testid="studio-pin-submit" disabled={pinMutation.isPending}>
+                <Button type="submit" data-testid="studio-pin-submit" disabled={pinMutation.context === actionScope && pinMutation.isPending}>
                   Set pinned topic
                 </Button>
                 {pinnedTopic && (
@@ -810,7 +810,7 @@ export default function StudioPage() {
                         expiresAtEpisodeEnd: pinForm.getValues("expiresAtEpisodeEnd"),
                       })
                     }
-                    disabled={pinMutation.isPending}
+                    disabled={pinMutation.context === actionScope && pinMutation.isPending}
                   >
                     Clear
                   </Button>
@@ -852,7 +852,7 @@ export default function StudioPage() {
             chatForm={chatForm}
             chatAlert={chatAlert}
             onSubmit={(values) => boothChatMutation.mutate(values)}
-            isPending={boothChatMutation.isPending}
+            isPending={boothChatMutation.context === actionScope && boothChatMutation.isPending}
             showName={showName}
           />
         </aside>
